@@ -2,11 +2,6 @@
 
 import os
 import zipfile
-import numpy as np
-import tensorflow as tf
-
-from tensorflow import keras
-from keras import layers
 
 ## Data
 
