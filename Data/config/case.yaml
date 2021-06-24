@@ -1,0 +1,12 @@
+# DATA_DIR: "/media/marsdenlab/Data2/datasets/DeepLofting/files"
+DATA_DIR: "/Users/numisveinsson/vascular_data"
+FILE_LIST: "/media/marsdenlab/Data2/datasets/DeepLofting/files/files.txt"
+
+
+SPACING: 0.029
+DIMS: 240
+CROP_DIMS: 160
+NUM_CHANNELS: 1
+NUM_CONTOUR_POINTS: 30
+PATH_START: 2
+LOFT: false

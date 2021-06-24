@@ -1,0 +1,5 @@
+GROUPS: /Users/numisveinsson/vascular_data/OSMSC0131/0131_0000/0131_0000_groups-cm
+IMAGE: /Users/numisveinsson/vascular_data/OSMSC0131/OSMSC0131-cm.mha
+NAME: OSMSC0131
+PATHS: /Users/numisveinsson/vascular_data/OSMSC0131/0131_0000/0131_0000-cm.paths
+SEGMENTATION: /Users/numisveinsson/vascular_data/OSMSC0131/0131_0000/0131_0000-cm.mha
