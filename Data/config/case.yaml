@@ -1,5 +1,5 @@
 # DATA_DIR: "/media/marsdenlab/Data2/datasets/DeepLofting/files"
-DATA_DIR: "/Users/numisveinsson/vascular_data"
+DATA_DIR: "/Users/numi/Documents/Side_SV_projects/SV_ML_Training/vascular_data"
 FILE_LIST: "/media/marsdenlab/Data2/datasets/DeepLofting/files/files.txt"
 
 

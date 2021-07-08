@@ -3,6 +3,9 @@
 import os
 import zipfile
 
+import tensorflow as tf
+from tensorflow import keras
+
 ## Data
 
 # Download url of normal CT scans

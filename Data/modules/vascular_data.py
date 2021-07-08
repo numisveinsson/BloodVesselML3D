@@ -1,10 +1,10 @@
 import numpy as np
 import vtk
-import skimage
-from skimage.measure import grid_points_in_poly
+#import skimage
+#from skimage.measure import grid_points_in_poly
 import re
-import scipy
-from scipy.interpolate import UnivariateSpline
+#import scipy
+#from scipy.interpolate import UnivariateSpline
 from vtk import vtkImageExport
 from vtk.util import numpy_support
 import os
@@ -557,7 +557,7 @@ def VTKNumpytoSP(img_):
 
     return sp
 
-from skimage.measure import grid_points_in_poly
+#from skimage.measure import grid_points_in_poly
 def contourToSeg(contour, origin, dims, spacing):
     '''
     Converts an ordered set of points to a segmentation

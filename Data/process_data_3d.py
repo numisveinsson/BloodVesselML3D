@@ -6,6 +6,8 @@ import scipy
 import numpy as np
 from imageio import imsave
 
+from modules import volume_functions as vf
+
 global_config_file = "./config/global.yaml"
 case_config_file   = "./config/case.yaml"
 

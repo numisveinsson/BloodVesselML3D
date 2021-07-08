@@ -5,6 +5,9 @@ import tensorflow as tf
 from tensorflow import keras
 from keras import layers
 
+import visualize
+import volume_functions
+
 ### 3D U-Net model training
 
 ## First read the paths of the CT scans from class directories

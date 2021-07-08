@@ -1,6 +1,6 @@
 CASES_DIR: "./cases"
 #CASES_PREFIX: "/home/marsdenlab/datasets/vascular_data"
-CASES_PREFIX: "/Users/numisveinsson/vascular_data"
+CASES_PREFIX: "/Users/numi/Documents/Side_SV_projects/SV_ML_Training/vascular_data"
 
 
 LEAK: 0.2
