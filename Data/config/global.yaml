@@ -1,18 +1,7 @@
 CASES_DIR: "./cases"
-#CASES_PREFIX: "/home/marsdenlab/datasets/vascular_data"
-CASES_PREFIX: "/Users/numi/Documents/Side_SV_projects/SV_ML_Training/vascular_data"
+DATA_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d'
+IMAGE_OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train'
+SEG_OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train_masks'
 
-
-LEAK: 0.2
-BATCH_SIZE: 4
-LEARNING_RATE: 0.001
-TRAIN_STEPS: 25000
-PRINT_STEP: 50
-INIT: 0.07
-L2_REG: 0.0000
-NUM_FILTERS: 32
-QUEUE_SIZE: 50
-NUM_THREADS: 200
-THRESHOLD: 0.2
-PR_INTERVALS: 30
-NUM_CONTOUR_POINTS: 10
+MODALITY: 'CT' #can also be 'MR' or 'BOTH'
+MOVE_DIST: 1.5

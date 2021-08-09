@@ -1,0 +1,5 @@
+CENTERLINE: /Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d/centerlines/0118_1000.vtp
+IMAGE: /Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d/images/OSMSC0118/OSMSC0118-cm.mha
+NAME: 0118_1000
+SEGMENTATION: /Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d/images/OSMSC0118/0118_1000/0118_1000-cm.mha
+SURFACE: /Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d/surfaces/0118_1000.vtp

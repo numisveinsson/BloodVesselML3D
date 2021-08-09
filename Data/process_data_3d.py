@@ -11,7 +11,6 @@ from modules import volume_functions as vf
 global_config_file = "./config/global.yaml"
 case_config_file   = "./config/case.yaml"
 
-
 global_config = io.load_yaml(global_config_file)
 case_config   = io.load_yaml(case_config_file)
 
