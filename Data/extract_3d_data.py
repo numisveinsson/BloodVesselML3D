@@ -1,3 +1,6 @@
+import time
+start_time = time.time()
+
 import numpy as np
 import os
 
@@ -25,11 +28,14 @@ cases = [global_config['CASES_DIR']+'/'+f for f in cases if 'case.' in f]
 # cases.remove('./cases/case.0158_0001.yml')
 #
 # cases = ['./cases/case.0150_0001.yml', './cases/case.0151_0001.yml', './cases/case.0145_1001.yml', './cases/case.0138_1001.yml', './cases/case.0141_1001.yml', './cases/case.0142_1001.yml', './cases/case.0176_0000.yml', './cases/case.0149_1001.yml', './cases/case.0175_0000.yml', './cases/case.0139_1001.yml', './cases/case.0146_1001.yml', './cases/case.0174_0000.yml', './cases/case.0148_1001.yml', './cases/case.0156_0001.yml', './cases/case.0157_0000.yml', './cases/case.0129_0000.yml']
-cases = ['./cases/case.0158_0001.yml']
+#cases = ['./cases/case.0158_0001.yml']
 info = {}
 N = 0
 M = 0
 K = 0
+P = 0
+O = 0
+mul_l = []
 for case_fn in cases:
 
     case_dict = io.load_yaml(case_fn)
@@ -67,6 +73,7 @@ for case_fn in cases:
     except:
         num_cent = 1
         print("\n Only one centerline to follow \n")
+
     ids_total = []
     m_old = M
     n_old = N
@@ -115,15 +122,35 @@ for case_fn in cases:
                         seed = (np.array(size_extract)//2).tolist()
                         removed_seg = sf.remove_other_vessels(new_seg, seed)
 
-                        #sf.connected_comp_info(removed_seg, new_seg)
+                        labels, means = sf.connected_comp_info(removed_seg, new_seg)
+                        print("\nThe labels are: \n")
+                        print(labels)
 
-                        sitk.WriteImage(new_img, image_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
-                        #sitk.WriteImage(new_seg, outputImageDir+model +'_'+str(N)+ 'Y.vtk')
-                        sitk.WriteImage(removed_seg, seg_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
+                        # if len(means)==1 and means[0]!=255.0:
+                        #
+                        #     new_seg = new_seg//255
+                        #     sitk.WriteImage(new_seg, seg_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
+                        #     sitk.WriteImage(new_seg, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/vtk_train_masks/'+ case_dict['NAME']+'_' +str(N-n_old)+ '.vtk')
+                        #
+                        #     print("\n****************** We changed this one! ******************\n")
+                        #     print("\n****************** " +case_dict['NAME'] +'_'+ str(N-n_old)+ " ******************\n")
+                        #     P = P+1
+                            # sitk.Show(new_img, title="Image"+str(N), debugOn=True)
+                            # sitk.Show(new_seg, title="Seg"+str(N), debugOn=True)
+                            # sitk.Show(removed_seg, title="Old Seg"+str(N), debugOn=True)
 
-                        sitk.WriteImage(new_img, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/vtk_train/' + case_dict['NAME']+'_' +str(N-n_old)+ '.vtk')
-                        #sitk.WriteImage(new_seg, outputImageDir+model +'_'+str(N)+ 'Y.vtk')
-                        sitk.WriteImage(removed_seg, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/vtk_train_masks/'+ case_dict['NAME']+'_' +str(N-n_old)+ '.vtk')
+                        # We want binary 0/1 instead of 0/255
+                        removed_seg = removed_seg//255
+
+                        if len(means) != 1:
+                            O = O+1
+                            mul_l.append(case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
+
+                        #sitk.WriteImage(new_img, image_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
+                        #sitk.WriteImage(removed_seg, seg_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
+
+                        #sitk.WriteImage(new_img, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/vtk_train/' + case_dict['NAME']+'_' +str(N-n_old)+ '.vtk')
+                        #sitk.WriteImage(removed_seg, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/vtk_train_masks/'+ case_dict['NAME']+'_' +str(N-n_old)+ '.vtk')
 
                         #sitk.Show(new_img, title="Image"+str(N), debugOn=True)
                         #sitk.Show(new_seg, title="Seg"+str(N), debugOn=True)
@@ -140,7 +167,7 @@ for case_fn in cases:
                         reader_seg.SetExtractIndex(index_extract)
                         reader_seg.SetExtractSize(size_extract)
                         new_seg = reader_seg.Execute()
-                        sitk.WriteImage(new_seg, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/throw_outs/'+'throwout_'+ case_dict['NAME']+'_'+str(M-m_old)+ '.vtk')
+                        #sitk.WriteImage(new_seg, '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/throw_outs/'+'throwout_'+ case_dict['NAME']+'_'+str(M-m_old)+ '.vtk')
                         M=M+1
                     except:
                         print("\n                               *****************************ERROR: did not save throwout for " + str(M-m_old))
@@ -182,5 +209,13 @@ print("\n****************** All done for all models! ******************")
 print("****************** " + str(N) +" extractions! ******************")
 print("****************** " + str(M) +" throwouts! ******************")
 print("****************** " + str(K) +" errors in saving! ****************** \n")
+print("****************** P: " + str(P) +" were changed! ****************** \n")
+print("****************** O: " + str(O) +" have more than one label! ****************** \n")
+for i in mul_l:
+    print(i)
+
+print("\n--- %s seconds ---" % (time.time() - start_time))
+
+import pdb; pdb.set_trace()
 # img = sitk.ReadeImage('my_input.png')
 # sitk.WriteImage(img, 'my_output.jpg')

@@ -1,35 +1,55 @@
 import numpy as np
 import os
 import random
+import SimpleITK as sitk
+from modules import sitk_functions as sf
 
-#set directories
-directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train')
-target_directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_validation')
+def random_files(directory, data_set_percent_size):
 
-directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train_masks')
-target_directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_validation_masks')
+    #print(os.listdir(directory))
 
-data_set_percent_size = float(0.15)
+    # list all files in dir that are an image
+    files = [f for f in os.listdir(directory) if f.endswith('.nii.gz')]
+    print(files)
 
-#print(os.listdir(directory))
+    # select a percent of the files randomly
+    random_files = random.sample(files, int(len(files)*data_set_percent_size))
+    print(random_files)
 
-# list all files in dir that are an image
-files = [f for f in os.listdir(directory) if f.endswith('.nii.gz')]
+    return random_files
 
-#print(files)
+def move_files(directory, target_directory, random_files):
 
-# select a percent of the files randomly
-random_files = random.sample(files, int(len(files)*data_set_percent_size))
-#random_files = np.random.choice(files, int(len(files)*data_set_percent_size))
+    # move the randomly selected images by renaming directory
+    for random_file_name in random_files:
+        print(directory+'/'+random_file_name)
+        print(target_directory+'/'+random_file_name)
+        os.rename(directory+'/'+random_file_name, target_directory+'/'+random_file_name)
 
-#print(random_files)
+def change_values_images(directory):
+    files = [f for f in os.listdir(directory) if f.endswith('.nii.gz')]
 
-# move the randomly selected images by renaming directory
+    for file in files:
+        reader_im = sf.read_image(directory+'/'+file)
+        img = reader_im.Execute()
+        #sitk.Show(img, title="Image before "+file, debugOn=True)
+        img = img//255
+        #sitk.Show(img, title="Image after "+file, debugOn=True)
+        sitk.WriteImage(img, directory+'/'+file)
 
-for random_file_name in random_files:
-    #print(directory+'/'+random_file_name)
-    #print(target_directory+'/'+random_file_name)
-    os.rename(directory+'/'+random_file_name, target_directory+'/'+random_file_name)
-    os.rename(directory_mask+'/'+random_file_name, target_directory_mask+'/'+random_file_name)
-    
-    continue
+if __name__=='__main__':
+    #set directories
+    directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train')
+    target_directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val')
+
+    directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train_masks')
+    target_directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val_masks')
+
+    data_set_percent_size = float(0.15)
+    random_ct = random_files(directory, data_set_percent_size)
+    import pdb; pdb.set_trace()
+    move_files(directory, target_directory, random_ct)
+    move_files(directory_mask, target_directory_mask, random_ct)
+
+    # change_values_images(directory_mask)
+    # change_values_images(target_directory_mask)

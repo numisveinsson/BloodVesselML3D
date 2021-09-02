@@ -49,12 +49,12 @@ def remove_other_vessels(image, seed):
     Args:
         SITK image, seed point pointing to point in vessel of interest
     Returns:
-        binary image file (either 0 or 255)
+        binary image file (either 0 or 1)
     """
     ccimage = sitk.ConnectedComponent(image)
     label = ccimage[seed]
     labelImage = sitk.BinaryThreshold(ccimage, lowerThreshold=label, upperThreshold=label)
-    labelImage = labelImage*255
+    labelImage = labelImage
     return labelImage
 
 def connected_comp_info(removed_seg, original_seg):
@@ -63,5 +63,8 @@ def connected_comp_info(removed_seg, original_seg):
     """
     stats = sitk.LabelIntensityStatisticsImageFilter()
     stats.Execute(removed_seg, original_seg)
+    means = []
     for l in stats.GetLabels():
         print("Label: {0} -> Mean: {1} Size: {2}".format(l, stats.GetMean(l), stats.GetPhysicalSize(l)))
+        means.append(stats.GetMean(l))
+    return stats.GetLabels(), means
