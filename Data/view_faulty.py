@@ -14,5 +14,5 @@ if __name__=='__main__':
     directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train/')
     directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train_masks/')
 
-    trouble = vd.view_volumes(trouble_cases, index, directory, directory_mask)
+    trouble = vd.view_volumes_compare(trouble_cases, index, directory, directory_mask)
     import pdb; pdb.set_trace()

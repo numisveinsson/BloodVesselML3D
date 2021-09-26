@@ -6,9 +6,11 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 
-def myshow(img, seg, title=None, margin=0.05):
+def myshow(img, seg, pred=None, title=None, margin=0.05):
     nda = sitk.GetArrayFromImage(img)
     sda = sitk.GetArrayFromImage(seg)
+    if pred:
+        pda = sitk.GetArrayFromImage(pred)
 
     spacing = img.GetSpacing()
 
@@ -32,9 +34,15 @@ def myshow(img, seg, title=None, margin=0.05):
     ysize = nda.shape[0]
     xsize = nda.shape[1]
 
-    f, axarr = plt.subplots(2,1)
-    axarr[0].imshow(nda)
-    axarr[1].imshow(sda)
+    if pred:
+        f, axarr = plt.subplots(3,1)
+        axarr[0].imshow(nda)
+        axarr[1].imshow(sda)
+        axarr[2].imshow(pda)
+    else:
+        f, axarr = plt.subplots(2,1)
+        axarr[0].imshow(nda)
+        axarr[1].imshow(sda)
 
     #if nda.ndim == 2:
         #f.set_cmap("gray")
@@ -165,15 +173,17 @@ def calc_stats(files, directory, directory_mask):
         # print('the min of image is {}'.format(np.min(im_array)))
         # print('the min of seg is {}'.format(np.min(seg_array)))
 
-def view_volumes_compare(files, index, directory, directory_mask):
+def view_volumes_compare(files, index, directory, directory_mask, directory_pred = None):
 
     troublesome = []
-    for file in files[index-1:]:
+    for file in files[index:]:
 
         try:
             print("\n"+file+"\n")
             img = sitk.ReadImage(directory+file)
             seg = sitk.ReadImage(directory_mask+file)
+            if directory_pred:
+                pred = sitk.ReadImage(directory_pred+file)
 
             size = img.GetSize()
             print("Size is "+str(size))
@@ -187,12 +197,18 @@ def view_volumes_compare(files, index, directory, directory_mask):
             try:
                 img = myshow3d(img, xslices=range(1,size[0],size[0]//10), yslices=range(1,size[1],size[1]//10), zslices=range(1,size[2],size[2]//10))
                 seg = myshow3d(seg, xslices=range(1,size[0],size[0]//10), yslices=range(1,size[1],size[1]//10), zslices=range(1,size[2],size[2]//10))
+                if directory_pred:
+                    pred = myshow3d(pred, xslices=range(1,size[0],size[0]//10), yslices=range(1,size[1],size[1]//10), zslices=range(1,size[2],size[2]//10))
 
             except:
                 img = myshow3d(img, xslices=range(0,size[0],1), yslices=range(0,size[1],1), zslices=range(0,size[2],1))
                 seg = myshow3d(seg, xslices=range(0,size[0],1), yslices=range(0,size[1],1), zslices=range(0,size[2],1))
-
-            myshow(img, seg)
+                if directory_pred:
+                    pred = myshow3d(pred, xslices=range(0,size[0],1), yslices=range(0,size[1],1), zslices=range(0,size[2],1))
+            try:
+                myshow(img, seg, pred)
+            except:
+                myshow(img, seg)
             plt.draw()
             plt.waitforbuttonpress(0)
             plt.close()
@@ -215,42 +231,71 @@ def view_volumes_compare(files, index, directory, directory_mask):
             else:
                 print("Kept in\n")
                 continue
-        except:
-            print("\nError: Not possible to read " + file + "\n")
+        except Exception as e:
 
+            print("\nError: Not possible to read " + file + "\n")
+            print(e)
     return troublesome
 
 
 if __name__=='__main__':
     #set directories
 
-    # output_directory = '/Users/numisveinsson/Downloads/output_test1/'
-    # files = [f for f in os.listdir(output_directory) if f.endswith('.nii.gz')]
-    # view_volumes_compare(files, 0, output_directory, output_directory)
+    image_directory = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val/'
+    output_directory = '/Users/numisveinsson/Documents/Berkeley/Research/BloodVessel_UNet3D/output/test7/pred/'
+    truth_directory = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val_masks/'
+    files = [f for f in os.listdir(output_directory) if f.endswith('.nii.gz')]
+    files = ['0092_0001_59.nii.gz',
+            '0148_1001_153.nii.gz',
+            '0185_0001_65.nii.gz',
+            '0172_0001_164.nii.gz',
+            '0186_0002_137.nii.gz',
+            '0140_2001_45.nii.gz',
+            '0189_0001_129.nii.gz',
+            '0188_0001_288.nii.gz',
+            '0183_1002_531.nii.gz',
+            '0140_2001_148.nii.gz',
+            '0065_0001_201.nii.gz',
+            '0189_0001_386.nii.gz',
+            '0186_0002_135.nii.gz',
+            '0183_1002_533.nii.gz',
+            '0140_2001_61.nii.gz',
+            '0065_0001_139.nii.gz',
+            '0184_0001_304.nii.gz',
+            '0183_1002_733.nii.gz',
+            '0139_1001_199.nii.gz',
+            '0183_1002_867.nii.gz',
+            '0065_0001_138.nii.gz',
+            '0188_0001_533.nii.gz']
+    view_volumes_compare(files, 0, image_directory, truth_directory, output_directory)
     #
-    # import pdb; pdb.set_trace()
+    import pdb; pdb.set_trace()
 
-    directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train/')
-    val_directory = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val/')
+    directory = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train/'
+    directory_mask = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train_masks/'
 
-    directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_train_masks/')
-    val_directory_mask = str('/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val_masks/')
+    val_directory = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val/'
+    val_directory_mask = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val_masks/'
+    val_directory_pred = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/ct_val_pred/pred6/'
 
-    directory = str('/Users/numisveinsson/Downloads/test_images/ct_train/')
-    directory_mask = str('/Users/numisveinsson/Downloads/test_images/ct_train_masks/')
-    files = [f for f in os.listdir(directory) if f.endswith('.nii.gz')]
+
+    directory = '/Users/numisveinsson/Downloads/test_images/ct_train/'
+    directory_mask = '/Users/numisveinsson/Downloads/test_images/ct_train_masks/'
+
+
+    files = [f for f in os.listdir(val_directory_pred) if f.endswith('.nii.gz')]
+    calc_plot_stats('min', files, val_directory_pred, val_directory_mask)
+    import pdb; pdb.set_trace()
 
     # calc_stats(files, directory, directory_mask)
-    #
-    # import pdb; pdb.set_trace()
 
     # index = files.index("0001_0001_21.nii.gz")
     # print("Index is: " + str(index))
 
-    calc_plot_stats('mean', files, directory, directory_mask)
-    calc_plot_stats('max', files, directory, directory_mask)
-    calc_plot_stats('min', files, directory, directory_mask)
-    calc_plot_stats('std', files, directory, directory_mask)
-    import pdb; pdb.set_trace()
     index = 0
-    trouble = view_volumes_compare(files, index, directory, directory_mask)
+    trouble = view_volumes_compare(files, index, val_directory, val_directory_mask, val_directory_pred)
+
+    # calc_plot_stats('mean', files, directory, directory_mask)
+    # calc_plot_stats('max', files, directory, directory_mask)
+    # calc_plot_stats('min', files, directory, directory_mask)
+    # calc_plot_stats('std', files, directory, directory_mask)
