@@ -46,4 +46,6 @@ axis[1].set_ylabel('Count')
 axis[1].set_xlabel('Min Dimension Resolution')
 axis[1].set_title('Test 1 - Min Resolution')
 plt.show()
+
+fig, axis = plt.subplots(2,1)
 import pdb; pdb.set_trace()

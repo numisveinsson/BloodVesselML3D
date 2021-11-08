@@ -488,7 +488,7 @@ def voi_contain_caps(voi_min, voi_max, caps_locations):
         contain: boolean if a cap point was found within volume
     """
     larger = caps_locations > voi_min
-    smaller = caps_locations <voi_max
+    smaller = caps_locations < voi_max
 
     contain = np.any(np.logical_and(smaller.all(axis=1), larger.all(axis=1)))
     return contain
@@ -500,5 +500,41 @@ def voi_contain_caps(voi_min, voi_max, caps_locations):
 #     for i in range(num_cent):
 #         ids = np.where(cent_id[:,i] == 1)[0]
 #         cent_org[i] = ids
-# 
+#
 #     return cent_org
+
+def get_seed(cent_fn, centerline_num, point_on_cent):
+    """
+    Get a location and radius at a point along centerline
+    Args:
+        cent_fn: file directory for centerline
+        centerline_num: starting from 0, which sub centerline do you wish to sample from
+        point_on_cent: starting from 0, how far along the sub centerline you wish to sample
+    Returns:
+        location coords, radius at the specific point
+    """
+
+    ## Centerline
+    cent = read_geo(cent_fn).GetOutput()
+    num_points = cent.GetNumberOfPoints()               # number of points in centerline
+    cent_data = collect_arrays(cent.GetPointData())
+    c_loc = v2n(cent.GetPoints().GetData())             # point locations as numpy array
+    radii = cent_data['MaximumInscribedSphereRadius']   # Max Inscribed Sphere Radius as numpy array
+    cent_id = cent_data['CenterlineId']
+
+    try:
+        num_cent = len(cent_id[0]) # number of centerlines (one is assembled of multiple)
+    except:
+        num_cent = 1 # in the case of only one centerline
+
+    ip = centerline_num
+    count = point_on_cent
+
+    try:
+        ids = [i for i in range(num_points) if cent_id[i,ip]==1] # ids of points belonging to centerline ip
+    except:
+        ids = [i for i in range(num_points)]
+    locs = c_loc[ids]
+    rads = radii[ids]
+
+    return locs[count], rads[count]
