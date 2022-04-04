@@ -27,7 +27,7 @@ modality = open(cases_dir+'/modality.txt')
 modality  = [f.replace('\n','') for f in modality]
 
 ids = range(len(images))
-if mod_pref != 'BOTH':
+if mod_pref != 'ALL':
     ids = [i for i in range(len(modality)) if modality[i] == mod_pref]
 
 for i in ids:

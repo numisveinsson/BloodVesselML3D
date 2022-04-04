@@ -538,3 +538,16 @@ def get_seed(cent_fn, centerline_num, point_on_cent):
     rads = radii[ids]
 
     return locs[count], rads[count]
+
+def calc_normal_vectors(vec0):
+    """
+    Function to calculate two orthonormal vectors
+    to a particular direction vec
+    """
+    vec0 = vec0/np.linalg.norm(vec0)
+    vec1 = np.random.randn(3)       # take a random vector
+    vec1 -= vec1.dot(vec0) * vec0   # make it orthogonal to k
+    vec1 /= np.linalg.norm(vec1)    # normalize it
+    vec2 = np.cross(vec0, vec1)     # calculate third vector
+
+    return vec1, vec2

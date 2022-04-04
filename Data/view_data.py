@@ -1,7 +1,6 @@
 ## Python script to go through samples, image data and segs and review their accuracy
 
 import SimpleITK as sitk
-from modules import sitk_functions
 import os
 import matplotlib.pyplot as plt
 import numpy as np
@@ -316,9 +315,9 @@ if __name__=='__main__':
 
     files = [f for f in os.listdir(directory) if f.endswith('.nii.gz')]
 
-    calc_plot_stats('size', files, directory, directory_mask)
+    #calc_plot_stats('size', files, directory, directory_mask)
     import pdb; pdb.set_trace()
-    calc_plot_stats('max', files, val_directory_pred, val_directory_mask)
+    #calc_plot_stats('max', files, val_directory_pred, val_directory_mask)
 
 
     #calc_stats(files, directory, directory_mask)
@@ -327,7 +326,7 @@ if __name__=='__main__':
     # print("Index is: " + str(index))
 
     index = 0
-    trouble = view_volumes_compare(files, index, val_directory, val_directory_mask, val_directory_pred)
+    trouble = view_volumes_compare(files, index, directory, directory_mask) #, val_directory_pred)
 
 
     # calc_plot_stats('max', files, directory, directory_mask)

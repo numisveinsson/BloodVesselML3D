@@ -1,8 +1,7 @@
 CASES_DIR: "./cases"
 DATA_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d'
-IMAGE_OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/test2/ct_val'
-SEG_OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/test2/ct_val_masks'
+OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/test3/'
 
-MODALITY: 'CT' # can also be 'MR' or 'BOTH'
+MODALITY: 'CT' # can also be 'MR' or 'ALL'
 MOVE_DIST: 1.5 # how far to move along centerline between sampling
 SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
