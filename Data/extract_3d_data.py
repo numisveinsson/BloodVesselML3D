@@ -4,6 +4,7 @@ start_time = time.time()
 import numpy as np
 import os
 import random
+import csv
 
 from modules import vtk_functions as vf
 from modules import sitk_functions as sf
@@ -68,12 +69,12 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
     center_volume = (seed)*spacing_im + origin_im
 
     stats = {"No":N, "NAME": case_dict['NAME']+'_'+str(N-n_old), "SIZE": size_r*rads[count], "RESOLUTION": size_extract,
-    "ORIGIN": origin_im, "SPACING": spacing_im, "POINT_CENT": locs[count],
-    "VOL_CENT": center_volume, "DIFF_CENT": np.linalg.norm(locs[count] - center_volume)}
-    stats.update({"IM_MEAN":np.mean(im_np), "IM_STD":np.std(im_np), "IM_MAX":np.amax(im_np),
-    "IM_MIN":np.amin(im_np),"BLOOD_MEAN":np.mean(blood_np),"BLOOD_STD":np.std(blood_np),
-    "BLOOD_MAX":np.amax(blood_np),"BLOOD_MIN":np.amin(blood_np), "GT_MEAN": np.mean(ground_truth),
-    "GT_STD": np.std(ground_truth), "GT_MAX": np.amax(ground_truth), "GT_MIN": np.amin(ground_truth) })
+    "ORIGIN": origin_im,            "SPACING": spacing_im,              "POINT_CENT": locs[count],
+    "VOL_CENT": center_volume,      "DIFF_CENT": np.linalg.norm(locs[count] - center_volume),
+    "IM_MEAN":np.mean(im_np),       "IM_STD":np.std(im_np),             "IM_MAX":np.amax(im_np),
+    "IM_MIN":np.amin(im_np),        "BLOOD_MEAN":np.mean(blood_np),     "BLOOD_STD":np.std(blood_np),
+    "BLOOD_MAX":np.amax(blood_np),  "BLOOD_MIN":np.amin(blood_np),      "GT_MEAN": np.mean(ground_truth),
+    "GT_STD": np.std(ground_truth), "GT_MAX": np.amax(ground_truth),    "GT_MIN": np.amin(ground_truth) }
 
     if len(means) != 1:
         larg_np = sitk.GetArrayFromImage(removed_seg)
@@ -92,6 +93,7 @@ if __name__=='__main__':
 
     write_samples = True
     write_vtk_samples = True
+    write_vtk_throwout = True
     show_samples = False
     rotate_samples = False
     trace_testing = False
@@ -106,8 +108,13 @@ if __name__=='__main__':
     size_validation = 0.15
     testing_samples = ['./cases/case.0176_0000.yml', './cases/case.0146_1001.yml', './cases/case.0002_0001.yml', './cases/case.0005_1001.yml']
 
-    prop = 0.6 # how much of volume must be cap free, per sidelength
+    prop = 0.25 # how much of volume must be cap free, per sidelength
     move_slower = 1/4 # how much slower for bigger vessels
+    mu_size = 5
+    sigma_size = 1
+    mu_shift = 0
+    sigma_shift = 0.8
+    n_samples = 2
 
     image_out_dir_train = out_dir+modality+'_train/'
     seg_out_dir_train = out_dir+modality+'_train_masks/'
@@ -136,19 +143,29 @@ if __name__=='__main__':
     O = 0 # keep total of samples with multiple labels
     mul_l = []
     csv_list = []
-    # print(cases)
 
-    #size_r = global_config['SIZE_RADIUS'] # Size of volume in radii at each point
-    sizes = [3,5,6]
-    shifts = [0.4, 0.8]
     for i in cases:
         print(i)
+
+    f = open(out_dir +"info.txt","w+")
+    f.write("Proportion cap free: " + str(prop))
+    f.write("\n Relative slower for large vessels: " + str(move_slower))
+    f.write("\n Testing models not included: ")
+    for i in range(len(testing_samples)):
+        f.write(" \n   Model " + str(i) + " : " + testing_samples[i])
+    f.close()
     import pdb; pdb.set_trace()
-    for case_fn in cases[27:]:
+    for case_fn in cases[-2:]:
 
         ## Load data
         case_dict = io.load_yaml(case_fn)
         print(case_dict['NAME'])
+        if write_vtk_samples:
+            try:
+                os.mkdir(out_dir+'vtk_data/vtk_' + case_dict['NAME'])
+                os.mkdir(out_dir+'vtk_data/vtk_mask_' + case_dict['NAME'])
+                os.mkdir(out_dir+'vtk_data/vtk_throwout_' + case_dict['NAME'])
+            except Exception as e: print(e)
 
         reader_seg = sf.read_image(case_dict['SEGMENTATION'])
         reader_im, origin_im, size_im, spacing_im = sf.import_image(case_dict['IMAGE'])
@@ -183,6 +200,21 @@ if __name__=='__main__':
 
         for ip in range(num_cent):
 
+            ## If tracing test, save to test
+            if trace_testing:
+                image_out_dir = image_out_dir_test
+                seg_out_dir = seg_out_dir_test
+            ## Else, every 20 extractions have a probability to save to validation
+            else:
+                rand = random.uniform(0,1)
+                print(" random is " + str(rand))
+                if rand < size_validation and ip != 0:
+                    image_out_dir = image_out_dir_val
+                    seg_out_dir = seg_out_dir_val
+                else:
+                    image_out_dir = image_out_dir_train
+                    seg_out_dir = seg_out_dir_train
+
             try:
                 ids = [i for i in range(num_points) if cent_id[i,ip]==1]    # ids of points belonging to centerline ip
             except:
@@ -192,93 +224,98 @@ if __name__=='__main__':
 
             on_cent = True
             count = 0 # the point along centerline
-            print("** Ip is " + str(ip))
+            lengths = [0]
+            lengths_prev = [0]
+            print("\n ** Ip is " + str(ip)+"\n")
             while on_cent:
-                print("\n--- %s seconds ---" % (time.time() - start_time))
-
-                ## If tracing test, save to test
-                if trace_testing:
-                    image_out_dir = image_out_dir_test
-                    seg_out_dir = seg_out_dir_test
-                ## Else, every 10 extractions have a probability to save to validation
-                elif (N-n_old)%10 == 0:
-
-                    rand = random.uniform(0,1)
-                    print(" random is " + str(rand))
-                    if rand < size_validation:
-                        image_out_dir = image_out_dir_val
-                        seg_out_dir = seg_out_dir_val
-                    else:
-                        image_out_dir = image_out_dir_train
-                        seg_out_dir = seg_out_dir_train
+                #print("\n--- %s seconds ---" % (time.time() - start_time))
 
                 if not (ids[count] in ids_total):
                     print('The point # along centerline is ' + str(count))
                     #print('The location is ' + str(locs[count]))
+
+                    # Sample size(s) and shift(s)
+                    sizes = np.random.normal(mu_size, sigma_size, n_samples)
+                    shifts = np.random.normal(mu_shift, sigma_shift, n_samples)
+                    #print("sizes are: " + str(sizes))
+                    #print("shifts are: " + str(shifts))
+
+                    # Calculate vectors
                     if count < len(locs)/2:
                         vec0 = locs[count+1] - locs[count]
                     else:
                         vec0 = locs[count] - locs[count-1]
                     vec1, vec2 = vf.calc_normal_vectors(vec0)
-                    centers = [locs[count]]
-                    for shift_r in shifts:
-                        for shift_vec in [vec1, vec2, -(vec1+vec2)]:
-                            centers.append(locs[count]+shift_r*shift_vec*rads[count])
 
-                    #from test import points2polydata
-                    #vf.write_geo('/Users/numisveinsson/Downloads/' + 'point_centerline.vtp', points2polydata(centers))
+                    # Shift centers
+                    centers = [] #[locs[count]]
+                    for sample in range(n_samples):
+                        value = random.uniform(0,1)
+                        vector = vec1*value + vec2*(1-value)
+                        centers.append(locs[count]+shifts[sample]*vector*rads[count])
+
+                    from test import points2polydata
+                    vf.write_geo('/Users/numisveinsson/Downloads/' + str(N)+'point_centerline.vtp', points2polydata(centers))
                     #print("Number of centers are " + str(len(centers)))
                     sub = 0
-                    for size_r in sizes:
-                        for center in centers:
-                                #print("*", end =" ")
-                                size_extract, index_extract, voi_min, voi_max = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, prop)
-                                ## Check if cap is in volume
-                                if not vf.voi_contain_caps(voi_min, voi_max, cap_locs):
+                    for sample in range(n_samples):
 
-                                    try:
+                        center = centers[sample]
+                        size_r = sizes[sample]
 
-                                        stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O)
+                        size_extract, index_extract, voi_min, voi_max = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, prop)
+                        is_inside = vf.voi_contain_caps(voi_min, voi_max, cap_locs)
+                        # is_inside1 = True
+                        # if is_inside:
+                        #     size_extract, index_extract, voi_min, voi_max = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, prop2)
+                        #     is_inside1 = vf.voi_contain_caps(voi_min, voi_max, cap_locs)
+                        #     far_from = lengths_prev[-1] > rads[count] and lengths[-1] > rads[count]
+                        ## Check if cap is in volume
+                        if not is_inside: #1 and far_from:
+                            print("*", end =" ")
+                            try:
+                                stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O)
+                                stats.update({"TANGENT": vec0/np.linalg.norm(vec0), "RADIUS":rads[count]})
+                                if write_vtk_samples:
+                                    sitk.WriteImage(new_img, out_dir+'vtk_data/vtk_' + case_dict['NAME']+'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
+                                    sitk.WriteImage(removed_seg*255, out_dir+'vtk_data/vtk_mask_'+ case_dict['NAME']+'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
 
-                                        if write_vtk_samples:
-                                            sitk.WriteImage(new_img, image_out_dir_train.replace(modality+'_train','vtk_data') + case_dict['NAME']+'_' +str(N-n_old)+'_'+str(sub)+ '.vtk')
-                                            sitk.WriteImage(removed_seg*255, image_out_dir_train.replace(modality+'_train','vtk_data') +'mask_'+ case_dict['NAME']+'_' +str(N-n_old)+'_'+str(sub)+ '.vtk')
+                                if write_samples:
+                                    sitk.WriteImage(new_img, image_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
+                                    sitk.WriteImage(removed_seg, seg_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
 
-                                        if write_samples:
-                                            sitk.WriteImage(new_img, image_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
-                                            sitk.WriteImage(removed_seg, seg_out_dir + case_dict['NAME'] +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
+                                if show_samples:
+                                    sitk.Show(new_img, title="Image"+str(N), debugOn=True)
+                                    sitk.Show(new_seg, title="Seg"+str(N), debugOn=True)
+                                    sitk.Show(removed_seg, title="Removed Seg"+str(N), debugOn=True)
 
-                                        if show_samples:
-                                            sitk.Show(new_img, title="Image"+str(N), debugOn=True)
-                                            sitk.Show(new_seg, title="Seg"+str(N), debugOn=True)
-                                            sitk.Show(removed_seg, title="Removed Seg"+str(N), debugOn=True)
-                                            import pdb; pdb.set_trace()
-                                        sub = sub +1
+                                #print('Finished: ' + case_dict['NAME'] +'_'+ str(N-n_old)+'_'+str(sub))
+                                csv_list.append(stats)
+                            except Exception as e:
+                                #print(e)
+                                #print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
+                                K = K+1
 
-                                        #print('Finished: ' + case_dict['NAME'] +'_'+ str(N-n_old)+'_'+str(sub))
-                                        csv_list.append(stats)
-                                    except Exception as e:
-                                        print(e)
-                                        print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
-                                        K = K+1
+                        else:
+                            print(".", end =" ")
+                            #print(" No save - cap inside")
+                            try:
+                                if write_vtk_samples and write_vtk_throwout:
+                                    new_seg = sf.extract_volume(reader_seg, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
+                                    sitk.WriteImage(new_seg, out_dir+'vtk_data/vtk_' + 'throwout_' +case_dict['NAME']+'/'+str(N-n_old)+ '_'+str(sub)+'.vtk')
 
-                                else:
-                                    #print(" No save - cap inside")
-                                    # try:
-                                    #     new_seg = sf.extract_volume(reader_seg, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
-                                    #
-                                    #     if write_vtk_samples:
-                                    #         sitk.WriteImage(new_seg, image_out_dir_train.replace(modality+'_train','vtk_data') + 'throwout_' +case_dict['NAME']+'_'+str(N-n_old)+ '_'+str(sub)+'.vtk')
-                                    #
-                                    M=M+1
-                                    # except Exception as e:
-                                    #     print(e)
-                                    #     print("\n*****************************ERROR: did not save throwout for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
-                                    #     K = K+1
+                                M=M+1
+                            except Exception as e:
+                                #print(e)
+                                #print("\n*****************************ERROR: did not save throwout for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
+                                K = K+1
+                        sub = sub +1
+
                     if sub != 0:
-                        print('Finished: ' + case_dict['NAME'] +'_'+ str(N-n_old))
-                        print(" " + str(sub) + " variations")
+                        print('\n Finished: ' + case_dict['NAME'] +'_'+ str(N-n_old))
+                        #print(" " + str(sub) + " variations")
                         N = N+1
+                lengths_prev = np.cumsum(np.insert(np.linalg.norm(np.diff(locs[:count], axis=0), axis=1), 0, 0))
                 lengths = np.cumsum(np.insert(np.linalg.norm(np.diff(locs[count:], axis=0), axis=1), 0, 0))
                 move = 1
                 count = count+1
@@ -303,25 +340,29 @@ if __name__=='__main__':
                     #print(" ")
 
             ids_total.extend(ids)           # keep track of ids that have already been operated on
-        
-        with open(image_out_dir_train.replace(modality+'_train','vtk_data')+csv_file, 'w') as csvfile:
-            writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
-            writer.writeheader()
-            for data in csv_list:
-                writer.writerow(data)
+
         print(case_dict['NAME'])
         print("\n****************** All done for this model! ******************")
         print("****************** " + str(N-n_old) +" extractions! ******************")
         print("****************** " + str(M-m_old) +" throwouts! ****************** \n")
-
+        # f = open(out_dir +"info.txt", 'a')
+        # f.write("\n ")
+        # f,write("\n "+case_dict['NAME'])
+        # f.write("\n "+str(N-n_old) +" extractions!")
+        # f.write("\n "+str(M-m_old) +" throwouts!")
+        # f.close()
         info[case_dict['NAME']] = [ N-n_old, M-m_old, K-k_old]
-
+        f = open(out_dir +"info.txt",'a')
+        f.write("\n "+ case_dict['NAME'])
+        f.write("\n "+ str([ N-n_old, M-m_old, K-k_old ]))
+        f.write("\n ")
+        f.close()
 
     for i in info:
         print(i)
         print(info[i])
         print(" ")
-
+        
     print("\n****************** All done for all models! ******************")
     print("****************** " + str(N) +" extractions! ******************")
     print("****************** " + str(M) +" throwouts! ******************")
@@ -332,12 +373,10 @@ if __name__=='__main__':
 
     print("\n--- %s seconds ---" % (time.time() - start_time))
 
-    import csv
+    csv_file = "Sample_stats.csv"
     csv_columns = ["No", "NAME", "SIZE","RESOLUTION", "ORIGIN", "SPACING", "POINT_CENT", "VOL_CENT", "DIFF_CENT", "IM_MEAN",
     "IM_STD","IM_MAX","IM_MIN","BLOOD_MEAN","BLOOD_STD","BLOOD_MAX","BLOOD_MIN","GT_MEAN", "GT_STD", "GT_MAX", "GT_MIN",
-    "LARGEST_MEAN","LARGEST_STD","LARGEST_MAX","LARGEST_MIN"]
-    csv_file = "Sample_stats.csv"
-
+    "LARGEST_MEAN","LARGEST_STD","LARGEST_MAX","LARGEST_MIN", 'RADIUS', 'TANGENT']
     with open(image_out_dir_train.replace(modality+'_train','vtk_data')+csv_file, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()

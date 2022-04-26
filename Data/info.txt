@@ -1,0 +1,7 @@
+Proportion cap free: 0.6
+ Relative slower for large vessels: 0.25
+ Testing models:  
+   Model 0 : ./cases/case.0176_0000.yml 
+   Model 1 : ./cases/case.0146_1001.yml 
+   Model 2 : ./cases/case.0002_0001.yml 
+   Model 3 : ./cases/case.0005_1001.yml

@@ -1,6 +1,6 @@
 CASES_DIR: "./cases"
 DATA_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d'
-OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/test3/'
+OUT_DIR: '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/test4/'
 
 MODALITY: 'CT' # can also be 'MR' or 'ALL'
 MOVE_DIST: 1.5 # how far to move along centerline between sampling
