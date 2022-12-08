@@ -21,3 +21,11 @@ This collects the different vascular models we have and the different locations 
 2. python3 gather_sampling_data.py
 
 This collects data about all positions of sampling to take place and size of sub-volumes. Then runs through the locations and actually extracts the sub-volumes and saves them.
+
+In the case of resampling use
+
+3. python3 additional_pre_process.py
+
+And in the case of generating labels run
+
+4. python3 generate_labels.py
