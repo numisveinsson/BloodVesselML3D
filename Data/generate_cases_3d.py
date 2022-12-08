@@ -3,7 +3,12 @@ import os
 
 config = io.load_yaml('./config/global.yaml')
 
-cases_dir    = config['CASES_DIR']
+cases_dir_save = config['CASES_DIR']+'_'+config['MODALITY']
+cases_dir = config['CASES_DIR']
+try:
+    os.mkdir(cases_dir_save)
+except Exception as e: print(e)
+
 cases_prefix = config['DATA_DIR']
 mod_pref = config['MODALITY']
 
@@ -42,7 +47,9 @@ for i in ids:
 
     d['NAME'] = name
 
-    fn = "{}/case.{}.yml".format(cases_dir,name)
+    fn = "{}/case.{}.yml".format(cases_dir_save,name)
     print(d)
     print(fn)
     io.save_yaml(fn,d)
+
+print('Number of files generated: ', len(ids))
