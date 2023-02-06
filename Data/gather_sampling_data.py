@@ -123,22 +123,28 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
 if __name__=='__main__':
 
     np.random.seed(0)
+    random.seed(0)
 
     trace_testing = False
 
     extract_volumes = True
     write_samples = True
-    write_vtk_samples = False
-    write_vtk_throwout = False
+    write_vtk_samples = True
+    write_vtk_throwout = True
     show_samples = False
     rotate_samples = False
+    gt_resample = False
+    resample_size = [64, 64, 64]
 
     global_config_file = "./config/global.yaml"
     global_config = io.load_yaml(global_config_file)
     modality = global_config['MODALITY'].lower()
 
+    #type = global_config['TYPE'].lower()
+    #modality = modality+'_'+type
+
     out_dir = global_config['OUT_DIR']
-    create_dir_sample_info(trace_testing, out_dir)
+    #create_dir_sample_info(trace_testing, out_dir)
     create_directories(out_dir, modality, trace_testing, write_vtk_samples)
 
     size_validation = global_config['VALIDATION_PROP']
@@ -159,23 +165,23 @@ if __name__=='__main__':
     image_out_dir_test = out_dir+modality+'_test/'
     seg_out_dir_test = out_dir+modality+'_test_masks/'
 
-    cases_dir = global_config['CASES_DIR']+'_'+global_config['MODALITY']
+    cases_dir = global_config['CASES_DIR']+'_'+modality
     cases_raw = os.listdir(cases_dir)
     cases = [cases_dir+'/'+f for f in cases_raw if 'case.' in f]
 
     testing_cases_raw = global_config['TEST_CASES']
-    testing_samples = ['./cases'+'_'+global_config['MODALITY']+'/case.'+ i + '.yml' for i in testing_cases_raw]
+    testing_samples = ['./cases'+'_'+modality+'/case.'+ i + '.yml' for i in testing_cases_raw]
 
     bad_cases_raw = global_config['BAD_CASES']
-    bad_cases = ['./cases'+'_'+global_config['MODALITY']+'/case.'+ i + '.yml' for i in bad_cases_raw]
+    bad_cases = ['./cases'+'_'+modality+'/case.'+ i + '.yml' for i in bad_cases_raw]
 
     for case in bad_cases:
         if case in cases: cases.remove(case)
 
-    cases = [i for i in cases if i not in testing_samples]
-
     if trace_testing:
-        cases = testing_samples
+        cases = [i for i in cases if i in testing_samples]
+    else:
+        cases = [i for i in cases if i not in testing_samples]
 
     info = {}
     N = 0 # keep total of extractions
@@ -301,17 +307,19 @@ if __name__=='__main__':
 
                         size_extract, index_extract, voi_min, voi_max = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, prop)
                         is_inside = vf.voi_contain_caps(voi_min, voi_max, cap_locs)
-                        # is_inside1 = True
-                        # if is_inside:
-                        #     size_extract, index_extract, voi_min, voi_max = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, prop2)
-                        #     is_inside1 = vf.voi_contain_caps(voi_min, voi_max, cap_locs)
-                        #     far_from = lengths_prev[-1] > rads[count] and lengths[-1] > rads[count]
-                        ## Check if cap is in volume
+
                         if not is_inside: #1 and far_from:
                             print("*", end =" ")
                             try:
                                 if extract_volumes:
                                     stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O)
+                                    if gt_resample:
+                                        from modules.pre_process import resample_spacing
+                                        removed_seg1 = resample_spacing(removed_seg, template_size=resample_size, order=1)[0]
+                                        #if min(size_extract)<resample_size[0]:
+                                        import pdb; pdb.set_trace()
+                                        removed_seg = vf.clean_boundaries(sitk.GetArrayFromImage(removed_seg))
+
                                 else:
                                     stats = {"No":N, "NAME": case_dict['NAME']+'_'+str(N-n_old), "SIZE": size_r*rads[count], "RESOLUTION": size_extract,"ORIGIN": origin_im, "SPACING": spacing_im,}
                                 if bifurc[count] == 2: save_bif = 1
