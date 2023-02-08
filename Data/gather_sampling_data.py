@@ -73,7 +73,7 @@ def create_directories(output_folder, modality, trace_testing, write_vtk_samples
         except Exception as e: print(e)
 
 
-def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O):
+def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O, sub):
     """"
     Function to extract subvolumes
     Both image data and GT segmentation
@@ -99,9 +99,10 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
 
     center_volume = (seed)*spacing_im + origin_im
 
-    stats = {"No":N, "NAME": case_dict['NAME']+'_'+str(N-n_old), "SIZE": size_r*rads[count], "RESOLUTION": size_extract,
-    "ORIGIN": origin_im,            "SPACING": spacing_im,              "POINT_CENT": locs[count],
-    "VOL_CENT": center_volume,      "DIFF_CENT": np.linalg.norm(locs[count] - center_volume),
+    stats = {"No":N, "NAME": case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub), "SIZE": size_r*rads[count], "RESOLUTION": size_extract.tolist(),
+    "ORIGIN": origin_im.tolist(),            "SPACING": spacing_im.tolist(),              "POINT_CENT": locs[count].tolist(),
+    "INDEX": index_extract.astype(int).tolist(),         "SIZE_EXTRACT": size_extract.astype(int).tolist(),
+    "VOL_CENT": center_volume.tolist(),      "DIFF_CENT": np.linalg.norm(locs[count] - center_volume),
     "IM_MEAN":np.mean(im_np),       "IM_STD":np.std(im_np),             "IM_MAX":np.amax(im_np),
     "IM_MIN":np.amin(im_np),        "BLOOD_MEAN":np.mean(blood_np),     "BLOOD_STD":np.std(blood_np),
     "BLOOD_MAX":np.amax(blood_np),  "BLOOD_MIN":np.amin(blood_np),      "GT_MEAN": np.mean(ground_truth),
@@ -125,8 +126,6 @@ if __name__=='__main__':
     np.random.seed(0)
     random.seed(0)
 
-    trace_testing = False
-
     extract_volumes = True
     write_samples = True
     write_vtk_samples = True
@@ -142,7 +141,7 @@ if __name__=='__main__':
 
     #type = global_config['TYPE'].lower()
     #modality = modality+'_'+type
-
+    trace_testing = global_config['TESTING']
     out_dir = global_config['OUT_DIR']
     #create_dir_sample_info(trace_testing, out_dir)
     create_directories(out_dir, modality, trace_testing, write_vtk_samples)
@@ -155,7 +154,6 @@ if __name__=='__main__':
     sigma_size = global_config['SIGMA_SIZE']
     mu_shift = global_config['MU_SHIFT']
     sigma_shift = global_config['SIGMA_SHIFT']
-    n_samples = global_config['NUMBER_SAMPLES']
 
     image_out_dir_train = out_dir+modality+'_train/'
     seg_out_dir_train = out_dir+modality+'_train_masks/'
@@ -278,6 +276,13 @@ if __name__=='__main__':
                     print('The point # along centerline is ' + str(count))
                     #print('The location is ' + str(locs[count]))
 
+                    if bifurc[count] == 2:
+                        save_bif = 1
+                        n_samples = global_config['NUMBER_SAMPLES_BIFURC']
+                    else:
+                        save_bif = 0
+                        n_samples = global_config['NUMBER_SAMPLES']
+
                     # Sample size(s) and shift(s)
                     sizes = np.random.normal(mu_size, sigma_size, n_samples)
                     shifts = np.random.normal(mu_shift, sigma_shift, n_samples)
@@ -312,7 +317,7 @@ if __name__=='__main__':
                             print("*", end =" ")
                             try:
                                 if extract_volumes:
-                                    stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O)
+                                    stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, O, sub)
                                     if gt_resample:
                                         from modules.pre_process import resample_spacing
                                         removed_seg1 = resample_spacing(removed_seg, template_size=resample_size, order=1)[0]
@@ -321,9 +326,8 @@ if __name__=='__main__':
                                         removed_seg = vf.clean_boundaries(sitk.GetArrayFromImage(removed_seg))
 
                                 else:
-                                    stats = {"No":N, "NAME": case_dict['NAME']+'_'+str(N-n_old), "SIZE": size_r*rads[count], "RESOLUTION": size_extract,"ORIGIN": origin_im, "SPACING": spacing_im,}
-                                if bifurc[count] == 2: save_bif = 1
-                                else: save_bif = 0
+                                    stats = {"No":N, "NAME": case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub), "SIZE": size_r*rads[count], "RESOLUTION": size_extract,"ORIGIN": origin_im, "SPACING": spacing_im,}
+
                                 stats.update({"NUM_VOX": size_extract[0]*size_extract[1]*size_extract[2], "TANGENTX": (vec0/np.linalg.norm(vec0))[0], "TANGENTY": (vec0/np.linalg.norm(vec0))[1], "TANGENTZ": (vec0/np.linalg.norm(vec0))[2], "RADIUS":rads[count], "BIFURCATION":save_bif})
 
                                 if write_vtk_samples:
@@ -426,7 +430,9 @@ if __name__=='__main__':
     import pdb; pdb.set_trace()
 
     csv_file = "_Sample_stats.csv"
-    csv_columns = ["No", "NAME", "SIZE","RESOLUTION", "ORIGIN", "SPACING", "POINT_CENT", "VOL_CENT", "DIFF_CENT", "IM_MEAN",
+    if trace_testing: csv_file = '_test'+csv_file
+
+    csv_columns = ["No", "NAME", "SIZE","RESOLUTION", "ORIGIN", "SPACING", "POINT_CENT", "INDEX", "SIZE_EXTRACT", "VOL_CENT", "DIFF_CENT", "IM_MEAN",
     "IM_STD","IM_MAX","IM_MIN","BLOOD_MEAN","BLOOD_STD","BLOOD_MAX","BLOOD_MIN","GT_MEAN", "GT_STD", "GT_MAX", "GT_MIN",
     "LARGEST_MEAN","LARGEST_STD","LARGEST_MAX","LARGEST_MIN", 'RADIUS', 'TANGENTX', 'TANGENTY', 'TANGENTZ', 'BIFURCATION', 'NUM_VOX']
     with open(out_dir+modality+csv_file, 'w') as csvfile:
