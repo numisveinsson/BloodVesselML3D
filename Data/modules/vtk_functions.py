@@ -551,3 +551,16 @@ def calc_normal_vectors(vec0):
     vec2 = np.cross(vec0, vec1)     # calculate third vector
 
     return vec1, vec2
+
+def clean_boundaries(resampled_image_array):
+    """
+    Function to see which pixels are inside mesh.
+    If they are: set as 1, otherwise 0.
+    Input: a binary seg array that has been resampled.
+    """
+    import pdb; pdb.set_trace()
+    #for pixel in resampled_image:
+    
+
+
+    return new_image

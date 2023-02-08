@@ -86,10 +86,10 @@ if __name__=='__main__':
 
     seed = (np.array(size_extract)//2).tolist()
 
-    #from extract_3d_data import extract_volume
-    #new_img = extract_volume(fd_im, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
+    from extract_3d_data import extract_volume
+    new_img = extract_volume(fd_im, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
 
-    #sitk.WriteImage(new_img, od + 'extraction.vtk')
+    sitk.WriteImage(new_img, od + 'extraction.vtk')
     vf.write_geo(od + 'point_centerline.vtp', points2polydata([centerline_point.tolist()]))
     vf.write_geo(od + 'point_center_voi.vtp', points2polydata([center_volume.tolist()]))
     vf.write_geo(od + 'index_point.vtp', points2polydata([index_point.tolist()]))
