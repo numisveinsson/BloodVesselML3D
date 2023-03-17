@@ -6,13 +6,12 @@ import SimpleITK as sitk
 import numpy as np
 import os
 
-def define_bounds(vol_seg, dims, padding=0, template_size=None):
+def define_bounds(np_seg, dims, padding=0, template_size=None):
     """
     Function to find smallest possible bounds of GT seg
     vol_seg: sitk image
     dims: list of dims to get bounds of ['x','y']
     """
-    _, np_seg = sf.read_image_numpy(vol_seg)
     max_val = np_seg.max()
     assert max_val == 1 or max_val == 255
     size = np_seg.shape
@@ -86,18 +85,15 @@ def define_bounds(vol_seg, dims, padding=0, template_size=None):
     # print(f"New bounds: {bounds}")
     return bounds
 
-def crop_bounds(img, seg, bounds):
+def crop_bounds(im_read, seg_read, bounds):
     """
     Function to crop global according to new bounds
     template_size: number that final volume should be
         divisible by (if it's later cut to patches)
     """
 
-    im_read = sf.read_image(img)
-    seg_read = sf.read_image(seg)
-
-    _, img_np = sf.read_image_numpy(img)
-    _, seg_np = sf.read_image_numpy(seg)
+    # _, img_np = sf.read_image_numpy(img)
+    # _, seg_np = sf.read_image_numpy(seg)
     boundsz = bounds[0]
     boundsy = bounds[1]
     boundsx = bounds[2]
@@ -164,16 +160,34 @@ if __name__=='__main__':
         #print(f"Case: {image}")
         mod = modality[i].lower()
         if global_scale:
-            img_reader, img_np = sf.read_image_numpy(cases_prefix+image)
-            img_new_np = rescale_intensity(img_np, mod, [750, -750])
-            img_new = sf.create_new_from_numpy(img_reader, img_new_np)
-            sf.write_image(img_new, out_dir+centerlines[i][-13:-4]+'.vtk')
-            #print(f"Mean value: {img_new_np.mean()}")
-        if crop:
-            new_bounds = define_bounds(cases_prefix+segs[i],dims, add_padding, template_size)
-            new_img, new_seg = crop_bounds(cases_prefix+image, cases_prefix+segs[i], new_bounds)
-            sf.write_image(new_img, img_dir+centerlines[i][-13:-4]+'.vtk')
-            sf.write_image(new_seg, seg_dir+centerlines[i][-13:-4]+'.vtk')
+            if crop:
+                img_reader, img_np = sf.read_image_numpy(cases_prefix+image)
+                img_new_np = rescale_intensity(img_np, mod, [750, -750])
+                img_new = sf.create_new_from_numpy(img_reader, img_new_np)
+                sf.write_image(img_new, img_dir+centerlines[i][-13:-4]+'.vtk')
 
+                _, np_seg = sf.read_image_numpy(cases_prefix+segs[i])
+                new_bounds = define_bounds(np_seg, dims, add_padding, template_size)
+
+                im_read = sf.read_image(img_dir+centerlines[i][-13:-4]+'.vtk')
+                seg_read = sf.read_image(cases_prefix+segs[i])
+                new_img, new_seg = crop_bounds(im_read, seg_read, new_bounds)
+
+                sf.write_image(new_img, img_dir+centerlines[i][-13:-4]+'.vtk')
+                sf.write_image(new_seg, seg_dir+centerlines[i][-13:-4]+'.vtk')
+            else:
+                img_reader, img_np = sf.read_image_numpy(cases_prefix+image)
+                img_new_np = rescale_intensity(img_np, mod, [750, -750])
+                img_new = sf.create_new_from_numpy(img_reader, img_new_np)
+                sf.write_image(img_new, out_dir+centerlines[i][-13:-4]+'.vtk')
+            print(f"Mean value: {img_new_np.mean()}")
+        else:
+            if crop:
+                _, np_seg = sf.read_image_numpy(cases_prefix+segs[i])
+                new_bounds = define_bounds(np_seg, dims, add_padding, template_size)
+                new_img, new_seg = crop_bounds(cases_prefix+image, cases_prefix+segs[i], new_bounds)
+                sf.write_image(new_img, img_dir+centerlines[i][-13:-4]+'.vtk')
+                sf.write_image(new_seg, seg_dir+centerlines[i][-13:-4]+'.vtk')
+            else: print('Nothing to do')
 
     pdb.set_trace()

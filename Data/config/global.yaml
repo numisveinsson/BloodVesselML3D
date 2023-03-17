@@ -1,31 +1,37 @@
 CASES_DIR: "./cases"
-DATA_DIR: '//Users/numisveinsson/Documents_numi/vmr_data_new/'
-OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/train_version_4_aortas/'
+DATA_DIR: '/Users/numisveins/Library/Mobile Documents/com~apple~CloudDocs/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d'
+OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/train_global_aortas_patches_global_scaled_128/'
 
 TESTING: True
-MODALITY: 'ALL' # can also be 'MR' or 'ALL'
+MODALITY: ['CT','MR'] # can also be 'MR' 'CT' or 'ALL'
+SCALED: True
+CROPPED: True
 TYPE: ['Aortofemoral', 'Aorta'] # can be 'ALL' or ['Aorta', 'Aortofemoral', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
+VALIDATION_PROP: 0.15
+WRITE_SAMPLES: True
+WRITE_VTK: True
+
 MOVE_DIST: 1.5 # how far to move along centerline between sampling
 SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
 
-VALIDATION_PROP: 0.15
-
 CAPFREE_PROP: 0.25 # how much of volume must be cap free, per sidelength
-MOVE_SLOWER_LARGE: 0.25 # how much slower for bigger vessels
+MOVE_SLOWER_LARGE: 1 # how much slower for bigger vessels
 MU_SIZE: 5 # mean for subvolume-radius ratio
-SIGMA_SIZE: 1 #standard deviation for subvolume-radius ratio
+SIGMA_SIZE: 0.8 #standard deviation for subvolume-radius ratio
 MU_SHIFT: 0 # mean for subvolume shift off centerline
-SIGMA_SHIFT: 0.5 #standard deviation for subvolume shift off centerline
+SIGMA_SHIFT: 0.8 #standard deviation for subvolume shift off centerline
 NUMBER_SAMPLES: 1 # how many samples to take at each point along vessel
-NUMBER_SAMPLES_BIFURC: 6 # how many samples to take if it's a bifurcation
+NUMBER_SAMPLES_BIFURC: 1 # how many samples to take if it's a bifurcation
 
 # Which cases to use for testing
 TEST_CASES:
   - '0176_0000' # Aorta CT
+  - '0141_1001' # Aortofemoral CT
   - '0146_1001' # Aortofemoral CT
   - '0002_0001' # Coronary CT
   - '0005_1001' # Pulmonary CT
   - '0063_1001' # Aortic MR
+  - '0090_0001' # Aortic MR
   - '0006_0001' # Aortofemoral MR
   - '0085_1001' # Pulmonary MR
 

@@ -10,11 +10,11 @@ def random_files(directory, data_set_percent_size):
 
     # list all files in dir that are an image
     files = [f for f in os.listdir(directory) if f.endswith('.nii.gz')]
-    print(files)
+    #print(files)
 
     # select a percent of the files randomly
     random_files = random.sample(files, int(len(files)*data_set_percent_size))
-    print(random_files)
+    #print(random_files)
 
     return random_files
 
@@ -22,8 +22,8 @@ def move_files(directory, target_directory, random_files):
 
     # move the randomly selected images by renaming directory
     for random_file_name in random_files:
-        print(directory+'/'+random_file_name)
-        print(target_directory+'/'+random_file_name)
+        #print(directory+'/'+random_file_name)
+        #print(target_directory+'/'+random_file_name)
         os.rename(directory+'/'+random_file_name, target_directory+'/'+random_file_name)
 
 def change_values_images(directory):

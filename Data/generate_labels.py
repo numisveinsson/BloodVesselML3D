@@ -1,4 +1,3 @@
-import numpy as np
 import os
 import glob
 import pandas
@@ -8,7 +7,7 @@ from modules.pre_process import *
 
 if __name__=='__main__':
 
-    keep_values = ['NAME','RADIUS', 'TANGENTX', 'TANGENTY', 'TANGENTZ', 'BIFURCATION']
+    keep_values = ['NAME','RADIUS', 'NUM_OUTLETS', 'BIFURCATION']
 
     fns = ['_train', '_val']
 
