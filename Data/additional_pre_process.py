@@ -60,6 +60,7 @@ if __name__=='__main__':
         assert len(seg_fn) == len(imgVol_fn)
 
         for i in range(len(imgVol_fn)):
+            if i in range(0,len(imgVol_fn),len(imgVol_fn)//10): print('* ', end='', flush=True)
             img_path = imgVol_fn[i]
             seg_path = seg_fn[i]
 

@@ -44,20 +44,20 @@ def define_bounds(size_im, volume_size, random_crops):
 
 if __name__=='__main__':
 
-    random.seed(0)
+    random.seed(1)
     extract_volumes = True
-    write_samples = True
-    write_vtk_samples = True
 
     patches = True
-    random_crops = True
-    volume_size = [64, 64, 64]
+    random_crops = False
+    volume_size = [128, 128, 128]
 
     global_config_file = "./config/global.yaml"
     global_config = io.load_yaml(global_config_file)
     modalities = global_config['MODALITY']
-
+    val_prop = global_config['VALIDATION_PROP']
     
+    write_vtk_samples = global_config['WRITE_VTK']
+    write_samples = global_config['WRITE_SAMPLES']
 
     trace_testing = global_config['TESTING']
     out_dir = global_config['OUT_DIR']
@@ -92,7 +92,7 @@ if __name__=='__main__':
         csv_list = []
         N = 0
 
-        cases_val = random.choices(cases, k= int(np.ceil(0.1*len(cases)//1)))
+        cases_val = random.choices(cases, k= int(np.ceil(val_prop*len(cases)//1)))
         for case_fn in cases:
             if case_fn in cases_val and not trace_testing:
                 image_out_dir = image_out_dir_val

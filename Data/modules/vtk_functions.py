@@ -11,6 +11,7 @@ from collections import defaultdict
 
 from vtk.util.numpy_support import numpy_to_vtk as n2v
 from vtk.util.numpy_support import vtk_to_numpy as v2n
+from vtk.util.numpy_support import get_vtk_array_type
 
 
 class Integration:
@@ -150,6 +151,7 @@ def write_geo(fname, input):
     Write geometry to file
     Args:
         fname: file name
+        input: vtk object
     """
     _, ext = os.path.splitext(fname)
     if ext == '.vtp':
@@ -493,6 +495,45 @@ def voi_contain_caps(voi_min, voi_max, caps_locations):
     contain = np.any(np.logical_and(smaller.all(axis=1), larger.all(axis=1)))
     return contain
 
+def calc_caps(polyData):
+
+    #import pdb; pdb.set_trace()
+    # Now extract feature edges
+    boundaryEdges = vtk.vtkFeatureEdges()
+    boundaryEdges.SetInputData(polyData)
+    boundaryEdges.BoundaryEdgesOn()
+    boundaryEdges.FeatureEdgesOff()
+    boundaryEdges.NonManifoldEdgesOff()
+    boundaryEdges.ManifoldEdgesOff()
+    boundaryEdges.Update()
+    output = boundaryEdges.GetOutput()
+
+    conn = connectivity_all(output)
+    data = get_points_cells(conn)#.GetOutput())
+    try:
+        connects = v2n(conn.GetOutput().GetPointData().GetArray(2))
+    except:
+        connects = v2n(conn.GetOutput().GetPointData().GetArray(1))
+
+    caps_locs = []
+    for i in range(connects.max()+1):
+
+        locs = data[0][connects == i]
+        center = np.mean(locs, axis=0)
+        caps_locs.append(center)
+
+    return caps_locs
+
+def get_largest_connected_polydata(poly):
+
+    connectivity = vtk.vtkPolyDataConnectivityFilter()
+    connectivity.SetInputData(poly)
+    connectivity.SetExtractionModeToLargestRegion()
+    connectivity.Update()
+    poly = connectivity.GetOutput()
+
+    return poly
+
 # def organize_cents(cent_id):
 #
 #
@@ -564,3 +605,115 @@ def clean_boundaries(resampled_image_array):
 
 
     return new_image
+
+def bound_polydata_by_image(image, poly, threshold):
+    """
+    Function to cut polydata to be bounded
+    by image volume
+    """
+    bound = vtk.vtkBox()
+    image.ComputeBounds()
+    b_bound = image.GetBounds()
+    b_bound = [b+threshold if (i % 2) ==0 else b-threshold for i, b in enumerate(b_bound)]
+    #print("Bounding box: ", b_bound)
+    bound.SetBounds(b_bound)
+    clipper = vtk.vtkClipPolyData()
+    clipper.SetClipFunction(bound)
+    clipper.SetInputData(poly)
+    clipper.InsideOutOn()
+    clipper.Update()
+    return clipper.GetOutput()
+
+def bound_polydata_by_sphere(poly, center, radius):
+
+    sphereSource = vtk.vtkSphere()
+    sphereSource.SetCenter(center[0], center[1], center[2])
+    sphereSource.SetRadius(radius)
+
+    clipper = vtk.vtkClipPolyData()
+    clipper.SetClipFunction(sphereSource)
+    clipper.SetInputData(poly)
+    clipper.InsideOutOn()
+    clipper.Update()
+    return clipper.GetOutput()
+
+def exportSitk2VTK(sitkIm,spacing=None):
+    """
+    This function creates a vtk image from a simple itk image
+    Args:
+        sitkIm: simple itk image
+    Returns:
+        imageData: vtk image
+import SimpleITK as sitk
+    """
+    if not spacing:
+        spacing = sitkIm.GetSpacing()
+    import SimpleITK as sitk
+    img = sitk.GetArrayFromImage(sitkIm).transpose(2,1,0)
+    vtkArray = exportPython2VTK(img)
+    imageData = vtk.vtkImageData()
+    imageData.SetDimensions(sitkIm.GetSize())
+    imageData.GetPointData().SetScalars(vtkArray)
+    imageData.SetOrigin([0.,0.,0.])
+    imageData.SetSpacing(spacing)
+    matrix = build_transform_matrix(sitkIm)
+    space_matrix = np.diag(list(spacing)+[1.])
+    matrix = np.matmul(matrix, np.linalg.inv(space_matrix))
+    matrix = np.linalg.inv(matrix)
+    vtkmatrix = vtk.vtkMatrix4x4()
+    for i in range(4):
+        for j in range(4):
+            vtkmatrix.SetElement(i, j, matrix[i,j])
+    reslice = vtk.vtkImageReslice()
+    reslice.SetInputData(imageData)
+    reslice.SetResliceAxes(vtkmatrix)
+    reslice.SetInterpolationModeToNearestNeighbor()
+    reslice.Update()
+    imageData = reslice.GetOutput()
+    #imageData.SetDirectionMatrix(sitkIm.GetDirection())
+
+    return imageData, vtkmatrix
+
+def build_transform_matrix(image):
+    matrix = np.eye(4)
+    matrix[:-1,:-1] = np.matmul(np.reshape(image.GetDirection(), (3,3)), np.diag(image.GetSpacing()))
+    matrix[:-1,-1] = np.array(image.GetOrigin())
+    return matrix
+
+def exportPython2VTK(img):
+    """
+    This function creates a vtk image from a python array
+    Args:
+        img: python ndarray of the image
+    Returns:
+        imageData: vtk image
+    """
+    vtkArray = n2v(num_array=img.flatten('F'), deep=True, array_type=get_vtk_array_type(img.dtype))
+    #vtkArray = n2v(img.flatten())
+    return vtkArray
+
+def points2polydata(xyz):
+    """
+    Function to convert list of points to polydata
+    """
+    points = vtk.vtkPoints()
+    # Create the topology of the point (a vertex)
+    vertices = vtk.vtkCellArray()
+    # Add points
+    for i in range(0, len(xyz)):
+        try:
+            p = xyz.loc[i].values.tolist()
+        except:
+            p = xyz[i]
+
+        point_id = points.InsertNextPoint(p)
+        vertices.InsertNextCell(1)
+        vertices.InsertCellPoint(point_id)
+    # Create a poly data object
+    polydata = vtk.vtkPolyData()
+    # Set the points and vertices we created as the geometry and topology of the polydata
+    polydata.SetPoints(points)
+    polydata.SetVerts(vertices)
+    polydata.Modified()
+
+    return polydata

@@ -16,6 +16,24 @@ def read_image(file_dir_image):
     file_reader.ReadImageInformation()
     return file_reader
 
+def read_image_numpy(file_dir_image):
+    """
+    Read image from file as numpy array
+    Args:
+        file_dir_image: image directory
+    Returns:
+        SITK image reader
+        numpy array
+    """
+    file_reader = sitk.ImageFileReader()
+    file_reader.SetFileName(file_dir_image)
+    file_reader.ReadImageInformation()
+
+    file_img = sitk.ReadImage(file_dir_image)
+    file_np_array = sitk.GetArrayFromImage(file_img)
+
+    return file_reader, file_np_array
+
 def create_new(file_reader):
     """
     Create new SITK image with same formating as another
@@ -31,6 +49,23 @@ def create_new(file_reader):
     result_img.SetDirection(file_reader.GetDirection())
     return result_img
 
+def create_new_from_numpy(file_reader, np_array):
+    """
+    Create new SITK image with same formating as another
+    And values from an input numpy array
+    Args:
+        file_reader: reader from another image
+        np_array: np array with image values
+    Returns:
+        SITK image
+    """
+    result_img = sitk.GetImageFromArray(np_array)
+    result_img.SetSpacing(file_reader.GetSpacing())
+    result_img.SetOrigin(file_reader.GetOrigin())
+    result_img.SetDirection(file_reader.GetDirection())
+    
+    return result_img
+
 def write_image(image, outputImageFileName):
     """
     Write image to file
@@ -42,7 +77,8 @@ def write_image(image, outputImageFileName):
     writer = sitk.ImageFileWriter()
     writer.SetFileName(outputImageFileName)
     writer.Execute(image)
-    return file_reader
+    
+    return None
 
 def remove_other_vessels(image, seed):
     """
