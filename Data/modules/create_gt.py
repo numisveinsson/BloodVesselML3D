@@ -2,6 +2,61 @@ import numpy as np
 import SimpleITK as sitk
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy, get_vtk_array_type
+import vtk_functions as vf
+import sitk_functions as sf
+import os
+
+def create_seg_from_surface(surface, image):
+    """
+    Check all voxels:
+    if voxel inside surface: voxel = 1
+    if outside: voxel = 0
+    Args:
+        surface: VTK PolyData
+        image: Sitk Image
+    """
+
+    # Assemble all points in image
+    img_size = image.GetSize()
+    points = vtk.vtkPoints()
+    count = 0
+    for i in range(img_size[0]):
+        print('i is ', i)
+        for j in range(img_size[1]):
+            for k in range(img_size[2]):
+                point = image.TransformIndexToPhysicalPoint((i,j,k))
+                points.InsertNextPoint(point)
+                count += 1
+
+    pointsPolydata = vtk.vtkPolyData()
+    pointsPolydata.SetPoints(points)
+
+    # Create filter to check inside/outside
+    enclosed_filter = vtk.vtkSelectEnclosedPoints()
+    enclosed_filter.SetTolerance(0.001)
+    #enclosed_filter.SetSurfaceClosed(True)
+    #enclosed_filter.SetCheckSurface(True)
+
+    enclosed_filter.SetInputData(pointsPolydata)
+    enclosed_filter.SetSurfaceData(surface)
+    enclosed_filter.Update()
+
+    import pdb; pdb.set_trace()
+    # Create new image to assemble
+
+    for i in range(img_size[0]):
+        print('i is ', i)
+        for j in range(img_size[1]):
+            for k in range(img_size[2]):
+                point = image.TransformIndexToPhysicalPoint((i,j,k))
+                is_inside = enclosed_filter.IsInsideSurface(point[0], point[1], point[2])
+                if is_inside:
+                    print('Inside')
+                    image[i,j,k] = 1
+                else: image[i,j,k] = 0
+
+    import pdb; pdb.set_trace()
+    return image
 
 def eraseBoundary(labels, pixels, bg_id):
     """
@@ -20,14 +75,14 @@ def eraseBoundary(labels, pixels, bg_id):
     labels[:,-pixels:,:] = bg_id
     labels[:,:,:pixels] = bg_id
     labels[:,:,-pixels:] = bg_id
-    
+
     return labels
 
 def surface_to_image(mesh, image):
     """
     Find the corresponding pixel of the mesh vertices,
     create a new image delineate the surface for testing
-    
+
     Args:
         mesh: VTK PolyData
         image: VTK ImageData or Sitk Image
@@ -99,7 +154,7 @@ def exportSitk2VTK(sitkIm,spacing=None):
         sitkIm: simple itk image
     Returns:
         imageData: vtk image
-import SimpleITK as sitk
+        import SimpleITK as sitk
     """
     if not spacing:
         spacing = sitkIm.GetSpacing()
@@ -216,7 +271,7 @@ def smooth_polydata(poly, iteration=25, boundary=False, feature=False, smoothing
 def decimation(poly, rate):
     """
     Simplifies a VTK PolyData
-    Args: 
+    Args:
         poly: vtk PolyData
         rate: target rate reduction
     """
@@ -243,7 +298,7 @@ def appendPolyData(poly_list):
     for poly in poly_list:
         appendFilter.AddInputData(poly)
     appendFilter.Update()
-    out = appendFilter.GetOutput() 
+    out = appendFilter.GetOutput()
     return out
 
 def bound_polydata_by_image(image, poly, threshold):
@@ -259,3 +314,52 @@ def bound_polydata_by_image(image, poly, threshold):
     clipper.InsideOutOn()
     clipper.Update()
     return clipper.GetOutput()
+
+def convertPolyDataToImageData(poly, ref_im):
+    """
+    Convert the vtk polydata to imagedata
+    Args:
+        poly: vtkPolyData
+        ref_im: reference vtkImage to match the polydata with
+    Returns:
+        output: resulted vtkImageData
+    """
+
+    ref_im.GetPointData().SetScalars(numpy_to_vtk(np.zeros(vtk_to_numpy(ref_im.GetPointData().GetScalars()).shape)))
+    ply2im = vtk.vtkPolyDataToImageStencil()
+    ply2im.SetTolerance(0.05)
+    ply2im.SetInputData(poly)
+    ply2im.SetOutputSpacing(ref_im.GetSpacing())
+    ply2im.SetInformationInput(ref_im)
+    ply2im.Update()
+
+
+    stencil = vtk.vtkImageStencil()
+    stencil.SetInputData(ref_im)
+    stencil.ReverseStencilOn()
+    stencil.SetStencilData(ply2im.GetOutput())
+    stencil.Update()
+    output = stencil.GetOutput()
+
+    return output
+
+if __name__=='__main__':
+
+    # Let's create GT segmentations from surfaces
+    dir_surfaces = '/Users/numisveinsson/Documents_numi/vmr_data_new/surfaces/'
+    dir_imgs = '/Users/numisveinsson/Documents_numi/vmr_data_new/scaled_images/'
+    # Which folder to write segs to
+    out_dir = '/Users/numisveinsson/Documents_numi/vmr_data_new/truths/'
+
+    # all imgs we have, create segs for them
+    imgs = os.listdir(dir_imgs)
+    imgs = [img for img in imgs if 'aorta.vtk' in img]
+
+    for img in imgs:
+        surf_vtp = vf.read_geo(dir_surfaces+img.replace('.vtk', '.vtp')).GetOutput()
+        img_sitk = sitk.ReadImage(dir_imgs+img)
+        img_vtk = exportSitk2VTK(img_sitk)[0]
+        seg = convertPolyDataToImageData(surf_vtp, img_vtk)
+        vf.write_img(out_dir+img.replace('.vtk', '.vti'), seg)
+        vf.change_vti_vtk(out_dir+img.replace('.vtk', '.vti'))
+        print("Done case: ", img)

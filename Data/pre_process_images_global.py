@@ -128,6 +128,8 @@ if __name__=='__main__':
     out_dir = '/Users/numisveinsson/Documents_numi/vmr_data_new/scaled_images/'
     config = io.load_yaml('./config/global.yaml')
 
+    specific_folder = '/Users/numisveinsson/Documents_numi/vmr_data_new/'
+
     global_scale = True
     crop = False
     template_size = None
@@ -138,23 +140,35 @@ if __name__=='__main__':
     if crop:
         img_dir, seg_dir = create_crop_dir(out_dir)
 
-    cases_dir = config['CASES_DIR']
+
     cases_prefix = config['DATA_DIR']
 
-    centerlines = open(cases_dir+'/centerlines.txt')
-    centerlines = [f.replace('\n','') for f in centerlines]
-    centerlines = ['/centerlines/'+f for f in centerlines]
+    if not specific_folder:
+        cases_dir = config['CASES_DIR']
+        centerlines = open(cases_dir+'/centerlines.txt')
+        centerlines = [f.replace('\n','') for f in centerlines]
+        centerlines = ['/centerlines/'+f for f in centerlines]
 
-    images = open(cases_dir+'/images.txt').readlines()
-    images = [f.replace('\n','') for f in images]
-    images = ['/images'+f for f in images]
+        images = open(cases_dir+'/images.txt').readlines()
+        images = [f.replace('\n','') for f in images]
+        images = ['/images'+f for f in images]
 
-    segs = open(cases_dir+'/truths.txt').readlines()
-    segs = [f.replace('\n','') for f in segs]
-    segs = ['/images'+f for f in segs]
+        segs = open(cases_dir+'/truths.txt').readlines()
+        segs = [f.replace('\n','') for f in segs]
+        segs = ['/images'+f for f in segs]
 
-    modality = open(cases_dir+'/modality.txt')
-    modality  = [f.replace('\n','') for f in modality]
+        modality = open(cases_dir+'/modality.txt')
+        modality  = [f.replace('\n','') for f in modality]
+
+    else:
+        images = os.listdir(cases_prefix+'images/')
+        images = [image for image in images if '.vtk' in image]
+        images = ['images/'+image for image in images]
+        centerlines = os.listdir(cases_prefix+'centerlines/')
+        centerlines = ['/centerlines/'+f for f in centerlines]
+        modality = open(cases_prefix+'/modality.txt')
+        modality  = [f.replace('\n','') for f in modality]
+        #segs = os.listdir(cases_prefix+'truths/')
 
     for i,image in enumerate(images):
         #print(f"Case: {image}")
@@ -179,8 +193,8 @@ if __name__=='__main__':
                 img_reader, img_np = sf.read_image_numpy(cases_prefix+image)
                 img_new_np = rescale_intensity(img_np, mod, [750, -750])
                 img_new = sf.create_new_from_numpy(img_reader, img_new_np)
-                sf.write_image(img_new, out_dir+centerlines[i][-13:-4]+'.vtk')
-            print(f"Mean value: {img_new_np.mean()}")
+                sf.write_image(img_new, out_dir+image)
+            #print(f"Mean value: {img_new_np.mean()}")
         else:
             if crop:
                 _, np_seg = sf.read_image_numpy(cases_prefix+segs[i])
