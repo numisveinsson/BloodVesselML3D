@@ -347,18 +347,19 @@ if __name__=='__main__':
 
     # Let's create GT segmentations from surfaces
     dir_surfaces = '/Users/numisveinsson/Documents_numi/vmr_data_new/surfaces/'
-    dir_imgs = '/Users/numisveinsson/Documents_numi/vmr_data_new/scaled_images/'
+    dir_imgs = '/Users/numisveinsson/Documents_numi/vmr_data_new/images/'
     # Which folder to write segs to
     out_dir = '/Users/numisveinsson/Documents_numi/vmr_data_new/truths/'
 
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
-    imgs = [img for img in imgs if 'aorta.vtk' in img]
+    imgs = [img for img in imgs if '.vti' in img]
 
     for img in imgs:
         surf_vtp = vf.read_geo(dir_surfaces+img.replace('.vtk', '.vtp')).GetOutput()
-        img_sitk = sitk.ReadImage(dir_imgs+img)
-        img_vtk = exportSitk2VTK(img_sitk)[0]
+        # img_sitk = sitk.ReadImage(dir_imgs+img)
+        # img_vtk = exportSitk2VTK(img_sitk)[0]
+        img_vtk = vf.read_img(dir_imgs+img)
         seg = convertPolyDataToImageData(surf_vtp, img_vtk)
         vf.write_img(out_dir+img.replace('.vtk', '.vti'), seg)
         vf.change_vti_vtk(out_dir+img.replace('.vtk', '.vti'))

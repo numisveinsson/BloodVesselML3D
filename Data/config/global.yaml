@@ -1,5 +1,5 @@
 CASES_DIR: "./cases"
-DATA_DIR: '/Users/numisveins/Library/Mobile Documents/com~apple~CloudDocs/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d'
+DATA_DIR: '/Users/numisveinsson/Documents_numi/vmr_data_new/'
 OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/train_global_aortas_patches_global_scaled_128/'
 
 TESTING: True
