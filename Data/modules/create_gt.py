@@ -354,12 +354,12 @@ if __name__=='__main__':
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
     imgs = [img for img in imgs if '.vti' in img]
-
+    imgs = ['0183_1002.vtk']
     for img in imgs:
-        surf_vtp = vf.read_geo(dir_surfaces+img.replace('.vtk', '.vtp')).GetOutput()
-        # img_sitk = sitk.ReadImage(dir_imgs+img)
-        # img_vtk = exportSitk2VTK(img_sitk)[0]
-        img_vtk = vf.read_img(dir_imgs+img)
+        surf_vtp = vf.read_geo(dir_surfaces+img.replace('.vtk', '_aorta.vtp')).GetOutput()
+        img_sitk = sitk.ReadImage(dir_imgs+img)
+        img_vtk = exportSitk2VTK(img_sitk)[0]
+        #img_vtk = vf.read_img(dir_imgs+img).GetOutput()
         seg = convertPolyDataToImageData(surf_vtp, img_vtk)
         vf.write_img(out_dir+img.replace('.vtk', '.vti'), seg)
         vf.change_vti_vtk(out_dir+img.replace('.vtk', '.vti'))

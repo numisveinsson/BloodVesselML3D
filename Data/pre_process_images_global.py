@@ -170,6 +170,9 @@ if __name__=='__main__':
         modality  = [f.replace('\n','') for f in modality]
         #segs = os.listdir(cases_prefix+'truths/')
 
+    for img in images:
+        print('\n',img)
+    import pdb; pdb.set_trace()
     for i,image in enumerate(images):
         #print(f"Case: {image}")
         mod = modality[i].lower()
@@ -193,7 +196,7 @@ if __name__=='__main__':
                 img_reader, img_np = sf.read_image_numpy(cases_prefix+image)
                 img_new_np = rescale_intensity(img_np, mod, [750, -750])
                 img_new = sf.create_new_from_numpy(img_reader, img_new_np)
-                sf.write_image(img_new, out_dir+image)
+                sf.write_image(img_new, out_dir+image.replace('images/',''))
             #print(f"Mean value: {img_new_np.mean()}")
         else:
             if crop:
