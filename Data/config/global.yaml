@@ -2,11 +2,11 @@ CASES_DIR: "./cases"
 DATA_DIR: '/Users/numisveins/Library/Mobile Documents/com~apple~CloudDocs/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d'
 OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/train_global_aortas_patches_global_scaled_128/'
 
-TESTING: True
+TESTING: False
 MODALITY: ['CT','MR'] # can also be 'MR' 'CT' or 'ALL'
 SCALED: True
 CROPPED: True
-TYPE: ['Aortofemoral', 'Aorta'] # can be 'ALL' or ['Aorta', 'Aortofemoral', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
+TYPE: 'ALL' #['Aortofemoral', 'Aorta'] # can be 'ALL' or ['Aorta', 'Aortofemoral', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
 VALIDATION_PROP: 0.15
 WRITE_SAMPLES: True
 WRITE_VTK: True
