@@ -95,9 +95,9 @@ if __name__=='__main__':
     vf.write_geo(od + 'index_point.vtp', points2polydata([index_point.tolist()]))
 
     import pdb; pdb.set_trace()
-    sitk.Show(new_img, title="Hello World: Python", debugOn=True)
+    #sitk.Show(new_img, title="Hello World: Python", debugOn=True)
 
 
 
-#outputImageDir = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/'
-#sitk.WriteImage(new_img, outputImageDir+'0002_0001_01_im.mha')
+    #outputImageDir = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/3d_ml_data/'
+    #sitk.WriteImage(new_img, outputImageDir+'0002_0001_01_im.mha')

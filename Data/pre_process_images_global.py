@@ -17,7 +17,8 @@ def define_bounds(np_seg, dims, padding=0, template_size=None):
     size = np_seg.shape
     boundsz, boundsy, boundsx = [0,size[0]-1],[0,size[1]-1],[0,size[2]-1]
     bounds = [boundsz, boundsy, boundsx]
-    print(f"Old bounds: {bounds}")
+    #print(f'Old bounds: {bounds}')
+
     if 'z' in dims:
 
         still_zero = True
@@ -28,17 +29,17 @@ def define_bounds(np_seg, dims, padding=0, template_size=None):
             seg_slice_back = np_seg[size[0]-(count+1),:,:]
             max_front = seg_slice_front.max()
             max_back = seg_slice_back.max()
-            if max_front == max_val and front_done == False: 
+            if max_front == max_val and front_done == False:
                 boundsz[0] = count
                 front_done = True
                 #print(f"front done")
-            if max_back == max_val and back_done == False: 
+            if max_back == max_val and back_done == False:
                 boundsz[1] = size[0] - count-1
                 back_done = True
                 #print(f"back done")
             still_zero = front_done == False or back_done == False
             count+=1
-    
+
     if 'y' in dims:
         still_zero = True
         front_done, back_done = False, False
@@ -48,10 +49,10 @@ def define_bounds(np_seg, dims, padding=0, template_size=None):
             seg_slice_back = np_seg[:,size[1]-(count+1),:]
             max_front = seg_slice_front.max()
             max_back = seg_slice_back.max()
-            if max_front == max_val and front_done == False: 
+            if max_front == max_val and front_done == False:
                 boundsy[0] = count
                 front_done = True
-            if max_back == max_val and back_done == False: 
+            if max_back == max_val and back_done == False:
                 boundsy[1] = size[1] - count-1
                 back_done = True
             still_zero = front_done == False or back_done == False
@@ -66,22 +67,22 @@ def define_bounds(np_seg, dims, padding=0, template_size=None):
             seg_slice_back = np_seg[:,:,size[2]-(count+1)]
             max_front = seg_slice_front.max()
             max_back = seg_slice_back.max()
-            if max_front == max_val and front_done == False: 
+            if max_front == max_val and front_done == False:
                 boundsx[0] = count
                 front_done = True
-            if max_back == max_val and back_done == False: 
+            if max_back == max_val and back_done == False:
                 boundsx[1] = size[2] - count-1
                 back_done = True
             still_zero = front_done == False or back_done == False
             count += 1
 
     bounds = [boundsz, boundsy, boundsx]
-    
+
     if template_size:
         "Modify so divisible by this size, add equal on both sides"
-        print(f"template size is on")
+        print("template size is on")
 
-    print(f"New bounds: {bounds}")
+    # print(f"New bounds: {bounds}")
     return bounds
 
 def crop_bounds(im_read, seg_read, bounds):
@@ -104,7 +105,7 @@ def crop_bounds(im_read, seg_read, bounds):
 
     index_extract = [boundsx[0], boundsy[0], boundsz[0]]
     size_extract = [boundsx[1]-boundsx[0]+1, boundsy[1]-boundsy[0]+1, boundsz[1]-boundsz[0]+1]
-    
+
     new_img = sf.extract_volume(im_read, index_extract, size_extract)
     new_seg = sf.extract_volume(seg_read, index_extract, size_extract)
 
@@ -124,39 +125,56 @@ def create_crop_dir(out_dir):
 
 if __name__=='__main__':
 
-    out_dir = '/Users/numisveins/Library/Mobile Documents/com~apple~CloudDocs/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d/cropped_images/scaled_images/'
+    out_dir = '/Users/numisveinsson/Documents_numi/vmr_data_new/scaled_images/'
     config = io.load_yaml('./config/global.yaml')
 
+    specific_folder = '/Users/numisveinsson/Documents_numi/vmr_data_new/'
+
     global_scale = True
-    crop = True
+    crop = False
     template_size = None
 
     dims = ['x','y','z']
     add_padding = 0
 
-    if crop: 
+    if crop:
         img_dir, seg_dir = create_crop_dir(out_dir)
-    
-    cases_dir = config['CASES_DIR']
+
+
     cases_prefix = config['DATA_DIR']
 
-    centerlines = open(cases_dir+'/centerlines.txt')
-    centerlines = [f.replace('\n','') for f in centerlines]
-    centerlines = ['/centerlines/'+f for f in centerlines]
+    if not specific_folder:
+        cases_dir = config['CASES_DIR']
+        centerlines = open(cases_dir+'/centerlines.txt')
+        centerlines = [f.replace('\n','') for f in centerlines]
+        centerlines = ['/centerlines/'+f for f in centerlines]
 
-    images = open(cases_dir+'/images.txt').readlines()
-    images = [f.replace('\n','') for f in images]
-    images = ['/images'+f for f in images]
+        images = open(cases_dir+'/images.txt').readlines()
+        images = [f.replace('\n','') for f in images]
+        images = ['/images'+f for f in images]
 
-    segs = open(cases_dir+'/truths.txt').readlines()
-    segs = [f.replace('\n','') for f in segs]
-    segs = ['/images'+f for f in segs]
+        segs = open(cases_dir+'/truths.txt').readlines()
+        segs = [f.replace('\n','') for f in segs]
+        segs = ['/images'+f for f in segs]
 
-    modality = open(cases_dir+'/modality.txt')
-    modality  = [f.replace('\n','') for f in modality]
+        modality = open(cases_dir+'/modality.txt')
+        modality  = [f.replace('\n','') for f in modality]
 
+    else:
+        images = os.listdir(cases_prefix+'images/')
+        images = [image for image in images if '.vtk' in image]
+        images = ['images/'+image for image in images]
+        centerlines = os.listdir(cases_prefix+'centerlines/')
+        centerlines = ['/centerlines/'+f for f in centerlines]
+        modality = open(cases_prefix+'/modality.txt')
+        modality  = [f.replace('\n','') for f in modality]
+        #segs = os.listdir(cases_prefix+'truths/')
+
+    for img in images:
+        print('\n',img)
+    import pdb; pdb.set_trace()
     for i,image in enumerate(images):
-        print(f"Case: {image}")
+        #print(f"Case: {image}")
         mod = modality[i].lower()
         if global_scale:
             if crop:
@@ -167,19 +185,19 @@ if __name__=='__main__':
 
                 _, np_seg = sf.read_image_numpy(cases_prefix+segs[i])
                 new_bounds = define_bounds(np_seg, dims, add_padding, template_size)
-                
+
                 im_read = sf.read_image(img_dir+centerlines[i][-13:-4]+'.vtk')
                 seg_read = sf.read_image(cases_prefix+segs[i])
                 new_img, new_seg = crop_bounds(im_read, seg_read, new_bounds)
-                
+
                 sf.write_image(new_img, img_dir+centerlines[i][-13:-4]+'.vtk')
                 sf.write_image(new_seg, seg_dir+centerlines[i][-13:-4]+'.vtk')
             else:
                 img_reader, img_np = sf.read_image_numpy(cases_prefix+image)
                 img_new_np = rescale_intensity(img_np, mod, [750, -750])
                 img_new = sf.create_new_from_numpy(img_reader, img_new_np)
-                sf.write_image(img_new, out_dir+centerlines[i][-13:-4]+'.vtk')
-            print(f"Mean value: {img_new_np.mean()}")
+                sf.write_image(img_new, out_dir+image.replace('images/',''))
+            #print(f"Mean value: {img_new_np.mean()}")
         else:
             if crop:
                 _, np_seg = sf.read_image_numpy(cases_prefix+segs[i])
@@ -188,5 +206,5 @@ if __name__=='__main__':
                 sf.write_image(new_img, img_dir+centerlines[i][-13:-4]+'.vtk')
                 sf.write_image(new_seg, seg_dir+centerlines[i][-13:-4]+'.vtk')
             else: print('Nothing to do')
-        
+
     pdb.set_trace()
