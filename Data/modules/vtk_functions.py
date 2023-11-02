@@ -195,6 +195,8 @@ def write_img(fname, input):
         writer = vtk.vtkXMLPolyDataWriter()
     elif ext == '.vti':
         writer = vtk.vtkXMLImageDataWriter()
+    elif ext == '.vtk':
+        writer = vtk.vtkDataSetWriter()
     else:
         raise ValueError('File extension ' + ext + ' unknown.')
     writer.SetFileName(fname)
@@ -561,21 +563,36 @@ def calc_caps(polyData):
     boundaryEdges.Update()
     output = boundaryEdges.GetOutput()
 
+    # get info on points and cells along the cap boundary
     conn = connectivity_all(output)
     data = get_points_cells(conn)#.GetOutput())
+
     try:
         connects = v2n(conn.GetOutput().GetPointData().GetArray(2))
     except:
         connects = v2n(conn.GetOutput().GetPointData().GetArray(1))
 
     caps_locs = []
+    caps_areas = []
     for i in range(connects.max()+1):
 
+        # get the points that belong to the same cap
         locs = data[0][connects == i]
+        # calculate the center of the cap
         center = np.mean(locs, axis=0)
         caps_locs.append(center)
 
-    return caps_locs
+        # calculate the area of the cap
+        cells = data[1][connects == i]
+        area = 0
+        for cell in cells:
+            p0 = locs[cell[0]]
+            p1 = locs[cell[1]]
+            p2 = center
+            area += np.linalg.norm(np.cross(p1-p0, p2-p0))/2
+        caps_areas.append(area)
+
+    return caps_locs, caps_areas
 
 def get_largest_connected_polydata(poly):
 

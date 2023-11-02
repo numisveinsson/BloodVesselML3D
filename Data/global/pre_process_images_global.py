@@ -125,12 +125,12 @@ def create_crop_dir(out_dir):
 
 if __name__=='__main__':
 
-    out_dir = '/Users/numisveinsson/Documents_numi/vmr_data_new/scaled_images/'
+    out_dir = '/Users/numisveins/Documents/vascular_data_3d/images/'
     config = io.load_yaml('./config/global.yaml')
 
-    specific_folder = '/Users/numisveinsson/Documents_numi/vmr_data_new/'
+    specific_folder = '/Users/numisveins/Documents/vascular_data_3d/'
 
-    global_scale = True
+    global_scale = False
     crop = False
     template_size = None
 
@@ -205,6 +205,8 @@ if __name__=='__main__':
                 new_img, new_seg = crop_bounds(cases_prefix+image, cases_prefix+segs[i], new_bounds)
                 sf.write_image(new_img, img_dir+centerlines[i][-13:-4]+'.vtk')
                 sf.write_image(new_seg, seg_dir+centerlines[i][-13:-4]+'.vtk')
-            else: print('Nothing to do')
+            else:
+                img = sf.read_image(cases_prefix+image)
+                sf.write_image(img, out_dir+image.replace('images/',''))
 
     pdb.set_trace()
