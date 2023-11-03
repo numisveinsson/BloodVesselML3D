@@ -157,6 +157,19 @@ def choose_destination(trace_testing, val_prop, img_test, seg_test, img_val, seg
             val_port = False
     return image_out_dir, seg_out_dir, val_port
 
+def get_tangent(locs, count):
+    """
+    Function to calculate the tangent
+    """
+    if count == 0:
+        tangent = locs[count+1] - locs[count]
+    elif count == len(locs)-1:
+        tangent = locs[count] - locs[count-1]
+    else:
+        tangent = locs[count+1] - locs[count-1]
+
+    return tangent
+
 def calc_samples(count, bifurc, locs, rads, global_config):
     """
     Function to calculate the number of samples
@@ -177,10 +190,15 @@ def calc_samples(count, bifurc, locs, rads, global_config):
     #print("shifts are: " + str(shifts))
 
     # Calculate vectors
-    if count < len(locs)/2:
-        vec0 = locs[count+1] - locs[count]
+    if not global_config['ROTATE_VOLUMES']:
+        if count < len(locs)/2:
+            vec0 = locs[count+1] - locs[count]
+        else:
+            vec0 = locs[count] - locs[count-1]
     else:
-        vec0 = locs[count] - locs[count-1]
+        # vec0 is x-axis
+        vec0 = np.array([1,0,0])
+
     vec1, vec2 = calc_normal_vectors(vec0)
 
     # Shift centers
@@ -193,7 +211,27 @@ def calc_samples(count, bifurc, locs, rads, global_config):
 
     return centers, sizes, save_bif, n_samples, vec0
 
-def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, location, radius, size_r, number, name, O=None, sub=None, global_img=False):
+def rotate_volumes(reader_im, reader_seg, tangent, point):
+    """
+    Function to rotate the volumes
+    Inputs are:
+        reader_im: sitk image reader
+        reader_seg: sitk image reader
+        tangent: tangent vector
+        point: point to rotate around
+    """
+    # read in the volumes
+    reader_im = reader_im.Execute()
+    reader_seg = reader_seg.Execute()
+
+    # rotate the volumes
+    new_img = rotate_volume_tangent(reader_im, tangent, point)
+    new_seg = rotate_volume_tangent(reader_seg, tangent, point)
+    origin_im = np.array(list(new_img.GetOrigin()))
+
+    return new_img, new_seg, origin_im
+
+def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, location, radius, size_r, number, name, O=None, global_img=False):
     """"
     Function to extract subvolumes
     Both image data and GT segmentation
@@ -206,7 +244,7 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
 
     new_img = extract_volume(reader_im, index_extract, size_extract)
     new_seg = extract_volume(reader_seg, index_extract, size_extract)
-
+        
     #print("Original Seg")
     labels, means, _ = connected_comp_info(new_seg, False)
     #print("Seg w removed bodies")
@@ -737,6 +775,7 @@ def write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val
                 writer.writerow(data)
 
 def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, modality, trace_testing):
+    
     import csv
     csv_file = "_Outlet_Stats.csv"
     if trace_testing: csv_file = '_test'+csv_file
@@ -754,3 +793,15 @@ def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, moda
             writer.writeheader()
             for data in csv_outlet_stats_val:
                 writer.writerow(data)
+
+def write_pkl_outlet_stats(pkl_outlet_stats, pkl_outlet_stats_val, out_dir, modality, trace_testing):
+    import pickle
+    pkl_file = "_Outlet_Stats.pkl"
+    if trace_testing: pkl_file = '_test'+pkl_file
+    else: pkl_file = '_train'+pkl_file
+
+    with open(out_dir+modality+pkl_file, 'wb') as f:
+        pickle.dump(pkl_outlet_stats, f)
+    if not trace_testing:
+        with open(out_dir+modality+pkl_file.replace('train','val'), 'wb') as f:
+            pickle.dump(pkl_outlet_stats_val, f)

@@ -53,7 +53,7 @@ if __name__=='__main__':
         
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
-        for case_fn in cases[:1]:
+        for case_fn in cases:
 
             ## Load data
             case_dict = get_case_dict_dir(global_config['DATA_DIR'], case_fn, global_config['IMG_EXT'])
@@ -65,8 +65,8 @@ if __name__=='__main__':
                 except Exception as e: print(e)
 
             ## Read Image Metadata
-            reader_seg = sf.read_image(case_dict['SEGMENTATION'])
-            reader_im, origin_im, size_im, spacing_im = sf.import_image(case_dict['IMAGE'])
+            reader_seg0 = sf.read_image(case_dict['SEGMENTATION'])
+            reader_im0, origin_im0, size_im, spacing_im = sf.import_image(case_dict['IMAGE'])
 
             ## Surface Caps
             global_surface = vf.read_geo(case_dict['SURFACE']).GetOutput()
@@ -97,6 +97,15 @@ if __name__=='__main__':
                     # Only continue if we've not walked this centerline before
                     if not (ids[count] in ids_total):
                         print('The point # along centerline is ' + str(count))
+                        # check if we need to rotate the volume
+                        if global_config['ROTATE_VOLUMES']:
+                            tangent = get_tangent(locs, count)
+                            reader_im, reader_seg, origin_im = rotate_volumes(reader_im0, reader_seg0, tangent, locs[count])
+                            sitk.WriteImage(reader_im, out_dir+case_dict['NAME']+'_rotated.mha')
+                        else:
+                            reader_im, reader_seg = reader_im0, reader_seg0
+                            origin_im = origin_im0
+
                         # Calculate centers and sizes of samples for this point
                         centers, sizes, save_bif, n_samples, vec0 = calc_samples(count, bifurc, locs, rads, global_config)
                         sub = 0 # In the case of multiple samples at this point
@@ -118,7 +127,7 @@ if __name__=='__main__':
                                     # Extract volume
                                     if global_config['EXTRACT_VOLUMES']:
                                         stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, 
-                                                                                                     origin_im, spacing_im, locs[count], rads[count], size_r, N, name, O, sub)
+                                                                                                     origin_im, spacing_im, locs[count], rads[count], size_r, N, name, O)
                                         if global_config['WRITE_SURFACE']:
                                             stats_surf, new_surf_box, new_surf_sphere = extract_surface(new_img, global_surface, center, size_r*rads[count])
                                             num_out = len(stats_surf['OUTLETS'])
@@ -159,13 +168,14 @@ if __name__=='__main__':
                                     
                                     # Outlet stats
                                     if global_config['WRITE_OUTLET_STATS']:
-                                        stats_out, planes, planes_seg, pos_example = get_outlet_stats(stats, new_img, new_seg, global_config['OUTLET_CLASSES'], global_surface, global_centerline, center, size_r*rads[count])
+                                        stats_out, planes, planes_seg, pos_example = get_outlet_stats(stats, new_img, removed_seg, global_config['OUTLET_CLASSES'], global_surface, global_centerline, center, size_r*rads[count])
                                         
                                         total_num_examples_pos += pos_example
                                         total_num_examples += 6
                                         print(f"Ratio of positive examples: {total_num_examples_pos/total_num_examples * 100:.2f}")
-                                        write_2d_planes(planes, stats_out, image_out_dir)
-                                        write_2d_planes(planes_seg, stats_out, seg_out_dir)
+                                        if global_config['WRITE_OUTLET_IMG']:
+                                            write_2d_planes(planes, stats_out, image_out_dir)
+                                            write_2d_planes(planes_seg, stats_out, seg_out_dir)
                                         if val_port:
                                             for out_stats in stats_out:
                                                 csv_outlet_stats_val.append(out_stats)
@@ -217,3 +227,4 @@ if __name__=='__main__':
 
         if global_config['WRITE_OUTLET_STATS']:
             write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, modality, global_config['TESTING'])
+            write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, modality, global_config['TESTING'])

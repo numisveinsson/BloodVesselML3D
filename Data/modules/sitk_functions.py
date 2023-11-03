@@ -123,11 +123,52 @@ def extract_volume(reader_im, index_extract, size_extract):
     return:
         new_img: sitk image volume
     """
-    reader_im.SetExtractIndex(index_extract)
-    reader_im.SetExtractSize(size_extract)
-    new_img = reader_im.Execute()
+    # if it is a reader object, do the following
+    if type(reader_im) == sitk.ImageFileReader:
+        reader_im.SetExtractIndex(index_extract)
+        reader_im.SetExtractSize(size_extract)
+        new_img = reader_im.Execute()
+    # if it is a sitk image, do the following
+    elif type(reader_im) == sitk.Image:
+        new_img = sitk.RegionOfInterest(reader_im, size_extract, index_extract)
+    else:
+        print('Error: reader_im must be a sitk image or reader object')
+        return None
 
     return new_img
+
+def rotate_volume_tangent(sitk_img, tangent, point):
+    """
+    Function to rotate a volume so that the tangent is aligned with the x-axis
+    args:
+        sitk_img: sitk image volume
+        tangent: tangent vector
+        point: point to rotate around
+    """
+    # sitk needs point to be a tuple of floats
+    point = tuple([float(i) for i in point])
+
+    # Get the direction of the image
+    direction = sitk_img.GetDirection()
+
+    # Get the angle between the tangent and the x-axis
+    angle = np.arccos(np.dot(direction[0:3], tangent))
+
+    # Get the axis of rotation
+    axis = np.cross(direction[0:3], tangent)
+
+    # Create the rotation matrix
+    rotation = sitk.VersorTransform(axis, angle)
+
+    # Create the affine transformation
+    affine = sitk.AffineTransform(3)
+    affine.SetCenter(point)
+    affine.SetMatrix(rotation.GetMatrix())
+
+    # Apply the transformation
+    sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear, 0.0, sitk_img.GetPixelID())
+
+    return sitk_img
 
 def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im, prop=1):
     """
@@ -165,10 +206,6 @@ def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im, pro
             index_extract[i] = 0
 
     return size_extract, index_extract, voi_min, voi_max
-
-def rotate_volume():
-
-    return rotated_voi
 
 def import_image(image_dir):
     """
