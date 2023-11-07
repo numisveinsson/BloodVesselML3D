@@ -101,7 +101,6 @@ if __name__=='__main__':
                         if global_config['ROTATE_VOLUMES']:
                             tangent = get_tangent(locs, count)
                             reader_im, reader_seg, origin_im = rotate_volumes(reader_im0, reader_seg0, tangent, locs[count])
-                            sitk.WriteImage(reader_im, out_dir+case_dict['NAME']+'_rotated.mha')
                         else:
                             reader_im, reader_seg = reader_im0, reader_seg0
                             origin_im = origin_im0

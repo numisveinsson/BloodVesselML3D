@@ -143,7 +143,7 @@ def rotate_volume_tangent(sitk_img, tangent, point):
     args:
         sitk_img: sitk image volume
         tangent: tangent vector
-        point: point to rotate around
+        point: point to rotate around, np array
     """
     # sitk needs point to be a tuple of floats
     point = tuple([float(i) for i in point])
