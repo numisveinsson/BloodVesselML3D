@@ -40,7 +40,7 @@ if __name__=='__main__':
         modality = modality.lower()
         info_file_name = "info"+'_'+modality+dt_string+".txt"
         
-        create_directories(out_dir, modality, testing, global_config['WRITE_VTK'], global_config['WRITE_SURFACE'], global_config['WRITE_CENTERLINE'])
+        create_directories(out_dir, modality, global_config)
 
         image_out_dir_train = out_dir+modality+'_train/'
         seg_out_dir_train = out_dir+modality+'_train_masks/'
@@ -58,11 +58,11 @@ if __name__=='__main__':
 
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
-        for case_fn in cases:
+        for i, case_fn in enumerate(cases):
 
             ## Load data
             case_dict = get_case_dict_dir(global_config['DATA_DIR'], case_fn, global_config['IMG_EXT'])
-            print(case_dict['NAME'])
+            print(f"\n {i+1}/{len(cases)}: {case_dict['NAME']}")
 
             name = case_dict['NAME']
             # Choose destination directory
@@ -73,23 +73,27 @@ if __name__=='__main__':
 
             # Load image and segmentation
             img = sitk.ReadImage(case_dict['IMAGE'])
-            seg = sitk.ReadImage(case_dict['SEGMENTATION'])
-
-            # Make sure segmentation is binary
-            seg = sitk.Cast(seg, sitk.sitkUInt8)
+            try:
+                seg = sitk.ReadImage(case_dict['SEGMENTATION'])
+                # Make sure segmentation is binary
+                seg = sitk.Cast(seg, sitk.sitkUInt8)
+            except:
+                print('No segmentation found')
+                seg = None
 
             # check max and min values of img and seg
             max_val = sitk.GetArrayFromImage(img).max()
             min_val = sitk.GetArrayFromImage(img).min()
             print('Img Max value: ', max_val)
             print('Img Min value: ', min_val)
-            max_val = sitk.GetArrayFromImage(seg).max()
-            min_val = sitk.GetArrayFromImage(seg).min()
-            print('Seg Max value: ', max_val)
-            print('Seg Min value: ', min_val)
+            if seg is not None:
+                max_val = sitk.GetArrayFromImage(seg).max()
+                min_val = sitk.GetArrayFromImage(seg).min()
+                print('Seg Max value: ', max_val)
+                print('Seg Min value: ', min_val)
 
             # If seg max value is over 1, then divide by max value
-            if max_val > 1:
+            if max_val > 1 and seg is not None:
                 seg_np = sitk.GetArrayFromImage(seg)
                 seg_np = seg_np/max_val
                 file_reader = sf.read_image(case_dict['IMAGE'])
@@ -100,9 +104,11 @@ if __name__=='__main__':
 
             if global_config['WRITE_SAMPLES']:
                 sitk.WriteImage(img, image_out_dir + case_dict['NAME'] +'.nii.gz')
-                sitk.WriteImage(seg, seg_out_dir + case_dict['NAME'] +'.nii.gz')
+                if seg is not None:
+                    sitk.WriteImage(seg, seg_out_dir + case_dict['NAME'] +'.nii.gz')
             if global_config['WRITE_VTK']:
                 sitk.WriteImage(img, out_dir+'vtk_data/vtk_' + case_dict['NAME']+'.vtk')
-                sitk.WriteImage(seg*255, out_dir+'vtk_data/vtk_mask_'+ case_dict['NAME']+'.vtk')
+                if seg is not None:
+                    sitk.WriteImage(seg*255, out_dir+'vtk_data/vtk_mask_'+ case_dict['NAME']+'.vtk')
 
             print(f"\n Finished: ' {case_dict['NAME']}, {size_im}")

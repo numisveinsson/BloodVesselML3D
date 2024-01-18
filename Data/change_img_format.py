@@ -3,11 +3,13 @@ import SimpleITK as sitk
 
 if __name__=='__main__':
 
+    # import pdb; pdb.set_trace()
+
     input_format = '.nii.gz'
     output_format = '.mha'
     label = False # false if raw image
 
-    data_folder = '/Users/numisveins/Documents/AorticRoot_BB_Regression_Data/labelsTr/'
+    data_folder = '/Users/numisveins/Downloads/output_2d_aortasmicct/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)

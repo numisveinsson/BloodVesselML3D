@@ -22,11 +22,13 @@ if __name__ == "__main__":
     └── labelsTr
     """
 
-    directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_pulmonary/'
-    modality = 'mr'
+    directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_miccai_aortas/'
+    modality = 'ct'
 
-    new_dir_dataset_name = 'Dataset007_SEQPULMONARY'+modality.upper()
-    append = 'seqpulmonary' + modality
+    new_dir_dataset_name = 'Dataset011_AORTASMIC'+modality.upper()
+    append = 'aortasmic' + modality
+
+    also_test = True
 
     # create new dataset directory
     try:
@@ -38,15 +40,16 @@ if __name__ == "__main__":
     
     fns_in = [modality+'_train',
             modality+'_train_masks',
-            modality+'_test',
-            modality+'_test_masks'
            ]
-    
+    if also_test:
+        fns_in.append(modality+'_test')
+        fns_in.append(modality+'_test_masks')
     fns_out = ['imagesTr',
             'labelsTr',
-            'imagesTs',
-            'labelsTs'
            ]
+    if also_test:
+        fns_out.append('imagesTs')
+        fns_out.append('labelsTs')
     
     for fn in fns_out:
         try:

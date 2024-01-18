@@ -9,24 +9,6 @@ from vtk.util.numpy_support import vtk_to_numpy as v2n
 np.random.seed(0)
 random.seed(0)
 
-def create_dataset(global_config, modality):
-
-    dataset_name = global_config['DATASET_NAME']
-    if dataset_name == 'vmr':
-        from dataset_dirs.datasets import VMR_dataset
-        Dataset = VMR_dataset(global_config['DATA_DIR'], [modality], global_config['ANATOMY'])
-        cases = Dataset.sort_cases(global_config['TESTING'], global_config['TEST_CASES'])
-        cases = Dataset.check_which_cases_in_image_dir(cases)
-    elif dataset_name == 'miccai_aortas':
-        from dataset_dirs.miccai_aortas import get_miccai_aorta_dataset_names
-        cases = get_miccai_aorta_dataset_names(global_config['DATA_DIR'])
-
-    else:
-        print("Dataset not found")
-        exit()
-
-    return cases
-
 def print_info_file(global_config, cases, testing_samples, info_file_name):
 
     if not global_config['TESTING']:
@@ -37,6 +19,7 @@ def print_info_file(global_config, cases, testing_samples, info_file_name):
         f.write("\n Testing models not included: ")
         for i in range(len(testing_samples)):
             f.write(" \n     Model " + str(i) + " : " + testing_samples[i])
+        f.write(f"\n Number of training models: {len(cases)}")
         f.write("\n Training models included: ")
         for i in range(len(cases)):
             f.write(" \n     Model " + str(i) + " : " + cases[i])
@@ -55,6 +38,8 @@ def create_directories(output_folder, modality, global_config):
 
     if global_config['TESTING']:
         fns = ['_test']
+    elif global_config['VALIDATION_PROP'] == 0:
+        fns = ['_train']
     else:
         fns = ['_train', '_val']
 
@@ -124,18 +109,93 @@ def sort_centerline(centerline):
     """
     Function to sort the centerline data
     """
+
     num_points = centerline.GetNumberOfPoints()               # number of points in centerline
     cent_data = collect_arrays(centerline.GetPointData())
     c_loc = v2n(centerline.GetPoints().GetData())             # point locations as numpy array
     radii = cent_data['MaximumInscribedSphereRadius']   # Max Inscribed Sphere Radius as numpy array
-    cent_id = cent_data['CenterlineId']
-    bifurc_id = cent_data['BifurcationIdTmp']
-    try:
-        num_cent = len(cent_id[0]) # number of centerlines (one is assembled of multiple)
-    except:
-        num_cent = 1 # in the case of only one centerline
     
-    return num_points, c_loc, radii, cent_id, bifurc_id, num_cent
+    # get cent_ids, a list of lists
+    # each list is the ids of the points belonging to a centerline
+    try:
+        cent_ids = get_point_ids_post_proc(centerline)
+        bifurc_id = cent_data['BifurcationIdTmp']
+    except:
+        # centerline hasnt been processed
+        cent_ids = get_point_ids_no_post_proc(centerline)
+        bifurc_id = np.zeros(num_points)
+        print(f"\nCenterline has not been processed, no known bifurcations\n")
+    
+    # check if there are duplicate points
+    if np.unique(c_loc, axis=0).shape[0] != c_loc.shape[0]:
+        # remove duplicate points
+        print(f"\nCenterline has duplicate points, removing them\n")
+        _, unique_ids = np.unique(c_loc, axis=0, return_index=True)
+        # same for cent_ids, but keep same order
+        cent_ids_new = []
+        for i in range(len(cent_ids)):
+            cent_ids_new.append([])
+            for j in range(len(cent_ids[i])):
+                if cent_ids[i][j] in unique_ids:
+                    cent_ids_new[i].append(cent_ids[i][j])
+        cent_ids = cent_ids_new
+
+    # pdb.set_trace()
+    num_cent = len(cent_ids)
+    
+    return num_points, c_loc, radii, cent_ids, bifurc_id, num_cent
+
+def get_point_ids_post_proc(centerline_poly):
+
+    cent = centerline_poly
+    num_points = cent.GetNumberOfPoints()               # number of points in centerline
+    cent_data = collect_arrays(cent.GetPointData())           # point locations as numpy array
+    radii = cent_data['MaximumInscribedSphereRadius']   # Max Inscribed Sphere Radius as numpy array
+
+    cell_data = collect_arrays(cent.GetCellData())
+    points_in_cells = get_points_cells(cent)
+
+    cent_id = cell_data['CenterlineIds']
+    num_cent = max(cent_id)+1 # number of centerlines (one is assembled of multiple)
+
+    point_ids_list = []
+    for ip in range(num_cent):
+            
+        point_ids = []
+        cell_ids = [i for i in range(len(cent_id)) if cent_id[i]==ip]
+
+        for i in cell_ids:
+            point_ids = point_ids + points_in_cells[1][i]
+        
+        point_ids_list.append(point_ids)
+
+    return point_ids_list
+
+def get_point_ids_no_post_proc(centerline_poly):
+    """
+    For this case, the polydata does not have CenterlineIds,
+    so we need to find the centerline ids manually based on the
+    connectivity of the points
+    Args:
+        centerline_poly: vtk polydata of centerline
+    Returns:
+        point_ids: point ids of centerline (list of lists)3
+    """
+    # the centerline is composed of vtk lines
+    # Get the lines from the polydata
+    point_ids_list = []
+    # Iterate through cells and extract lines
+    for i in range(centerline_poly.GetNumberOfCells()):
+        cell = centerline_poly.GetCell(i)
+        if cell.GetCellType() == 4:
+            point_ids = []
+            for j in range(cell.GetNumberOfPoints()):
+                point_id = cell.GetPointId(j)
+                # point = centerline_poly.GetPoint(point_id)
+                point_ids.append(point_id)
+            point_ids_list.append(point_ids)
+
+    return point_ids_list
 
 def choose_destination(trace_testing, val_prop, img_test, seg_test, img_val, seg_val, img_train, seg_train, ip = None):
     ## If tracing test, save to test
@@ -146,7 +206,7 @@ def choose_destination(trace_testing, val_prop, img_test, seg_test, img_val, seg
     ## Else, have a probability to save to validation
     else:
         rand = random.uniform(0,1)
-        print(" random is " + str(rand))
+        # print(" random is " + str(rand))
         if rand < val_prop and ip != 0:
             image_out_dir = img_val
             seg_out_dir = seg_val
@@ -231,7 +291,7 @@ def rotate_volumes(reader_im, reader_seg, tangent, point):
 
     return new_img, new_seg, origin_im
 
-def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, location, radius, size_r, number, name, O=None, global_img=False):
+def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, location, radius, size_r, number, name, O=None, global_img=False, remove_others=True):
     """"
     Function to extract subvolumes
     Both image data and GT segmentation
@@ -246,12 +306,13 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
     new_seg = extract_volume(reader_seg, index_extract, size_extract)
         
     #print("Original Seg")
-    labels, means, _ = connected_comp_info(new_seg, False)
+    # labels, means, _ = connected_comp_info(new_seg, False)
     #print("Seg w removed bodies")
     #labels1, means1 = connected_comp_info(removed_seg)
     
     seed = np.rint(np.array(size_extract)/2).astype(int).tolist()
     removed_seg = remove_other_vessels(new_seg, seed)
+    # labels, means, _ = connected_comp_info(removed_seg, True)
 
     im_np = sitk.GetArrayFromImage(new_img)
     seg_np = sitk.GetArrayFromImage(new_seg)
@@ -265,11 +326,15 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
 
     if not global_img:
         diff_cent = np.linalg.norm(location - center_volume)
+        labels, means, _ = connected_comp_info(new_seg, False)
         stats, O = add_local_stats(stats, location, diff_cent, blood_np, ground_truth, means, removed_seg, im_np, O)
         #mul_l.append(case_dict['NAME'] +'_'+ str(N-n_old) +'.nii.gz')
         #print("The sample has more than one label: " + case_dict['NAME'] +'_'+ str(N-n_old))
 
-    return stats, new_img, new_seg, removed_seg, O
+    if remove_others:
+        new_seg = removed_seg
+
+    return stats, new_img, new_seg, O
 
 def resample_vol(removed_seg, resample_size):
     """
@@ -417,37 +482,19 @@ def discretize_centerline(centerline, img, N, sub, name, outdir, num_discr_point
     #print(f'Shape of steps: {steps.shape}')
     return stats
 
-def get_outlet_stats(stats, img, seg, outlet_classes, global_surface, global_centerline, center, size):
+def get_outlet_stats(stats, img, seg, upsample = False):
     """
     Function to get outlet statistics
     """
-    # _ , new_cent = extract_centerline(img, global_centerline)
-    # # get centerline stats
-    # cent_data = collect_arrays(new_cent.GetPointData())
-    # cent_locs = v2n(new_cent.GetPoints().GetData())
 
-    # stats_surf, new_surf_box, new_surf_sphere = extract_surface(img, global_surface, center, size)
-    # num_out = len(stats_surf['OUTLETS'])
-    # outlet_locs = stats_surf['OUTLETS']
-    # outlet_areas = stats_surf['OUTLET_AREAS']
-
-    # # get the pixel values of the outlets
-    # outlet_indx = []
-    # for i in range(num_out):
-    #     index = img.TransformPhysicalPointToIndex(stats_surf['OUTLETS'][i].tolist())
-    #     outlet_indx.append(index)
-    # outlet_indx = np.array(outlet_indx)
-
-    # # create sizes to check
-    # for prop in [0.5, 0.6, 0.7, 0.8, 0.9]:
-    #     stats_surf, new_surf_box, new_surf_sphere = extract_surface(img, global_surface, center, size*prop)
-    #     new_num_out = len(stats_surf['OUTLETS'])
-    #     if num_out != new_num_out:
-    #         print(f"Num outlets don't match when changing size")
-
-    planes_img = get_outside_volume_3(img)
+    planes_img = get_outside_volume(img)
     planes_seg = get_outside_volume(seg)
-    centers, widths, pos_example = get_boxes(planes_seg)
+
+    if upsample:
+        planes_img = upsample_planes(planes_img, size = 200, seg = False)
+        planes_seg = upsample_planes(planes_seg, size = 200, seg = True)
+
+    centers, widths, pos_example, planes_seg = get_boxes(planes_seg)
 
     names_add = ['x0', 'x1', 'y0', 'y1', 'z0', 'z1']
     stats_all = []
@@ -464,24 +511,63 @@ def get_outlet_stats(stats, img, seg, outlet_classes, global_surface, global_cen
 
     return stats_all, planes_img, planes_seg, pos_example
 
+def upsample_planes(planes, size = 480, seg = False):
+    """
+    Function to resample images to size
+
+    Args:
+        planes: list of 2d images
+        size: size to resample to
+
+    Returns:
+        planes_up: list of upsampled images
+    """
+    import cv2
+
+    if seg:
+        interp = cv2.INTER_NEAREST
+    else:
+        interp = cv2.INTER_CUBIC
+
+    planes_up = []
+    for i in range(len(planes)):
+        plane = planes[i]
+        input_size = plane.shape
+        # get the minimum size
+        min_size = min(input_size)
+        # get the size to upsample to
+        size_hor = size; size_vert = size
+        # size_hor = int(input_size[0]/min_size*size)
+        # size_vert = int(input_size[1]/min_size*size)
+        # upsample
+        # import pdb; pdb.set_trace()
+        # change to int16
+        plane = plane.astype(np.int16)
+        plane = cv2.resize(plane, (size_hor, size_vert), interpolation = interp)
+        planes_up.append(plane)
+
+    return planes_up
+
 def write_2d_planes(planes, stats_out, image_out_dir):
     """
     Function to write 2d planes
     Values are normalized to 0-255
     Written out as png
     """
+    import cv2
+
     add = '_img_outlet_detection'
     # add to dir name end
     image_out_dir = image_out_dir[:-1]+ add + '/'
 
     for i in range(len(planes)):
         plane = planes[i]
-        # make sure channel is first
-        if len(plane.shape) == 3:
-            if min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[1]:
-                plane = np.moveaxis(plane, -1, 0)
-            elif min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[2]:
-                plane = np.moveaxis(plane, -2, 0)
+        # # make sure channel is first
+        # if len(plane.shape) == 3:
+        #     if min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[1]:
+        #         plane = np.moveaxis(plane, -1, 0)
+        #     elif min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[2]:
+        #         plane = np.moveaxis(plane, -2, 0)
         # shift to positive
         plane = plane - np.amin(plane)
         # make rane 0-255
@@ -489,8 +575,8 @@ def write_2d_planes(planes, stats_out, image_out_dir):
         # make unsigned int
         plane = plane.astype(np.uint8)
         # print(f"Shape of plane: {plane.shape}")
-
-        sitk.WriteImage(sitk.GetImageFromArray(plane), image_out_dir + stats_out[i]['NAME']+'.png')
+        fn_name = image_out_dir + stats_out[i]['NAME']+'.png'
+        cv2.imwrite(fn_name, plane)
 
 def get_boxes(planes):
 
@@ -508,7 +594,13 @@ def get_boxes(planes):
             img_plane = sitk.GetImageFromArray(planes[i])
             labels, means, connected_seg = connected_comp_info(img_plane, False)
             connected_seg = sitk.GetArrayFromImage(connected_seg)
-            for label in labels:
+            #print(f"Max of Connected Seg: {np.amax(connected_seg)}, Min of Connected Seg: {np.amin(connected_seg)}")
+            for j,label in enumerate(labels):
+                # if the connected component is has N or less pixels, skip
+                if np.sum(connected_seg==label) <= 50:
+                    connected_seg[connected_seg==label] = 0
+                    continue
+
                 # get the pixel in the center of the connected component
                 center = np.array(np.where(connected_seg==label)).mean(axis=1).astype(int).tolist()
                 # get the width and length of the connected component
@@ -518,10 +610,11 @@ def get_boxes(planes):
                 # append to lists
                 centers[i].append(center)
                 widths[i].append(width)
+            planes[i] = connected_seg
 
                 # print(f"Shape: {connected_seg.shape}, Center: {center}, Width/Length: {width}")
                 
-    return centers, widths, pos_example
+    return centers, widths, pos_example, planes
 
 def get_outside_volume(seg):
     """
@@ -536,27 +629,22 @@ def get_outside_volume(seg):
     planes.append(seg_np[:,:,0])
     planes.append(seg_np[:,:,-1])
 
-    # for i in range(len(planes)):
-    #     print(np.sum(planes[i]))
-
     return planes
 
 def get_outside_volume_3(seg):
     """
     Function to get outside sides of volume
     The last three channels
+    Make channels last
     """
     seg_np = sitk.GetArrayFromImage(seg)
     planes = []
-    planes.append(seg_np[:3,:,:])
-    planes.append(seg_np[-3:,:,:])
-    planes.append(seg_np[:,:3,:])
-    planes.append(seg_np[:,-3:,:])
-    planes.append(seg_np[:,:,:3])
-    planes.append(seg_np[:,:,-3:])
-
-    # for i in range(len(planes)):
-    #     print(np.sum(planes[i]))
+    planes.append(seg_np[:3,:,:].transpose(1,2,0))
+    planes.append(seg_np[-3:,:,:].transpose(1,2,0))
+    planes.append(seg_np[:,:3,:].transpose(0,2,1))
+    planes.append(seg_np[:,-3:,:].transpose(0,2,1))
+    planes.append(seg_np[:,:,:3].transpose(0,1,2))
+    planes.append(seg_np[:,:,-3:].transpose(0,1,2))
 
     return planes
 
@@ -710,8 +798,12 @@ def print_all_done(info, N, M, K, O, mul_l):
         print(i)
 
 def write_vtk(new_img, removed_seg, out_dir, case_name, N, n_old, sub):
-    sitk.WriteImage(new_img, out_dir+'vtk_data/vtk_' + case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
-    sitk.WriteImage(removed_seg*255, out_dir+'vtk_data/vtk_mask_'+ case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
+    # write vtk, if N is a multiple of 10
+    if N-n_old%10 == 0:
+        sitk.WriteImage(new_img, out_dir+'vtk_data/vtk_' + case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
+        if sitk.GetArrayFromImage(removed_seg).max() == 1:
+            removed_seg *= 255
+        sitk.WriteImage(removed_seg, out_dir+'vtk_data/vtk_mask_'+ case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
 
 def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir, case_name, N, n_old, sub):
     new_seg = extract_volume(reader_seg, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
@@ -730,10 +822,10 @@ def write_centerline(new_cent, seg_out_dir, case_name, N, n_old, sub):
     #pts_pd = points2polydata(stats_surf['OUTLETS'])
     #write_geo(out_dir+'vtk_data/vtk_' + case_dict['NAME']+'/' +str(N-n_old)+'_'+str(sub)+ '_caps.vtp', pts_pd)
 
-def write_csv(csv_list, csv_list_val, out_dir, modality, trace_testing):
+def write_csv(csv_list, csv_list_val, modality, global_config):
     import csv
     csv_file = "_Sample_stats.csv"
-    if trace_testing: csv_file = '_test'+csv_file
+    if global_config['TESTING']: csv_file = '_test'+csv_file
     else: csv_file = '_train'+csv_file
 
     csv_columns = ["No",            "NAME",         "SIZE",     "RESOLUTION",   "ORIGIN", 
@@ -743,65 +835,65 @@ def write_csv(csv_list, csv_list_val, out_dir, modality, trace_testing):
                     "GT_STD",        "GT_MAX",       "GT_MIN",   "LARGEST_MEAN", "LARGEST_STD",
                     "LARGEST_MAX",   "LARGEST_MIN",  "RADIUS",   "TANGENTX",     "TANGENTY", 
                     "TANGENTZ",      "BIFURCATION",  "NUM_VOX",  "OUTLETS",      "NUM_OUTLETS"]
-    with open(out_dir+modality+csv_file, 'w') as csvfile:
+    with open(global_config['OUT_DIR']+modality+csv_file, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
         for data in csv_list:
             writer.writerow(data)
-    if not trace_testing:
-        with open(out_dir+modality+csv_file.replace('train','val'), 'w') as csvfile:
+    if not global_config['TESTING'] and global_config['VALIDATION_PROP'] > 0:
+        with open(global_config['OUT_DIR']+modality+csv_file.replace('train','val'), 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
             for data in csv_list_val:
                 writer.writerow(data)
 
-def write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val, outdir, modality, trace_testing):
+def write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val, modality, global_config):
     import csv
     csv_file = "_Discrete_Centerline.csv"
-    if trace_testing: csv_file = '_test'+csv_file
+    if global_config['TESTING']: csv_file = '_test'+csv_file
     else: csv_file = '_train'+csv_file
 
     csv_columns = ["No", "NAME", "NUM_CENT", "STEPS"]
-    with open(outdir+modality+csv_file, 'w') as csvfile:
+    with open(global_config['OUT_DIR']+modality+csv_file, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
         for data in csv_discrete_centerline:
             writer.writerow(data)
-    if not trace_testing:
-        with open(outdir+modality+csv_file.replace('train','val'), 'w') as csvfile:
+    if not global_config['TESTING'] and global_config['VALIDATION_PROP'] > 0:
+        with open(global_config['OUT_DIR']+modality+csv_file.replace('train','val'), 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
             for data in csv_discrete_centerline_val:
                 writer.writerow(data)
 
-def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, modality, trace_testing):
+def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config):
     
     import csv
     csv_file = "_Outlet_Stats.csv"
-    if trace_testing: csv_file = '_test'+csv_file
+    if global_config['TESTING']: csv_file = '_test'+csv_file
     else: csv_file = '_train'+csv_file
-    import pdb; pdb.set_trace()
+
     csv_columns = ["NAME", "CENTER", "WIDTH", "SIZE"]
-    with open(out_dir+modality+csv_file, 'w') as csvfile:
+    with open(global_config['OUT_DIR']+modality+csv_file, 'w') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
         for data in csv_outlet_stats:
             writer.writerow(data)
-    if not trace_testing:
-        with open(out_dir+modality+csv_file.replace('train','val'), 'w') as csvfile:
+    if not global_config['TESTING'] and global_config['VALIDATION_PROP'] > 0:
+        with open(global_config['OUT_DIR']+modality+csv_file.replace('train','val'), 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
             writer.writeheader()
             for data in csv_outlet_stats_val:
                 writer.writerow(data)
 
-def write_pkl_outlet_stats(pkl_outlet_stats, pkl_outlet_stats_val, out_dir, modality, trace_testing):
+def write_pkl_outlet_stats(pkl_outlet_stats, pkl_outlet_stats_val, modality, global_config):
     import pickle
     pkl_file = "_Outlet_Stats.pkl"
-    if trace_testing: pkl_file = '_test'+pkl_file
+    if global_config['TESTING']: pkl_file = '_test'+pkl_file
     else: pkl_file = '_train'+pkl_file
 
-    with open(out_dir+modality+pkl_file, 'wb') as f:
+    with open(global_config['OUT_DIR']+modality+pkl_file, 'wb') as f:
         pickle.dump(pkl_outlet_stats, f)
-    if not trace_testing:
-        with open(out_dir+modality+pkl_file.replace('train','val'), 'wb') as f:
+    if not global_config['TESTING'] and global_config['VALIDATION_PROP'] > 0:
+        with open(global_config['OUT_DIR']+modality+pkl_file.replace('train','val'), 'wb') as f:
             pickle.dump(pkl_outlet_stats_val, f)

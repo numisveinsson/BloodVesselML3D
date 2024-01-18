@@ -787,3 +787,50 @@ def points2polydata(xyz):
     polydata.Modified()
 
     return polydata
+
+def remove_duplicate_points(centerline):
+    """
+    Function to remove duplicate points from centerline
+    input: centerline as polydata
+    output: centerline as polydata
+    """
+    # Create the tree
+    locator = vtk.vtkPointLocator()
+    locator.SetDataSet(centerline)
+    locator.BuildLocator()
+
+    # Get the points
+    points = centerline.GetPoints()
+    num_points = points.GetNumberOfPoints()
+
+    # Create new points
+    new_points = vtk.vtkPoints()
+    new_points.SetNumberOfPoints(num_points)
+
+    # Create new polydata with all arr
+    new_centerline = vtk.vtkPolyData()
+    new_centerline.SetPoints(new_points)
+    new_centerline.GetPointData().ShallowCopy(centerline.GetPointData())
+    new_centerline.GetCellData().ShallowCopy(centerline.GetCellData())
+
+    # Loop through points
+    for i in range(num_points):
+        # Get the point
+        point = points.GetPoint(i)
+
+        # Find the closest point
+        closest_point_id = locator.FindClosestPoint(point)
+
+        # Get the closest point
+        closest_point = points.GetPoint(closest_point_id)
+
+        # Check if the points are the same
+        if np.array_equal(point, closest_point):
+            # If they are the same, add the point to the new polydata
+            new_points.InsertPoint(i, point)
+        else:
+            # If they are not the same, add the closest point to the new polydata
+            new_points.InsertPoint(i, closest_point)
+
+    # Return the new polydata
+    return new_centerline

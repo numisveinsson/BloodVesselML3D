@@ -47,6 +47,8 @@ if __name__=='__main__':
         N, M, K, O = 0,0,0,0 # keep total of extractions, throwouts, errors, total of samples with multiple labels
         mul_l, csv_list, csv_list_val = [], [], []
 
+        print(f"\n--- {modality} ---")
+        print(f"--- {len(cases)} cases ---")
         for i in cases:
             print(i)
         import pdb; pdb.set_trace()
@@ -58,6 +60,7 @@ if __name__=='__main__':
             ## Load data
             case_dict = get_case_dict_dir(global_config['DATA_DIR'], case_fn, global_config['IMG_EXT'])
             print(case_dict['NAME'])
+            time_now_case = time.time()
 
             if global_config['WRITE_VTK']:
                 try:
@@ -75,7 +78,7 @@ if __name__=='__main__':
             
             ## Centerline
             global_centerline = vf.read_geo(case_dict['CENTERLINE']).GetOutput()
-            num_points, c_loc, radii, cent_id, bifurc_id, num_cent = sort_centerline(global_centerline)
+            num_points, c_loc, radii, cent_ids, bifurc_id, num_cent = sort_centerline(global_centerline)
 
             ids_total = []
             m_old = M
@@ -87,16 +90,21 @@ if __name__=='__main__':
                 image_out_dir, seg_out_dir, val_port = choose_destination(global_config['TESTING'], global_config['VALIDATION_PROP'], image_out_dir_test, seg_out_dir_test, 
                                                                           image_out_dir_val, seg_out_dir_val, image_out_dir_train, seg_out_dir_train, ip)
                 # Get ids on this centerline
-                ids = get_cent_ids(num_points, cent_id, ip)
+                ids = cent_ids[ip]
+                # skip if empty
+                if len(ids) == 0:
+                    continue
                 # Get info of those ids
                 locs, rads, bifurc = c_loc[ids], radii[ids], bifurc_id[ids] # locations of those points, radii and bifurcation ids at those locations
                 # Continue taking steps while still on centerline
                 on_cent, count = True, 0 # count is the point along centerline
-                print("\n ** Ip is " + str(ip)+"\n")
+                print(f"\n--- {case_dict['NAME']} ---")
+                print(f"--- Ip is {ip} / {num_cent} ---\n")
                 while on_cent:
                     # Only continue if we've not walked this centerline before
                     if not (ids[count] in ids_total):
                         print('The point # along centerline is ' + str(count))
+                        time_now = time.time()
                         # check if we need to rotate the volume
                         if global_config['ROTATE_VOLUMES']:
                             tangent = get_tangent(locs, count)
@@ -125,8 +133,9 @@ if __name__=='__main__':
                                     
                                     # Extract volume
                                     if global_config['EXTRACT_VOLUMES']:
-                                        stats, new_img, new_seg, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, 
-                                                                                                     origin_im, spacing_im, locs[count], rads[count], size_r, N, name, O)
+                                        stats, new_img, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, 
+                                                                         origin_im, spacing_im, locs[count], rads[count], size_r, N, name, O, 
+                                                                         remove_others=global_config['REMOVE_OTHER'])
                                         if global_config['WRITE_SURFACE']:
                                             stats_surf, new_surf_box, new_surf_sphere = extract_surface(new_img, global_surface, center, size_r*rads[count])
                                             num_out = len(stats_surf['OUTLETS'])
@@ -167,7 +176,7 @@ if __name__=='__main__':
                                     
                                     # Outlet stats
                                     if global_config['WRITE_OUTLET_STATS']:
-                                        stats_out, planes, planes_seg, pos_example = get_outlet_stats(stats, new_img, removed_seg, global_config['OUTLET_CLASSES'], global_surface, global_centerline, center, size_r*rads[count])
+                                        stats_out, planes, planes_seg, pos_example = get_outlet_stats(stats, new_img, removed_seg, upsample=global_config['UPSAMPLE_OUTLET_IMG'])
                                         
                                         total_num_examples_pos += pos_example
                                         total_num_examples += 6
@@ -204,6 +213,7 @@ if __name__=='__main__':
                             sub +=1
 
                         print('\n Finished: ' + case_dict['NAME'] +'_'+ str(N-n_old))
+                        print(f"Time for this point: {(time.time() - time_now):.2f} sec")
                         #print(" " + str(sub) + " variations")
                         N+=1
 
@@ -213,17 +223,18 @@ if __name__=='__main__':
 
             print_model_info(case_dict['NAME'],  N, n_old, M, m_old)
             info[case_dict['NAME']] = [ N-n_old, M-m_old, K-k_old]
+            print(f"Total time for this case: {(time.time() - time_now_case):.2f} sec")
             print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K, k_old, out_dir)
 
         print_all_done(info, N, M, K, O, mul_l)
         print_into_info_all_done(info_file_name, N, M, K, O, out_dir)
         print(f"\n--- {(time.time() - start_time)/60:.2f} min ---")
         print("Continue to write out csv file w info")
-        write_csv(csv_list, csv_list_val, out_dir, modality, global_config['TESTING'])
+        write_csv(csv_list, csv_list_val, modality, global_config)
         
         if global_config['WRITE_DISCRETE_CENTERLINE']:
-            write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val, out_dir, modality, global_config['TESTING'])
+            write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val, modality, global_config)
 
         if global_config['WRITE_OUTLET_STATS']:
-            write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, modality, global_config['TESTING'])
-            write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, out_dir, modality, global_config['TESTING'])
+            write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config)
+            write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config)

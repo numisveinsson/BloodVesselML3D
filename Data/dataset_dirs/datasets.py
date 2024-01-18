@@ -1,5 +1,77 @@
 import pandas as pd
 
+def create_dataset(global_config, modality):
+
+    dataset_name = global_config['DATASET_NAME']
+    print(f'Reading in dataset')
+    print(f'Make sure the dataset is in the correct directory: {global_config["DATA_DIR"]}\n')
+    print(f'Dataset name: {dataset_name}')
+    print(f'Subfolders need to be:\n images\n truths\n surfaces\n centerlines')
+
+    if dataset_name == 'vmr':
+        from dataset_dirs.datasets import VMR_dataset
+        Dataset = VMR_dataset(global_config['DATA_DIR'], [modality], global_config['ANATOMY'])
+        cases = Dataset.sort_cases(global_config['TESTING'], global_config['TEST_CASES'])
+        cases = Dataset.check_which_cases_in_image_dir(cases)
+        cases = [f for f in cases if f not in global_config['BAD_CASES']]
+    elif dataset_name == 'other':
+        cases = get_dataset_cases(global_config['DATA_DIR'], global_config['IMG_EXT'], global_config['TEST_CASES'], global_config['TESTING'])
+    else:
+        print("Dataset not found")
+        exit()
+
+    return cases
+
+def get_dataset_cases(directory, img_ext, test_cases, testing=False):
+    
+    """
+    Returns a list of cases in the dataset
+    Input: 
+        directory (str)
+        img_ext (str)
+        test_cases (list of str)
+    Output: cases (list of str)
+    """
+    import os
+    cases_im = os.listdir(directory+'images/')
+    cases_im = [f for f in cases_im if f.endswith(img_ext)]
+    cases_im = [f.replace(img_ext, '') for f in cases_im]
+    print(f"Found {len(cases_im)} images with extension {img_ext}")
+
+    cases_cent = os.listdir(directory+'centerlines/')
+    cases_cent = [f for f in cases_cent if f.endswith('.vtp')]
+    cases_cent = [f.replace('.vtp', '') for f in cases_cent]
+    print(f"Found {len(cases_cent)} centerlines")
+
+    cases_surf = os.listdir(directory+'surfaces/')
+    cases_surf = [f for f in cases_surf if f.endswith('.vtp')]
+    cases_surf = [f.replace('.vtp', '') for f in cases_surf]
+    cases_surf = [f.replace('.seg', '') for f in cases_surf]
+    print(f"Found {len(cases_surf)} surfaces")
+
+    if testing:
+        test_cases_w_img = [f for f in test_cases if f in cases_im]
+        print(f"Found {len(test_cases_w_img)} test cases in cases dataset, returning them")
+        #sort
+        test_cases_w_img.sort()
+        return test_cases_w_img
+    else:
+        # only keep cases that have all files
+        cases = [f for f in cases_im if f in cases_cent and f in cases_surf]
+        print(f"Found {len(cases)} training cases with all files")
+        print(f"Returning {len(cases_cent)} cases, that all have centerlines")
+        print(f"The cases that have images but no centerlines are:")
+        print([f for f in cases_im if f not in cases_cent])
+
+        # remove the test cases
+        test_cases_in_cent = [f for f in cases_cent if f in test_cases]
+        print(f"Found {len(test_cases_in_cent)} test cases in cases dataset, removing them")
+        cases_cent = [f for f in cases_cent if f not in test_cases]
+        print(f"Returning {len(cases_cent)} cases, that have all centerlines, and are not test cases")
+        # sort the cases, so they are in the same order
+        cases_cent.sort()
+        return cases_cent
+
 class VMR_dataset:
     """
     Class for VMR dataset

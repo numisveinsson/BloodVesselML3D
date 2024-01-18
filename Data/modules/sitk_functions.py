@@ -89,12 +89,24 @@ def remove_other_vessels(image, seed):
         binary image file (either 0 or 1)
     """
     ccimage = sitk.ConnectedComponent(image)
+    # check number of components in image
+    num_components = sitk.GetArrayFromImage(ccimage).max()
+    
+    if num_components == 1:
+        return image
+    
+    # print("Before num comp: " + str(num_components))
+    # get label of component containing seed point
     label = ccimage[seed]
-    #print("The label is " + str(label))
+    # print("The label is " + str(label))
     if label == 0:
         label = 1
-    labelImage = sitk.BinaryThreshold(ccimage, lowerThreshold=label, upperThreshold=label)
-    labelImage = labelImage
+    # now only keep the component with the label
+    labelImage = sitk.BinaryThreshold(ccimage, label, label)
+    # check number of components in image
+    num_components = sitk.GetArrayFromImage(labelImage).max()
+    # print("After num comp: " + str(num_components))
+
     return labelImage
 
 def connected_comp_info(original_seg, print_condition):
@@ -166,7 +178,13 @@ def rotate_volume_tangent(sitk_img, tangent, point):
     affine.SetMatrix(rotation.GetMatrix())
 
     # Apply the transformation
-    sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear, 0.0, sitk_img.GetPixelID())
+    # If segmentation, use nearest neighbor interpolation
+    # check how many unique values there are in the image
+    # if there are only 2, then it is a segmentation
+    if len(np.unique(sitk.GetArrayFromImage(sitk_img))) == 2:
+        sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkNearestNeighbor, 0.0, sitk_img.GetPixelID())
+    else:
+        sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear, 0.0, sitk_img.GetPixelID())
 
     return sitk_img
 

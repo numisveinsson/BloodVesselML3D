@@ -47,7 +47,7 @@ if __name__=='__main__':
     random.seed(1)
     extract_volumes = True
 
-    patches = True
+    patches = False
     random_crops = False
     volume_size = [128, 128, 128]
 
