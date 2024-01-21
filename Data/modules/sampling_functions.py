@@ -241,6 +241,9 @@ def calc_samples(count, bifurc, locs, rads, global_config):
     else:
         save_bif = 0
         n_samples = global_config['NUMBER_SAMPLES']
+    # if in the beginning of centerline, have more 
+    if count < len(locs)/20:
+        n_samples = global_config['NUMBER_SAMPLES_START']
 
     # Sample size(s) and shift(s)
     sizes = np.random.normal(global_config['MU_SIZE'], global_config['SIGMA_SIZE'], n_samples)

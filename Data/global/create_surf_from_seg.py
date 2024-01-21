@@ -7,58 +7,6 @@ from modules import vtk_functions as vf
 from modules import sitk_functions as sf
 import os
 
-def create_seg_from_surface(surface, image):
-    """
-    Check all voxels:
-    if voxel inside surface: voxel = 1
-    if outside: voxel = 0
-    Args:
-        surface: VTK PolyData
-        image: Sitk Image
-    """
-
-    # Assemble all points in image
-    img_size = image.GetSize()
-    points = vtk.vtkPoints()
-    count = 0
-    for i in range(img_size[0]):
-        print('i is ', i)
-        for j in range(img_size[1]):
-            for k in range(img_size[2]):
-                point = image.TransformIndexToPhysicalPoint((i,j,k))
-                points.InsertNextPoint(point)
-                count += 1
-
-    pointsPolydata = vtk.vtkPolyData()
-    pointsPolydata.SetPoints(points)
-
-    # Create filter to check inside/outside
-    enclosed_filter = vtk.vtkSelectEnclosedPoints()
-    enclosed_filter.SetTolerance(0.001)
-    #enclosed_filter.SetSurfaceClosed(True)
-    #enclosed_filter.SetCheckSurface(True)
-
-    enclosed_filter.SetInputData(pointsPolydata)
-    enclosed_filter.SetSurfaceData(surface)
-    enclosed_filter.Update()
-
-    import pdb; pdb.set_trace()
-    # Create new image to assemble
-
-    for i in range(img_size[0]):
-        print('i is ', i)
-        for j in range(img_size[1]):
-            for k in range(img_size[2]):
-                point = image.TransformIndexToPhysicalPoint((i,j,k))
-                is_inside = enclosed_filter.IsInsideSurface(point[0], point[1], point[2])
-                if is_inside:
-                    print('Inside')
-                    image[i,j,k] = 1
-                else: image[i,j,k] = 0
-
-    import pdb; pdb.set_trace()
-    return image
-
 def eraseBoundary(labels, pixels, bg_id):
     """
     Erase anything on the boundary by a specified number of pixels
