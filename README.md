@@ -1,6 +1,16 @@
-# vascular_data
+# Blood Vessel Modeling Data Pre and Post Processing
 
-This repository contains code to generate the data used to train the machine learning methods. The data is from Vascular Model Repository.
+This repository contains code to process data used to train machine learning methods for geometric modeling of blood vessels using medical image data. The data used can be:
+    1. Medical image scans
+    2. Surface meshes
+    3. Centerlines
+
+The fundamental idea is to 'piece up' vasculature into hundreds/thousands of vascular segments. These segments can be
+    1. Image subvolumes/pathes (3D/2D)
+    2. Local surface representations
+    3. Local centerline segments
+    4. Local outlet/bifurcation/size/orientation information
+    etc.
 
 ## Running the code
 
