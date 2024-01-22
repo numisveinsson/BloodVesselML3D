@@ -4,6 +4,9 @@ from datetime import datetime
 now = datetime.now()
 dt_string = now.strftime("_%d_%m_%Y_%H_%M_%S")
 
+import sys
+sys.stdout.flush()
+
 from modules import vtk_functions as vf
 from modules import sitk_functions as sf
 from modules import io
@@ -18,6 +21,7 @@ if __name__=='__main__':
     modalities = global_config['MODALITY']
 
     out_dir = global_config['OUT_DIR']
+    sys.stdout = open(dir_output+"/log.txt", "w")
 
     for modality in modalities:
 
@@ -51,7 +55,7 @@ if __name__=='__main__':
         print(f"--- {len(cases)} cases ---")
         for i in cases:
             print(i)
-        import pdb; pdb.set_trace()
+        # import pdb; pdb.set_trace()
         
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
