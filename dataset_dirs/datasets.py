@@ -120,7 +120,7 @@ class VMR_dataset:
         Check which cases are in the data directory (Images)
         """
         import os
-        images = os.listdir(self.dir + 'Images/')
+        images = os.listdir(self.dir + 'images/')
         # ignore hidden files
         images = [f for f in images if f[0] != '.']
         # remove the file extension
@@ -146,7 +146,7 @@ class VMR_dataset:
         """
         # create a list of images in the directory
         import os
-        images = os.listdir(self.dir + 'Images/')
+        images = os.listdir(self.dir + 'images/')
         # ignore hidden files
         images = [f for f in images if f[0] != '.']
         # remove the file extension

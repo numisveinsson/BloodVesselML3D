@@ -1,12 +1,12 @@
 
-DATA_DIR: '/global/scratch/users/numi/MICCAI_AVT_Data/' # '/Users/numisveins/Documents/ASOCA_dataset/'
-OUT_DIR: '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/' # /Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_asoca_coronaries/ #
+DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/' # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
+OUT_DIR: '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/' # /Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_asoca_coronaries/ #
 
-DATASET_NAME: 'other' #'vmr' # or other 'other'
+DATASET_NAME: 'vmr' #'vmr' # or other 'other'
 
-TESTING: True
-MODALITY: ['CT',] # can also be 'MR' 'CT' or 'ALL'
-IMG_EXT: '.nrrd'
+TESTING: False
+MODALITY: ['ALL',] # can also be 'MR' 'CT' or 'ALL'
+IMG_EXT: '.mha'
 
 SCALED: False
 CROPPED: False
@@ -38,20 +38,20 @@ UPSAMPLE_OUTLET_IMG: False
 WRITE_VTK: False
 WRITE_VTK_THROWOUT: False
 
-MOVE_DIST: 1.5 #1.5 how far to move along centerline between sampling
+MOVE_DIST: 1.5 # 1.5 how far to move along centerline between sampling
 SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
 
 CAPFREE: false # whether to require a certain amount of cap-free volume
 CAPFREE_PROP: 0.0 # how much of volume must be cap free, per sidelength
-MOVE_SLOWER_LARGE: 0.25 #0.5 how much slower for bigger vessels
+MOVE_SLOWER_LARGE: 0.25  #0.5 how much slower for bigger vessels
 MU_SIZE: 5 # mean for subvolume-radius ratio
-SIGMA_SIZE: 0.8 #standard deviation for subvolume-radius ratio
+SIGMA_SIZE: 0.8 # standard deviation for subvolume-radius ratio
 MU_SHIFT: 0 # mean for subvolume shift off centerline
-SIGMA_SHIFT: 0.8 #standard deviation for subvolume shift off centerline
-NUMBER_SAMPLES: 3 #2 how many samples to take at each point along vessel
-NUMBER_SAMPLES_BIFURC: 5 #3 how many samples to take if it's a bifurcation
-NUMBER_SAMPLES_START: 5 #5 how many samples to take at start of vessel (first 5%), better for initialization
-MOVE_SLOWER_BIFURC: 0.2 #0.1 how much slower for bigger vessels
+SIGMA_SHIFT: 0.8 # standard deviation for subvolume shift off centerline
+NUMBER_SAMPLES: 3 # 2 how many samples to take at each point along vessel
+NUMBER_SAMPLES_BIFURC: 3 # 3 how many samples to take if it's a bifurcation
+NUMBER_SAMPLES_START: 5 # 5 how many samples to take at start of vessel (first 5%), better for initialization + bifurcations if not processed
+MOVE_SLOWER_BIFURC: 0.2 # 0.1 how much slower for bigger vessels
 
 # Which cases to use for testing
 TEST_CASES:
