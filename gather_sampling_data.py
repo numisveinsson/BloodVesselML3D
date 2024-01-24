@@ -54,7 +54,7 @@ if __name__=='__main__':
         print(f"\n--- {modality} ---")
         print(f"--- {len(cases)} cases ---")
         for i in cases:
-            print(i)
+            print(f"Case: {case}")
         # import pdb; pdb.set_trace()
         
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
@@ -63,7 +63,7 @@ if __name__=='__main__':
 
             ## Load data
             case_dict = get_case_dict_dir(global_config['DATA_DIR'], case_fn, global_config['IMG_EXT'])
-            print(case_dict['NAME'])
+            print(f"\nNext case: {case_dict['NAME']}")
             time_now_case = time.time()
 
             if global_config['WRITE_VTK']:

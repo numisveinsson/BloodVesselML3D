@@ -140,8 +140,8 @@ def sort_centerline(centerline):
                     cent_ids_new[i].append(cent_ids[i][j])
         cent_ids = cent_ids_new
 
-    # pdb.set_trace()
     num_cent = len(cent_ids)
+    print(f"Num branches {num_cent}, Num points: {num_points}")
     
     return num_points, c_loc, radii, cent_ids, bifurc_id, num_cent
 
