@@ -147,7 +147,7 @@ def sort_centerline(centerline):
     return num_points, c_loc, radii, cent_ids, bifurc_id, num_cent
 
 def get_point_ids_post_proc(centerline_poly):
-    import pdb; pdb.set_trace()
+
     cent = centerline_poly
     num_points = cent.GetNumberOfPoints() # number of points in centerline
     cent_data = collect_arrays(cent.GetPointData())           # point locations as numpy array
