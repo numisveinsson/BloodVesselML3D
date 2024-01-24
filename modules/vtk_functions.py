@@ -286,6 +286,14 @@ def cut_plane(inp, origin, normal):
     cut.Update()
     return cut
 
+def get_points_cells_pd(polydata):
+    cells = []
+    for i in range(polydata.GetNumberOfCells()):
+        cell_points = []
+        for j in range(polydata.GetCell(i).GetNumberOfPoints()):
+            cell_points += [polydata.GetCell(i).GetPointId(j)]
+        cells += [cell_points]
+    return v2n(polydata.GetPoints().GetData()), np.array(cells)
 
 def get_points_cells(inp):
     cells = []
