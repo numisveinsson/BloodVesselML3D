@@ -5,7 +5,7 @@ OUT_DIR: '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_a
 DATASET_NAME: 'vmr' #'vmr' # or other 'other'
 
 TESTING: False
-MODALITY: ['ALL',] # can also be 'MR' 'CT' or 'ALL'
+MODALITY: ['CT','MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
 IMG_EXT: '.mha'
 
 SCALED: False

@@ -9,7 +9,6 @@ def create_dataset(global_config, modality):
     print(f'Subfolders need to be:\n images\n truths\n surfaces\n centerlines')
 
     if dataset_name == 'vmr':
-        from dataset_dirs.datasets import VMR_dataset
         Dataset = VMR_dataset(global_config['DATA_DIR'], [modality], global_config['ANATOMY'])
         cases = Dataset.sort_cases(global_config['TESTING'], global_config['TEST_CASES'])
         cases = Dataset.check_which_cases_in_image_dir(cases)
@@ -112,6 +111,7 @@ class VMR_dataset:
             cases = [f for f in self.df['Legacy Name'].values if f in test_cases]
 
         self.cases = cases
+        print(f"Cases found from url: {cases}")
 
         return cases
     
