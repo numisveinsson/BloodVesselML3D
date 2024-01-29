@@ -816,6 +816,8 @@ def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir, case_na
 
 def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_old, sub):
     sitk.WriteImage(new_img, image_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
+    if sitk.GetArrayFromImage(removed_seg).max() != 1:
+        removed_seg /= sitk.GetArrayFromImage(removed_seg).max()
     sitk.WriteImage(removed_seg, seg_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
     
 def write_surface(new_surf_box, new_surf_sphere, seg_out_dir, case_name, N, n_old, sub):

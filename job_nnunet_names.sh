@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=gather_data
+#SBATCH --job-name=extr_nnunet
 #
 # Account:
 #SBATCH --account=fc_biome
@@ -32,4 +32,4 @@ module load cuda/10.0
 module load cudnn/7.5
 source activate /global/scratch/users/numi/environments/seqseg2
 
-python3  gather_sampling_data.py
+python3  dataset_dirs/create_nnunet.py

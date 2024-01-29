@@ -1,5 +1,11 @@
 import os
 import shutil
+import sys
+
+sys.stdout.flush()
+sys.path.insert(0, '../..')
+sys.path.insert(0, '..')
+# from modules import io
 
 # main script
 if __name__ == "__main__":
@@ -22,21 +28,29 @@ if __name__ == "__main__":
     └── labelsTr
     """
 
+    # global_config_file = "./config/global.yaml"
+    # global_config = io.load_yaml(global_config_file)
+    # modalities = global_config['MODALITY']
+
     directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_miccai_aortas/'
+    directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
+    directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
     modality = 'ct'
 
-    new_dir_dataset_name = 'Dataset011_AORTASMIC'+modality.upper()
-    append = 'aortasmic' + modality
+    start_from = 28707
 
-    also_test = True
+    new_dir_dataset_name = 'Dataset013_AORTASMICVMR'+modality.upper()
+    append = 'aortasmicvmr' + modality
+
+    also_test = False
+
+    out_data_dir = os.path.join(directory_out, new_dir_dataset_name)
 
     # create new dataset directory
     try:
-        os.mkdir(os.path.join(directory, new_dir_dataset_name))
+        os.mkdir(os.path.join(directory_out, new_dir_dataset_name))
     except FileExistsError:
         print(f'Directory {new_dir_dataset_name} already exists')
-
-    out_data_dir = os.path.join(directory, new_dir_dataset_name)
     
     fns_in = [modality+'_train',
             modality+'_train_masks',
@@ -53,7 +67,7 @@ if __name__ == "__main__":
     
     for fn in fns_out:
         try:
-            os.mkdir(os.path.join(directory, new_dir_dataset_name, fn))
+            os.mkdir(os.path.join(directory_out, new_dir_dataset_name, fn))
         except FileExistsError:
             print(f'Directory {fn} already exists')
 
@@ -63,7 +77,7 @@ if __name__ == "__main__":
         imgs.sort()
 
         for i, img in enumerate(imgs):
-            new_name = f'{append}_{(i+1):03d}_0000.nii.gz'
+            new_name = f'{append}_{(i+1+start_from):03d}_0000.nii.gz'
             if fns_out[fns_in.index(fn)] == 'labelsTr' or fns_out[fns_in.index(fn)] == 'labelsTs':
                 new_name = new_name.replace('_0000', '')
             print(f'Copying {img} to {new_name}')
