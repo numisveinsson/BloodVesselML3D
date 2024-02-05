@@ -189,10 +189,14 @@ def write_img(fname, input):
     Write image to file
     Args:
         fname: file name
+        input: vtk object
     """
     _, ext = os.path.splitext(fname)
     if ext == '.mha':
         writer = vtk.vtkXMLPolyDataWriter()
+        # if input is vtkImageData, convert to vtkPolyData
+        if isinstance(input, vtk.vtkImageData):
+            input = geo(input)
     elif ext == '.vti':
         writer = vtk.vtkXMLImageDataWriter()
     elif ext == '.vtk':

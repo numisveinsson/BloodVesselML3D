@@ -574,11 +574,13 @@ def write_2d_planes(planes, stats_out, image_out_dir):
         #     elif min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[2]:
         #         plane = np.moveaxis(plane, -2, 0)
         # shift to positive
-        plane = plane - np.amin(plane)
-        # make rane 0-255
-        plane = plane/max([np.amax(plane),1])*255
-        # make unsigned int
-        plane = plane.astype(np.uint8)
+        # plane = plane - np.amin(plane)
+        # # make rane 0-255
+        # plane = plane/max([np.amax(plane),1])*255
+        # # make unsigned int
+        # plane = plane.astype(np.uint8)
+        
+        plane = cv2.convertScaleAbs(plane, alpha=(255.0/np.amax(plane)))
         # print(f"Shape of plane: {plane.shape}")
         fn_name = image_out_dir + stats_out[i]['NAME']+'.png'
         cv2.imwrite(fn_name, plane)
