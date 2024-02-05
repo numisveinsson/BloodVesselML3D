@@ -822,6 +822,8 @@ def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_
     if max_seg_value != 1:
         import pdb; pdb.set_trace()
         removed_seg /= float(max_seg_value*1.0)
+        # make image unsigned int, removed_seg is sitk image
+        removed_seg = sitk.Cast(removed_seg, sitk.sitkUInt8)
     print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
     sitk.WriteImage(removed_seg, seg_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
     
