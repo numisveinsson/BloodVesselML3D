@@ -21,7 +21,7 @@ if __name__=='__main__':
     modalities = global_config['MODALITY']
 
     out_dir = global_config['OUT_DIR']
-    sys.stdout = open(out_dir+"/log.txt", "w")
+    # sys.stdout = open(out_dir+"/log.txt", "w")
 
     for modality in modalities:
 

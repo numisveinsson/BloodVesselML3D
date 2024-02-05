@@ -32,12 +32,13 @@ if __name__ == "__main__":
     # global_config = io.load_yaml(global_config_file)
     # modalities = global_config['MODALITY']
 
-    directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_miccai_aortas/'
-    directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
+    # directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_miccai_aortas/'
+    directory = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
+    # directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
     directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
     modality = 'ct'
 
-    start_from = 28707
+    start_from = 0 #28707
 
     new_dir_dataset_name = 'Dataset013_AORTASMICVMR'+modality.upper()
     append = 'aortasmicvmr' + modality
