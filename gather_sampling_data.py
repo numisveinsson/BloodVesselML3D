@@ -16,8 +16,7 @@ from dataset_dirs.datasets import *
 
 if __name__=='__main__':
 
-    global_config_file = "./config/global.yaml"
-    global_config = io.load_yaml(global_config_file)
+    global_config = io.load_yaml("./config/global.yaml")
     modalities = global_config['MODALITY']
 
     out_dir = global_config['OUT_DIR']
