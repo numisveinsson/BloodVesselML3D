@@ -38,7 +38,7 @@ if __name__ == "__main__":
     directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
     modality = 'ct'
 
-    start_from = 0 #28707
+    start_from = 0 #28707 
 
     new_dir_dataset_name = 'Dataset013_AORTASMICVMR'+modality.upper()
     append = 'aortasmicvmr' + modality
