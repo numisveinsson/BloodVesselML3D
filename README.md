@@ -27,7 +27,7 @@ The main folder should have the path indicated by `DATA_DIR` in the config file 
 
 1. python3 gather_sampling_data.py
 
-This collects data about all positions of sampling to take place and size of sub-volumes. Then runs through the locations and actually extracts the sub-volumes and saves them.
+This is the main script. This collects data about all positions of sampling to take place and size of sub-volumes. Then runs through the locations and actually extracts the sub-volumes and saves them.
 
 In the case of resampling use
 
