@@ -6,14 +6,14 @@ if __name__=='__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.vti'
-    output_format = '.vtk'
-    label = False # false if raw image
+    input_format = '.mha'
+    output_format = '.nrrd'
+    label = True # false if raw image
 
     # rem_str = 'coroasocact_0'
-    rem_str = False #'_seg_3d_fullres_0'
+    rem_str = '_seg_rem_3d_fullres_0'
 
-    data_folder = '/Users/numisveins/Downloads/vti-images/'
+    data_folder = '/Users/numisveins/Downloads/output_seqseg_asoca_2000/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
