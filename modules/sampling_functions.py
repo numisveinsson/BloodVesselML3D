@@ -309,7 +309,12 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
 
     new_img = extract_volume(reader_im, index_extract, size_extract)
     new_seg = extract_volume(reader_seg, index_extract, size_extract)
-        
+    im_np = sitk.GetArrayFromImage(new_img)
+    seg_np = sitk.GetArrayFromImage(new_seg)
+
+    if seg_np.max() > 1:
+        new_seg /= float(seg_np.max()*1.0)
+
     #print("Original Seg")
     # labels, means, _ = connected_comp_info(new_seg, False)
     #print("Seg w removed bodies")
@@ -319,8 +324,7 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
     removed_seg = remove_other_vessels(new_seg, seed)
     # labels, means, _ = connected_comp_info(removed_seg, True)
 
-    im_np = sitk.GetArrayFromImage(new_img)
-    seg_np = sitk.GetArrayFromImage(new_seg)
+    
     rem_np = sitk.GetArrayFromImage(removed_seg)
     blood_np = im_np[seg_np>0.1]
     ground_truth = rem_np[seg_np>0.1]
@@ -823,7 +827,7 @@ def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_
         removed_seg /= float(max_seg_value*1.0)
         # make image unsigned int, removed_seg is sitk image
         removed_seg = sitk.Cast(removed_seg, sitk.sitkUInt8)
-    # print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
+    print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
     sitk.WriteImage(removed_seg, seg_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
     
 def write_surface(new_surf_box, new_surf_sphere, seg_out_dir, case_name, N, n_old, sub):

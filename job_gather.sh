@@ -6,7 +6,7 @@
 #SBATCH --account=fc_biome
 #
 # Partition:
-#SBATCH --partition=savio3_htc
+#SBATCH --partition=savio4_htc
 #
 # QoS:
 #SBATCH --qos=savio_normal
@@ -21,7 +21,7 @@
 #SBATCH --cpus-per-task=2
 #
 # Wall clock limit:
-#SBATCH --time=72:00:00
+#SBATCH --time=24:00:00
 #
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=numi@berkeley.edu
@@ -31,5 +31,6 @@ module load gcc
 module load cuda/10.0
 module load cudnn/7.5
 source activate /global/scratch/users/numi/environments/seqseg2
+cd /global/scratch/users/numi/BloodVesselML3D/
 
 python3  gather_sampling_data.py
