@@ -314,6 +314,8 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
 
     if seg_np.max() > 1:
         new_seg /= float(seg_np.max()*1.0)
+        # make unsigned int
+        new_seg = sitk.Cast(new_seg, sitk.sitkUInt8)
 
     #print("Original Seg")
     # labels, means, _ = connected_comp_info(new_seg, False)
