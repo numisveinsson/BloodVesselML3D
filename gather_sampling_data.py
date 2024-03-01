@@ -230,7 +230,7 @@ if __name__=='__main__':
             print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K, k_old, out_dir)
 
         print_all_done(info, N, M, K, O, mul_l)
-        print_into_info_all_done(info_file_name, N, M, K, O, out_dir)
+        print_into_info_all_done(info_file_name, N, M, K, O, out_dir, start_time=start_time)
         print(f"\n--- {(time.time() - start_time)/60:.2f} min ---")
         print("Continue to write out csv file w info")
         write_csv(csv_list, csv_list_val, modality, global_config)
