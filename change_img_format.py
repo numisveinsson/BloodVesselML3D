@@ -6,14 +6,14 @@ if __name__=='__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.mha'
-    output_format = '.nrrd'
+    input_format = '.nii.gz'
+    output_format = '.mha'
     label = True # false if raw image
 
     # rem_str = 'coroasocact_0'
-    rem_str = '_seg_rem_3d_fullres_0'
+    rem_str = ''
 
-    data_folder = '/Users/numisveins/Downloads/output_seqseg_asoca_2000/'
+    data_folder = '/Users/numisveins/Documents/Total_Segmentator_Heart_Data/ct_train_masks/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
