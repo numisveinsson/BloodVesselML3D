@@ -6,6 +6,7 @@ from .vtk_functions import *
 from .sitk_functions import *
 from vtk.util.numpy_support import vtk_to_numpy as v2n
 
+import time
 np.random.seed(0)
 random.seed(0)
 
@@ -788,15 +789,17 @@ def print_into_info(info_file_name, case_name, N, n_old, M, m_old, K, k_old, out
     f.write("\n ")
     f.close()
 
-def print_into_info_all_done(info_file_name, N, M, K, O, out_dir):
+def print_into_info_all_done(info_file_name, N, M, K, O, out_dir, start_time = None):
     f = open(out_dir +info_file_name,'a')
     f.write("\n *** " + str(N) +" extractions! ***")
     f.write("\n *** " + str(M) +" throwouts! ***")
     f.write("\n *** " + str(K) +" errors in saving! ***")
     f.write("\n *** " + str(O) +" have more than one label! ***")
+    if start_time:
+        f.write(f"\n *** Time: {(time.time()-start_time)/60} minutes ***")
     f.close()
 
-def print_all_done(info, N, M, K, O, mul_l):
+def print_all_done(info, N, M, K, O, mul_l = None):
     for i in info:
         print(i)
         print(info[i])
@@ -807,8 +810,10 @@ def print_all_done(info, N, M, K, O, mul_l):
     print("**** " + str(M) +" throwouts! ****")
     print("**** " + str(K) +" errors in saving! **** \n")
     print("**** O: " + str(O) +" have more than one label! They are: **** \n")
-    for i in mul_l:
-        print(i)
+    
+    if mul_l:
+        for i in mul_l:
+            print(i)
 
 def write_vtk(new_img, removed_seg, out_dir, case_name, N, n_old, sub):
     # write vtk, if N is a multiple of 10
@@ -829,7 +834,9 @@ def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_
         removed_seg /= float(max_seg_value*1.0)
         # make image unsigned int, removed_seg is sitk image
         removed_seg = sitk.Cast(removed_seg, sitk.sitkUInt8)
-    print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
+    # print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
+    # assert max_seg_value is 1
+    assert sitk.GetArrayFromImage(removed_seg).max() == 1
     sitk.WriteImage(removed_seg, seg_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
     
 def write_surface(new_surf_box, new_surf_sphere, seg_out_dir, case_name, N, n_old, sub):
@@ -854,7 +861,7 @@ def write_csv(csv_list, csv_list_val, modality, global_config):
                     "GT_STD",        "GT_MAX",       "GT_MIN",   "LARGEST_MEAN", "LARGEST_STD",
                     "LARGEST_MAX",   "LARGEST_MIN",  "RADIUS",   "TANGENTX",     "TANGENTY", 
                     "TANGENTZ",      "BIFURCATION",  "NUM_VOX",  "OUTLETS",      "NUM_OUTLETS"]
-    with open(global_config['OUT_DIR']+modality+csv_file, 'w') as csvfile:
+    with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
         for data in csv_list:
@@ -873,7 +880,7 @@ def write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val
     else: csv_file = '_train'+csv_file
 
     csv_columns = ["No", "NAME", "NUM_CENT", "STEPS"]
-    with open(global_config['OUT_DIR']+modality+csv_file, 'w') as csvfile:
+    with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
         for data in csv_discrete_centerline:
@@ -893,7 +900,7 @@ def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, glo
     else: csv_file = '_train'+csv_file
 
     csv_columns = ["NAME", "CENTER", "WIDTH", "SIZE"]
-    with open(global_config['OUT_DIR']+modality+csv_file, 'w') as csvfile:
+    with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         writer.writeheader()
         for data in csv_outlet_stats:
