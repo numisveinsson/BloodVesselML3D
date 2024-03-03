@@ -247,7 +247,7 @@ if __name__=='__main__':
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
         # Multiprocessing
-        num_cores = 5 #multiprocessing.cpu_count()
+        num_cores = multiprocessing.cpu_count()
         print(f"Number of cores: {num_cores}")
         pool = multiprocessing.Pool(num_cores)
         results = [pool.apply_async(sample_case, args=(case, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality)) for case in cases]
