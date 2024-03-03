@@ -201,9 +201,14 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_di
     print(f"Total time for this case: {(time.time() - time_now_case):.2f} sec")
     print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K, k_old, out_dir)
     write_csv(csv_list, csv_list_val, modality, global_config)
+    if global_config['WRITE_DISCRETE_CENTERLINE']:
+        write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val, modality, global_config)
 
+    if global_config['WRITE_OUTLET_STATS']:
+        write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config)
+        write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config)
 
-    return csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, total_num_examples, total_num_examples_pos
+    return csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val
 
 if __name__=='__main__':
 
@@ -242,25 +247,20 @@ if __name__=='__main__':
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
         # Multiprocessing
-        num_cores = multiprocessing.cpu_count()
+        num_cores = 5 #multiprocessing.cpu_count()
         print(f"Number of cores: {num_cores}")
         pool = multiprocessing.Pool(num_cores)
         results = [pool.apply_async(sample_case, args=(case, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality)) for case in cases]
         pool.close()
         pool.join()
         # Collect results
-        for result in results:
-            csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, total_num_examples, total_num_examples_pos = result.get()
+        # for result in results:
+        #     csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val = result.get()
 
         # print_all_done(info, N, M, K, O)
             # write_csv(csv_list, csv_list_val, modality, global_config)
             
-            if global_config['WRITE_DISCRETE_CENTERLINE']:
-                write_csv_discrete_cent(csv_discrete_centerline, csv_discrete_centerline_val, modality, global_config)
 
-            if global_config['WRITE_OUTLET_STATS']:
-                write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config)
-                write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality, global_config)
 
         print_into_info_all_done(info_file_name, N, M, K, O, out_dir, start_time=start_time)
         print(f"\n--- {(time.time() - start_time)/60:.2f} min ---")
