@@ -87,8 +87,8 @@ def save_vtp(polydata, file_path):
 
 if __name__ == "__main__":
     # input_file_path = "/Users/numisveins/Downloads/mega_subvolume/final_01_3d_fullres_0_1001_centerlines.vtp"
-    input_file_path = "/Users/numisveins/Downloads/bryan_out/3d_fullres_0006_0001_0/final_0006_0001_3d_fullres_0_1001_points.vtp"
-    output_file_path = "/Users/numisveins/Downloads/bryan_out/3d_fullres_0006_0001_0/final_0006_0001_3d_fullres_0_1001_points_min_span.vtp"
+    input_file_path = "/Users/numisveins/Downloads/output_v1_no_append/3d_fullres_10/final_10_3d_fullres_0_2001_points.vtp"
+    output_file_path = "/Users/numisveins/Downloads/output_v1_no_append/3d_fullres_10/final_10_3d_fullres_0_2001_points_min_span.vtp"
 
     remove_close_points = False
     threshold = 3.0

@@ -1,19 +1,35 @@
 import os
 import SimpleITK as sitk
 from modules import vtk_functions as vf
+import vtk
+
+def change_mha_vti(file_dir):
+    """
+    Change the format of a file from .mha to .vti
+    SITK does not support .vti format, so we need to use the vtk functions
+    Args:
+        file_dir: str, path to the file
+    Returns:
+        None
+    """
+    img = sitk.ReadImage(file_dir)
+    img = sitk.Cast(img, sitk.sitkUInt8)
+    img = vf.exportSitk2VTK(img)[0]
+    
+    return img
 
 if __name__=='__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.mha'
-    output_format = '.nrrd'
+    input_format = '.nii.gz'
+    output_format = '.mha'
     label = True # false if raw image
 
     # rem_str = 'coroasocact_0'
     rem_str = '_seg_rem_3d_fullres_0'
 
-    data_folder = '/Users/numisveins/Downloads/output_v1_500_stopmin/segs/'
+    data_folder = '/Users/numisveins/Documents/PARSE_dataset/Dataset014_PULMPARSECT/labelsTr/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
@@ -32,12 +48,15 @@ if __name__=='__main__':
             continue
         else:
             print(f"Converting file {fn} to new format {output_format}")
-        if input_format != '.vti':
+        if input_format != '.vti' and output_format != '.vti':
             img = sitk.ReadImage(data_folder+fn)
             if label:
                 img = sitk.Cast(img, sitk.sitkUInt8)
-        else:
+        elif input_format == '.vti':
             img = vf.read_img(data_folder+fn).GetOutput()
+        else:
+            if input_format == '.mha':
+                img = change_mha_vti(data_folder+fn)
         
         if rem_str:
             fn = fn.replace(rem_str, '')
@@ -47,7 +66,7 @@ if __name__=='__main__':
         # img_name = str(int(img_name)-1)
         # img_name = img_name.zfill(2) + output_format
 
-        if input_format != '.vti':
+        if output_format != '.vti':
             sitk.WriteImage(img, out_folder+img_name+output_format)
         else:
             vf.write_img(out_folder+img_name+output_format, img)

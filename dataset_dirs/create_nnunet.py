@@ -36,14 +36,14 @@ if __name__ == "__main__":
     # directory = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
     # directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
     # directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
-    directory = '/Users/numisveins/Documents/Total_Segmentator_Heart_Data/'
-    directory_out = '/Users/numisveins/Documents/Total_Segmentator_Heart_Data/'
+    directory = '/Users/numisveins/Documents/PARSE_dataset/'
+    directory_out = '/Users/numisveins/Documents/PARSE_dataset/'
     modality = 'ct'
 
     start_from = 0 #28707 
 
-    new_dir_dataset_name = 'Dataset015_HEARTTOTALSEG'+modality.upper()
-    append = 'hearttotalseg' + modality
+    new_dir_dataset_name = 'Dataset014_PULMPARSE'+modality.upper()
+    append = ('PULMPARSE').lower() + modality.lower()
 
     also_test = False
 

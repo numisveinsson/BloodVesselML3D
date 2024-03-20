@@ -78,11 +78,12 @@ def create_directories(output_folder, modality, global_config):
                 os.mkdir(output_folder+modality+fn+'_masks_img_outlet_detection')
             except Exception as e: print(e)
 
-def create_vtk_dir(output_folder, case_name):
+def create_vtk_dir(output_folder, case_name, throwout=0.0):
     
     os.mkdir(output_folder+'vtk_data/vtk_' + case_name)
     os.mkdir(output_folder+'vtk_data/vtk_mask_' + case_name)
-    os.mkdir(output_folder+'vtk_data/vtk_throwout_' + case_name)
+    if throwout:
+        os.mkdir(output_folder+'vtk_data/vtk_throwout_' + case_name)
 
 def get_cent_ids(num_points, cent_id, ip):
     
@@ -817,15 +818,15 @@ def print_all_done(info, N, M, K, O, mul_l = None):
 
 def write_vtk(new_img, removed_seg, out_dir, case_name, N, n_old, sub):
     # write vtk, if N is a multiple of 10
-    if N-n_old%10 == 0:
-        sitk.WriteImage(new_img, out_dir+'vtk_data/vtk_' + case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
-        if sitk.GetArrayFromImage(removed_seg).max() == 1:
-            removed_seg *= 255
-        sitk.WriteImage(removed_seg, out_dir+'vtk_data/vtk_mask_'+ case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.vtk')
+    # if N-n_old%10 == 0:
+    sitk.WriteImage(new_img, out_dir+'vtk_data/vtk_' + case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.mha')
+    if sitk.GetArrayFromImage(removed_seg).max() == 1:
+        removed_seg *= 255
+    sitk.WriteImage(removed_seg, out_dir+'vtk_data/vtk_mask_'+ case_name +'/' +str(N-n_old)+'_'+str(sub)+ '.mha')
 
 def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir, case_name, N, n_old, sub):
     new_seg = extract_volume(reader_seg, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
-    sitk.WriteImage(new_seg, out_dir+'vtk_data/vtk_throwout_' +case_name+'/'+str(N-n_old)+ '_'+str(sub)+'.vtk')
+    sitk.WriteImage(new_seg, out_dir+'vtk_data/vtk_throwout_' +case_name+'/'+str(N-n_old)+ '_'+str(sub)+'.mha')
 
 def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_old, sub):
     sitk.WriteImage(new_img, image_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')

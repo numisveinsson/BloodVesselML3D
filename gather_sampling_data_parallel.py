@@ -39,7 +39,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_di
 
     if global_config['WRITE_VTK']:
         try:
-            create_vtk_dir(out_dir, case_dict['NAME'])
+            create_vtk_dir(out_dir, case_dict['NAME'], global_config['CAPFREE'])
         except Exception as e: print(e)
 
     ## Read Image Metadata
@@ -47,9 +47,10 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_di
     reader_im0, origin_im0, size_im, spacing_im = sf.import_image(case_dict['IMAGE'])
 
     ## Surface Caps
-    global_surface = vf.read_geo(case_dict['SURFACE']).GetOutput()
-    if global_config['CAPFREE']:
-        cap_locs = get_surf_caps(global_surface)
+    if global_config['CAPFREE'] or global_config['WRITE_SURFACE']:
+        global_surface = vf.read_geo(case_dict['SURFACE']).GetOutput()
+        if global_config['CAPFREE']:
+            cap_locs = get_surf_caps(global_surface)
     
     ## Centerline
     global_centerline = vf.read_geo(case_dict['CENTERLINE']).GetOutput()
@@ -221,6 +222,7 @@ if __name__=='__main__':
     for modality in modalities:
 
         cases = create_dataset(global_config, modality)
+        cases = cases[:10]
 
         modality = modality.lower()
         info_file_name = "info"+'_'+modality+dt_string+".txt"
