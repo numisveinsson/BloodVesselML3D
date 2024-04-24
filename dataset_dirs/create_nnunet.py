@@ -40,12 +40,12 @@ if __name__ == "__main__":
     directory_out = '/Users/numisveins/Documents/PARSE_dataset/'
     modality = 'ct'
 
-    start_from = 0 #28707 
+    start_from = 0 #28707
 
-    new_dir_dataset_name = 'Dataset014_PULMPARSE'+modality.upper()
+    new_dir_dataset_name = 'Dataset015_PULMPARSE'+modality.upper()
     append = ('PULMPARSE').lower() + modality.lower()
 
-    also_test = False
+    also_test = True
 
     out_data_dir = os.path.join(directory_out, new_dir_dataset_name)
 

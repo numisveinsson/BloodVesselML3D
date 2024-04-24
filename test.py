@@ -35,6 +35,8 @@ def points2polydata(xyz):
 
 if __name__=='__main__':
 
+    import pdb; pdb.set_trace()
+    file_fd = '/Users/numisveins/Downloads/drive-download-20240417T214233Z-001/ct_train_masks_centerlines/Diseased_1_0_4.vtp'
     model = '0141_1001.vtp'
 
     file_dir = '/Users/numisveinsson/Documents/Side_SV_projects/SV_ML_Training/vascular_data_3d/'
