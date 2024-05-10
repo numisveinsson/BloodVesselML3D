@@ -13,8 +13,85 @@ from modules import io
 from modules.sampling_functions import *
 from modules.pre_process import *
 from dataset_dirs.datasets import *
+import SimpleITK as sitk
 
 import multiprocessing
+import pdb
+
+class ForkedPdb(pdb.Pdb):
+    """A Pdb subclass that may be used
+    from a forked multiprocessing child
+
+    """
+    def interaction(self, *args, **kwargs):
+        _stdin = sys.stdin
+        try:
+            sys.stdin = open('/dev/stdin')
+            pdb.Pdb.interaction(self, *args, **kwargs)
+        finally:
+            sys.stdin = _stdin
+
+def write_voxel_pyramid(size_r, center, rads, count, origin_im, spacing_im, size_im, global_config, 
+                        reader_im, case_dict, N, n_old, image_out_dir, sub):
+       
+    # Get subvolume information for level.                                
+    size_extract, index_extract, _, _ = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, size_im, global_config['CAPFREE_PROP'])
+    size_extract = size_extract.astype(np.int32)
+    index_extract = index_extract.astype(np.int32)
+    name_prefix = case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub)
+
+    # Extract entire image array. 
+    zeros = np.zeros(3,).astype(int).tolist()
+    size = np.asarray(reader_im.GetSize()).astype(int).tolist()
+    
+    img = sf.extract_volume(reader_im, zeros, size)
+    img = sitk.GetArrayFromImage(img)
+
+    # Will be updated with subvolume level at each level. 
+    full_img = np.zeros(size_extract)
+    s = index_extract
+    t = index_extract + size_extract
+
+    # For debugging. 
+    level_imgs = [full_img]
+
+    # Will write a level for multiples of 2.    
+    for level in range(2):
+        
+        ## Determine how much to pad the image ##
+        
+        # Half the size of the subvolume, will add on each side in order to double size centered on point. 
+        delta = (np.asarray(full_img.shape) / 2).astype(np.int32)       
+        
+        # Determine doubled subvolume's location relative to original volume. 
+        s -= delta
+        t += delta
+        lens = (t - s) + 1 * np.where((t - s) % 2 == 1, 1, 0)
+        
+        # Clip the indeces to lie within the original volume. 
+        vs = np.clip(s, a_min=0, a_max=None)
+        vt = np.clip(t, a_min=0, a_max=size)
+        
+        # Get subvolume data from image using within-bounds indeces. 
+        sub_img = img[vs[0]:vt[0], vs[1]:vt[1], vs[2]:vt[2]]
+        
+        # Will contain full padded image. 
+        full_img = np.zeros(lens)
+        
+        # Start index to pad the image. 
+        start = np.clip(-s, a_min=0, a_max=None)
+
+        # Fill full image with subvolume data. 
+        full_img[start[0]:start[0]+sub_img.shape[0], start[1]:start[1]+sub_img.shape[1], start[2]:start[2]+sub_img.shape[2]] = sub_img
+
+        # Path to save level. 
+        level_dir = os.path.join(image_out_dir, f'level_{level}')
+        os.makedirs(level_dir, exist_ok=True)
+        path = os.path.join(level_dir, name_prefix)
+
+        # Save level. 
+        np.save(path, full_img)
+        level_imgs.append(full_img)
 
 def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality):
     
@@ -137,6 +214,11 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_di
                                         write_img(new_img_re, removed_seg_re, image_out_dir, seg_out_dir, case_dict['NAME'], N, n_old, sub)
                                     else:
                                         write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_dict['NAME'], N, n_old, sub)
+                                    
+                                    # Write voxel pyramid images if desired. 
+                                    if global_config['WRITE_VOXEL_PYRAMID']:
+                                        write_voxel_pyramid(size_r, center, rads, count, origin_im, spacing_im, size_im, global_config, 
+                                                            reader_im, case_dict, N, n_old, image_out_dir, sub)
                                     
                                 if global_config['WRITE_VTK']:
                                     write_vtk(new_img, removed_seg, out_dir, case_dict['NAME'], N, n_old, sub)

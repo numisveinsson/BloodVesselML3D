@@ -4,6 +4,8 @@ from datetime import datetime
 now = datetime.now()
 dt_string = now.strftime("_%d_%m_%Y_%H_%M_%S")
 
+import pdb
+
 import sys
 sys.stdout.flush()
 
@@ -13,6 +15,64 @@ from modules import io
 from modules.sampling_functions import *
 from modules.pre_process import *
 from dataset_dirs.datasets import *
+
+def write_voxel_pyramid(size_r, center, rads, count, origin_im, spacing_im, size_im, global_config, 
+                        reader_im, case_dict, N, n_old, image_out_dir, sub):
+       
+    # Get subvolume information for level.                                
+    size_extract, index_extract, _, _ = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, size_im, global_config['CAPFREE_PROP'])
+    size_extract = size_extract.astype(np.int32)
+    index_extract = index_extract.astype(np.int32)
+    name_prefix = case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub)+'.nii.gz'
+
+    # Extract entire image array. 
+    zeros = np.zeros(size_im).astype(int).tolist()
+    size = np.asarray(reader_im.GetSize()).astype(int).tolist()
+    img = sf.extract_volume(reader_im, zeros, size)
+
+    # Will be updated with subvolume level at each level. 
+    full_img = np.zeros(size_extract)
+
+    # Will write a level for multiples of 2.    
+    for i in range(2):
+        
+        ## Determine how much to pad the image ##
+        
+        # Half the size of the subvolume, will add on each side in order to double size centered on point. 
+        delta = (np.asarray(full_img.shape) / 2).astype(np.int32)       
+        
+        # Determine doubled subvolume's location relative to original volume. 
+        s = index_extract - delta
+        t = index_extract + size_extract + delta
+        
+        # Add one if the size is odd.
+        for i in range(3):
+            if size_extract[i] % 2 == 1:
+                t[i] += 1
+        
+        # Clip the indeces to lie within the original volume. 
+        vs = np.clip(s, a_min=0, a_max=None)
+        vt = np.clip(t, a_min=0, a_max=size)
+        
+        # Get subvolume data from image using within-bounds indeces. 
+        sub_img = img[vs[0]:vt[0], vs[1]:vt[1], vs[2]:vt[2]]
+        
+        # Will contain full padded image. 
+        full_img = np.zeros(t - s)
+        
+        # Start index to pad the image. 
+        start = np.clip(-s, a_min=0, a_max=None)
+
+        # Fill full image with subvolume data. 
+        full_img[start[0]:start[0]+sub_img.shape[0], start[1]:start[1]+sub_img.shape[1], start[2]:start[2]+sub_img.shape[2]] = sub_img
+
+        # Path to save level. 
+        level_dir = os.path.join(image_out_dir, f'level_{i}')
+        os.makedirs(level_dir, exist_ok=True)
+        path = os.path.join(level_dir, name_prefix)
+
+        # Save level. 
+        np.save(path, full_img)
 
 if __name__=='__main__':
 
@@ -71,8 +131,12 @@ if __name__=='__main__':
                 except Exception as e: print(e)
 
             ## Read Image Metadata
-            reader_seg0 = sf.read_image(case_dict['SEGMENTATION'])
-            reader_im0, origin_im0, size_im, spacing_im = sf.import_image(case_dict['IMAGE'])
+            try: 
+                reader_seg0 = sf.read_image(case_dict['SEGMENTATION'])
+                reader_im0, origin_im0, size_im, spacing_im = sf.import_image(case_dict['IMAGE'])
+            except: 
+                print(f"Error reading image data for {case_dict['NAME']}")
+                continue
 
             ## Surface Caps
             global_surface = vf.read_geo(case_dict['SURFACE']).GetOutput()
@@ -99,6 +163,7 @@ if __name__=='__main__':
                     continue
                 # Get info of those ids
                 locs, rads, bifurc = c_loc[ids], radii[ids], bifurc_id[ids] # locations of those points, radii and bifurcation ids at those locations
+            
                 # Continue taking steps while still on centerline
                 on_cent, count = True, 0 # count is the point along centerline
                 print(f"\n--- {case_dict['NAME']} ---")
@@ -118,16 +183,21 @@ if __name__=='__main__':
 
                         # Calculate centers and sizes of samples for this point
                         centers, sizes, save_bif, n_samples, vec0 = calc_samples(count, bifurc, locs, rads, global_config)
+                        
                         sub = 0 # In the case of multiple samples at this point
                         for sample in range(n_samples):
                             # Map each center and size to image data
-                            center, size_r = centers[sample], sizes[sample]
+                            center, size_r = centers[sample], sizes[sample] 
+                            
+                            # Get subvolume information for 3 levels of voxel pyramid.                                
                             size_extract, index_extract, voi_min, voi_max = sf.map_to_image(center, rads[count], size_r, origin_im, spacing_im, size_im, global_config['CAPFREE_PROP'])
+                            
                             # Check if a surface cap is in volume
                             if global_config['CAPFREE']:
                                 is_inside = vf.voi_contain_caps(voi_min, voi_max, cap_locs)
                             else:
                                 is_inside = False
+                                
                             # Continue if surface cap is not present
                             if not is_inside:
                                 print("*", end =" ")
@@ -139,6 +209,7 @@ if __name__=='__main__':
                                         stats, new_img, removed_seg, O = extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, 
                                                                          origin_im, spacing_im, locs[count], rads[count], size_r, N, name, O, 
                                                                          remove_others=global_config['REMOVE_OTHER'])
+                                        
                                         if global_config['WRITE_SURFACE']:
                                             stats_surf, new_surf_box, new_surf_sphere = extract_surface(new_img, global_surface, center, size_r*rads[count])
                                             num_out = len(stats_surf['OUTLETS'])
@@ -161,9 +232,14 @@ if __name__=='__main__':
                                             if global_config['RESAMPLE_VOLUMES']:
                                                 removed_seg_re  = resample_spacing(removed_seg, template_size=global_config['RESAMPLE_SIZE'], order=1)[0]
                                                 new_img_re  = resample_spacing(new_img, template_size=global_config['RESAMPLE_SIZE'], order=1)[0]
-                                                write_img(new_img_re, removed_seg_re, image_out_dir, seg_out_dir, case_dict['NAME'], N, n_old, sub)
+                                                write_img(new_img_re, removed_seg_re, image_out_dir, seg_out_dir, case_dict['NAME'], N, n_old, sub)                                                   
                                             else:
                                                 write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_dict['NAME'], N, n_old, sub)
+                                            
+                                            # Write voxel pyramid images if desired. 
+                                            if global_config['WRITE_VOXEL_PYRAMID']:
+                                                write_voxel_pyramid(size_r, center, rads, count, origin_im, spacing_im, size_im, global_config, 
+                                                                    reader_im, reader_seg, case_dict, N, n_old, O, locs)
                                             
                                         if global_config['WRITE_VTK']:
                                             write_vtk(new_img, removed_seg, out_dir, case_dict['NAME'], N, n_old, sub)
@@ -199,7 +275,7 @@ if __name__=='__main__':
                                 
                                 except Exception as e:
                                     print(e)
-                                    #print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
+                                    print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
                                     K+=1
 
                             else:
