@@ -35,13 +35,13 @@ if __name__=='__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.nii.gz'
-    output_format = '.nrrd'
-    label = True # false if raw image
+    input_format = '.vti'
+    output_format = '.nii.gz'
+    label = False # false if raw image
 
     rem_str = 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/ASOCA_dataset/Results_Predictions/output_2d_coroasocact/postprocessed_2_largest_region/'
+    data_folder = '/Users/numisveins/Documents/data_combo_paper/ct_data/test_images_for_combined/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
@@ -78,8 +78,8 @@ if __name__=='__main__':
         
         img_name = fn.replace(input_format, '')
         # make int and remove 1 
-        img_name = str(int(img_name)-1)
-        img_name = img_name.zfill(2) + output_format
+        # img_name = str(int(img_name)-1)
+        # img_name = img_name.zfill(2) + output_format
 
         print(f"Saving {img_name}")
         if output_format != '.vti':
