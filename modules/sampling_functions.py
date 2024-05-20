@@ -144,7 +144,7 @@ def sort_centerline(centerline):
         cent_ids = cent_ids_new
 
     num_cent = len(cent_ids)
-    print(f"Num branches {num_cent}, Num points: {num_points}")
+    # print(f"Num branches {num_cent}, Num points: {num_points}")
     
     return num_points, c_loc, radii, cent_ids, bifurc_id, num_cent
 
@@ -411,7 +411,8 @@ def extract_centerline(img, centerline):
     stats = {}
     vtkimage = exportSitk2VTK(img)
     cent_local = bound_polydata_by_image(vtkimage[0], centerline, 0)
-    cent_local = get_largest_connected_polydata(cent_local)
+    # cent_local = get_largest_connected_polydata(cent_local)
+    print(f"Skipping keeping largest connected centerline")
 
     return stats, cent_local
 
@@ -448,28 +449,50 @@ def transform_to_ref(locs, bounds):
 
     return locs
 
-def discretize_centerline(centerline, img, N, sub, name, outdir, num_discr_points=10):
+def transform_from_ref(locs, bounds):
+    """
+    Function to transform the locations
+    from the reference frame
+    """
+    delta = bounds[1,:] - bounds[0,:] # size of image
+    locs = locs*delta + bounds[0,:]
+
+    return locs
+
+def discretize_centerline(centerline, img, N = None, sub = None, name = None, outdir = None, num_discr_points=10):
     """
     Function to discretize centerline mesh into points
     with labels
     Input: centerline .vtp
     Output: stats dictionary
+
+    Args:
+        centerline: vtk polydata of centerline
+        img: sitk image
+        N: number of centerline
+        sub: number of subcenterline
+        name: name of the centerline
+        outdir: output directory
+        num_discr_points: number of discretized points
+    Returns:
+        stats: dictionary with statistics
     """
     bounds = get_bounds(img)
 
     num_points, c_loc, radii, cent_id, bifurc_id, num_cent = sort_centerline(centerline)
     
     c_loc = transform_to_ref(c_loc, bounds)
-
-    cent_id, num_cent = clean_cent_ids(cent_id, num_cent)
+    # cent_id, num_cent = clean_cent_ids(cent_id, num_cent)
     total_ids = []
     stats = {}
-    stats['NAME'] = name
-    stats['No'] = N
+    if name:
+        stats['NAME'] = name
+    if N:
+        stats['No'] = N
     steps = np.empty((0,6))
     for ip in range(num_cent):
 
-        ids = get_cent_ids(num_points, cent_id, ip)
+        ids = cent_id[ip]
         # Remove ids that are already in the total_ids
         ids = [i for i in ids if i not in total_ids]
         total_ids.extend(ids)
@@ -484,15 +507,15 @@ def discretize_centerline(centerline, img, N, sub, name, outdir, num_discr_point
             num_cent -= 1
             continue
         # create polydata from locs
-        locs_pd = points2polydata(locs)
-        write_geo(outdir+'/vtk_data/vtk_' + name[:9] +'/' +str(N)+'_'+str(sub)+'_'+str(ip)+ '.vtp', locs_pd)
+        if outdir:
+            locs_pd = points2polydata(locs)
+            write_geo(outdir+'/vtk_data/vtk_' + name[:9] +'/' +str(N)+'_'+str(sub)+'_'+str(ip)+ '.vtp', locs_pd)
 
         steps = create_steps(steps, locs, rads, bifurc, ip)
     #print(steps[:,-2:])
-    #print(f'Number of centerlines: {num_cent}')
+    # print(f'Number of centerlines: {num_cent}')
     stats['NUM_CENT'] = num_cent
     stats['STEPS'] = steps
-    #print(f'Shape of steps: {steps.shape}')
     return stats
 
 def get_outlet_stats(stats, img, seg, upsample = False):
