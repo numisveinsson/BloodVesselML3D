@@ -36,14 +36,15 @@ if __name__ == "__main__":
     # directory = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
     # directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
     # directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
-    directory = '/Users/numisveins/Documents/PARSE_dataset/'
-    directory_out = '/Users/numisveins/Documents/PARSE_dataset/'
+    directory = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
+    directory_out = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
     modality = 'ct'
 
     start_from = 0 #28707
+    name = 'HEARTMMWHS'
 
-    new_dir_dataset_name = 'Dataset015_PULMPARSE'+modality.upper()
-    append = ('PULMPARSE').lower() + modality.lower()
+    new_dir_dataset_name = 'Dataset016_'+name+modality.upper()
+    append = name.lower() + modality.lower()
 
     also_test = True
 
@@ -58,9 +59,11 @@ if __name__ == "__main__":
     fns_in = [modality+'_train',
             modality+'_train_masks',
            ]
+
     if also_test:
         fns_in.append(modality+'_test')
         fns_in.append(modality+'_test_masks')
+    
     fns_out = ['imagesTr',
             'labelsTr',
            ]
@@ -75,6 +78,10 @@ if __name__ == "__main__":
             print(f'Directory {fn} already exists')
 
     for fn in fns_in:
+        # check if exists
+        if not os.path.exists(os.path.join(directory, fn)):
+            print(f'{fn} does not exist')
+            continue
         imgs = os.listdir(os.path.join(directory, fn))
         imgs = [img for img in imgs if img.endswith('.nii.gz')]
         imgs.sort()
