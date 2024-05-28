@@ -2,10 +2,10 @@ import numpy as np
 import SimpleITK as sitk
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy, get_vtk_array_type
-# import from Data/modules
-from modules import vtk_functions as vf
-from modules import sitk_functions as sf
-import os
+import sys, os
+# add the path to the modules ../modules/
+sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
+import vtk_functions as vf
 
 def eraseBoundary(labels, pixels, bg_id):
     """
@@ -296,10 +296,10 @@ def convertPolyDataToImageData(poly, ref_im):
 if __name__=='__main__':
 
     # Let's create surfaces from segmentations
-    dir_segmentations = '/Users/numisveins/Documents/PARSE_dataset/labels/'
-    img_ext = '.nii.gz'
+    dir_segmentations = '/Users/numisveins/Documents/aortaseg24/process_binary/binary_segs/'
+    img_ext = '.mha'
     # Which folder to write surfaces to
-    out_dir = '/Users/numisveins/Documents/PARSE_dataset/surfaces/'
+    out_dir = '/Users/numisveins/Documents/aortaseg24/process_binary/surfaces/'
 
     # all segmentations we have, create surfaces for each
     imgs = os.listdir(dir_segmentations)

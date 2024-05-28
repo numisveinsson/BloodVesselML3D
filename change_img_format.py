@@ -35,13 +35,13 @@ if __name__=='__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.dcm'
+    input_format = '.nii.gz'
     output_format = '.mha'
     label = False # false if raw image
 
     rem_str = 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Downloads/Phase_6/'
+    data_folder = '/Users/numisveins/Documents/Karthik_coronary_data/prelim_globalnnunet_pred/2d/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
