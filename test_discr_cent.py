@@ -227,21 +227,25 @@ def get_c_loc(centerline):
 
     return c_loc
 
-def discr_centerline_vectors(centerline , num_vectors = 20, vector_size = 0.05):
+def discr_centerline_vectors(centerline , num_vectors = 100, vector_size = 0.05):
     """
     Function to discretize the centerline into a sequence of vectors
+    The centerline has multiple branches
+    And each branch is its own sequence of vectors
 
     Args:
         centerline: vtkPolyData, centerline of the vessel
-        num_vectors: int, number of vectors to discretize a unit sphere into
+        num_vectors: int, number of vectors to discretize a unit sphere into (size of vocabulary)
         vector_size: float, magnitude of the vectors
     Returns:
         vectors: np.array, N x 3 array of vectors, where N is the number of vectors
     """
     # create the list of vectors defining a unit sphere
-    vectors = discr_sphere(num_vectors)
-    vectors_pd = vf.points2polydata(vectors)
+    vectors = discr_sphere(num_vectors) # the vocabulary we are going to use
+    # write the vectors for debuggings
+    vectors_pd = vf.vectors2polydata(vectors) #vf.points2polydata(vectors)
     vf.write_geo('/Users/numisveins/Documents/Transformer_Tracing/debug_output/vectors.vtp', vectors_pd)
+    
     # discretize the centerline based on vector_size
     centerline = process_centerline_length(centerline, vector_size)
 
@@ -321,14 +325,14 @@ def get_branch_lengths(c_locs, cent_id, num_cent):
     branch_lengths = np.zeros(num_cent)
     for i in range(num_cent):
         branch_lengths[i] = np.sum(np.linalg.norm(np.diff(c_locs[cent_id[i]], axis = 0), axis=1))
-
+        lengths = np.cumsum(np.insert(np.linalg.norm(np.diff(c_locs[cent_id[i]], axis=0), axis=1), 0, 0))
     return branch_lengths
     
 
 def discr_sphere(num_vectors = 100):
     """
     Function to discretize a unit sphere into num_vectors vectors
-    They are uniformly distributed on the sphere
+    They are uniformly distributed on the sphere, all originating from the center
     They are unit vectors
     They are in the form of a N x 3 array
 
@@ -338,17 +342,39 @@ def discr_sphere(num_vectors = 100):
     Returns:
         vectors: np.array, N x 3 array of vectors, where N is the number of vectors
     """
-    # create the vectors
-    phi = np.linspace(0, np.pi, num_vectors)
-    theta = np.linspace(0, 2*np.pi, num_vectors)
-    vectors = np.zeros((num_vectors**2, 3))
-    for i in range(num_vectors):
-        for j in range(num_vectors):
-            x = np.sin(phi[i]) * np.cos(theta[j])
-            y = np.sin(phi[i]) * np.sin(theta[j])
-            z = np.cos(phi[i])
-            vectors[i*num_vectors + j] = np.array([x, y, z])
+    vectors = fibonacci_sphere(num_vectors)
+    vectors = np.array(vectors)
     return vectors
+
+def fibonacci_sphere(samples=1000):
+    """
+    Function to create a fibonacci sphere with samples number of points
+    The points are uniformly distributed on the sphere
+    They are in the form of a list of tuples
+
+    Args:
+        samples: int, number of points on the sphere
+
+    Returns:
+        points: list, list of tuples of points on the sphere
+    """
+    import math
+
+    points = []
+    phi = math.pi * (math.sqrt(5.) - 1.)  # golden angle in radians
+
+    for i in range(samples):
+        y = 1 - (i / float(samples - 1)) * 2  # y goes from 1 to -1
+        radius = math.sqrt(1 - y * y)  # radius at y
+
+        theta = phi * i  # golden angle increment
+
+        x = math.cos(theta) * radius
+        z = math.sin(theta) * radius
+
+        points.append((x, y, z))
+
+    return points
 
 if __name__=='__main__':
 
