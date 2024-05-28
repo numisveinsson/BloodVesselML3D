@@ -865,3 +865,117 @@ def remove_duplicate_points(centerline):
 
     # Return the new polydata
     return new_centerline
+
+def vtk_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
+    """
+    Use the VTK marching cube to create isosrufaces for all classes excluding the background
+    Args:
+        labels: vtk image contraining the label map
+        bg_id: id number of background class
+        smooth: smoothing iteration
+    Returns:
+        mesh: vtk PolyData of the surface mesh
+    """
+    contour = vtk.vtkMarchingCubes()
+    contour.SetInputData(vtkLabel)
+    contour.SetValue(0, seg_id)
+    contour.Update()
+    mesh = contour.GetOutput()
+
+    return mesh
+
+def vectors2polydata(vectors):
+    """
+    Function to convert list of vectors to polydata
+    If the vectors don't have start points, they are assumed to start at origin
+    The vectors are assumed to be in 3D
+    The function uses vtkPolyData and GetPointData and SetVectors to store the vectors
+    and cell type vtkVertex
+    
+    Args:
+        vectors: list or np.array of vectors, shape (n, 3) or (n, 6)
+    Returns:
+        polydata: vtk polydata object
+    """
+    # Create the points
+    points = vtk.vtkPoints()
+    # Create the topology of the point (a vertex)
+    vertices = vtk.vtkCellArray()
+    # Add points
+    for i in range(0, len(vectors)):
+        # Get the vector
+        try:
+            v = vectors.loc[i].values.tolist()
+        except:
+            v = vectors[i]
+
+        # Check if the vector has start and end points
+        if len(v) == 3:
+            # If the vector doesn't have start and end points, assume it starts at origin
+            start = [0, 0, 0]
+            end = v
+        elif len(v) == 6:
+            # If the vector has start and end points, get the start and end points
+            start = v[:3]
+            end = v[3:]
+        else:
+            raise ValueError("The vectors should have either 3 or 6 elements")
+
+        # Add the start point
+        point_id = points.InsertNextPoint(start)
+        vertices.InsertNextCell(1)
+        vertices.InsertCellPoint(point_id)
+
+        # Add the end point
+        # point_id = points.InsertNextPoint(end)
+        # vertices.InsertNextCell(1)
+        # vertices.InsertCellPoint(point_id)
+
+    # Create a poly data object
+    polydata = vtk.vtkPolyData()
+    # Set the points and vertices we created as the geometry and topology of the polydata
+    polydata.SetPoints(points)
+    polydata.SetVerts(vertices)
+    polydata.Modified()
+
+    # Create the vectors
+    vectors_vtk = vtk.vtkDoubleArray()
+    vectors_vtk.SetNumberOfComponents(3)
+    vectors_vtk.SetName("Vectors")
+    for i in range(0, len(vectors)):
+        # Get the vector
+        try:
+            v = vectors.loc[i].values.tolist()
+        except:
+            v = vectors[i]
+
+        # Check if the vector has start and end points
+        if len(v) == 3:
+            # If the vector doesn't have start and end points, assume it starts at origin
+            start = [0, 0, 0]
+            end = v
+        elif len(v) == 6:
+            # If the vector has start and end points, get the start and end points
+            start = v[:3]
+            end = v[3:]
+        else:
+            raise ValueError("The vectors should have either 3 or 6 elements")
+
+        # Calculate the vector
+        vector = np.array(end) - np.array(start)
+
+        # Change data to list
+        vector = vector.tolist()
+
+        # Add the vector to the polydata
+        vectors_vtk.InsertNextTuple(vector)
+
+    # Make sure we have same number of vectors as points
+    import pdb; pdb.set_trace() 
+    assert vectors_vtk.GetNumberOfTuples() == polydata.GetNumberOfPoints(), "Number of vectors should be the same as the number of points"
+
+    # Set the vectors to the polydata
+    polydata.GetPointData().SetVectors(vectors_vtk)
+
+    # Return the polydata
+    return polydata
