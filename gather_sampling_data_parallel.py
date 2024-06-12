@@ -61,7 +61,10 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_di
     n_old = N
     k_old = K
 
-    for ip in range(num_cent):
+    ip_longest = get_longest_centerline(cent_ids, c_loc)
+    print(f"Case: {case_fn}: Longest centerline is {ip_longest} with {len(cent_ids[ip_longest])} points")
+
+    for ip in [ip_longest]: #range(num_cent):
         # Choose destination directory
         image_out_dir, seg_out_dir, val_port = choose_destination(global_config['TESTING'], global_config['VALIDATION_PROP'], image_out_dir_test, seg_out_dir_test, 
                                                                     image_out_dir_val, seg_out_dir_val, image_out_dir_train, seg_out_dir_train, ip)
@@ -211,6 +214,24 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train, seg_out_di
 
     return csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val
 
+
+def get_longest_centerline(cent_ids, c_loc):
+    """ Get the longest centerline by computing the total
+        accumulated length of the centerline between each point
+    Args:
+        cent_ids: list of centerline ids
+        c_loc: centerline locations
+    """
+    import numpy as np
+    lengths = []
+    for ids in cent_ids:
+        locs = c_loc[ids]
+        length = 0
+        for i in range(len(locs)-1):
+            length += np.linalg.norm(locs[i+1] - locs[i])
+        lengths.append(length)
+    return np.argmax(lengths)
+
 if __name__=='__main__':
 
     global_config = io.load_yaml("./config/global.yaml")
@@ -222,7 +243,7 @@ if __name__=='__main__':
     for modality in modalities:
 
         cases = create_dataset(global_config, modality)
-        cases = cases[:10]
+        # cases = cases[:10]
 
         modality = modality.lower()
         info_file_name = "info"+'_'+modality+dt_string+".txt"

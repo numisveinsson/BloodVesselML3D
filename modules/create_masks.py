@@ -1,18 +1,21 @@
 import os
-import pandas
-from ast import literal_eval
+# from ast import literal_eval
 
 import sys
-sys.path.insert(0, './')
+# sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
+# sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'dataset_dirs'))
 
 from modules import io
-from modules.sitk_functions import *
-from dataset_dirs.datasets import *
-from modules.sampling_functions import *
-from modules import sitk_functions as sf
-from modules import vtk_functions as vf
+from modules.sitk_functions import read_image, create_new, sitk_to_numpy, numpy_to_sitk, map_to_image, import_image
+from modules.sampling_functions import sort_centerline
+from modules.vtk_functions import read_geo
+from dataset_dirs.datasets import directories, create_dataset
+
 
 import numpy as np
+
+sys.path.insert(0, './')
+
 
 class Mask:
 
@@ -25,7 +28,7 @@ class Mask:
 
         self.number_updates = np.zeros(sitk_to_numpy(self.assembly).shape)
 
-    def add_segmentation(self, index_extract, size_extract, volume_seg = None):
+    def add_segmentation(self, index_extract, size_extract, volume_seg=None):
 
         # Load the volumes
         # np_arr = sitk_to_numpy(self.assembly).astype(float)
@@ -69,6 +72,7 @@ class Mask:
 
         return mask
 
+
 def list_samples_cases(directory):
 
     samples = os.listdir(directory)
@@ -82,33 +86,36 @@ def list_samples_cases(directory):
             cases.append(case_name)
             samples_cases[str(case_name)] = []
         samples_cases[str(case_name)].append(f)
-    #samples = [directory + f for f in samples]
+    # samples = [directory + f for f in samples]
 
     return samples_cases, cases
 
+
 def create_mask_case(case, dir_global, rad_prop=5):
 
-    dir_image, dir_seg, dir_cent, dir_surf = vmr_directories(dir_global, case)
-    reader_im, origin_im, size_im, spacing_im = sf.import_image(dir_image)
+    dir_image, dir_seg, dir_cent, dir_surf = directories(dir_global, case, img_ext='.mha')
+    reader_im, origin_im, size_im, spacing_im = import_image(dir_image)
 
     assembly_mask = Mask(case, dir_image)
 
-    global_centerline = vf.read_geo(dir_cent).GetOutput()
+    global_centerline = read_geo(dir_cent).GetOutput()
 
-    num_points, c_loc, radii, _, _, _ = sort_centerline(global_centerline)
-
+    num_points, c_loc, radii, cent_ids, bifurc_id, num_cent = sort_centerline(global_centerline)
+    import pdb; pdb.set_trace()
     for i in range(num_points):
-            
-            point = c_loc[i]
-            radius = radii[i]
-    
-            size_extract, index_extract, _, _ = map_to_image(point, radius, rad_prop, origin_im, spacing_im, size_im, prop=1)
-            try:
-                assembly_mask.add_segmentation(index_extract, size_extract)
-                print('Added segment', i)
-            except:
-                print('Error for segment: ', i)
+
+        point = c_loc[i]
+        radius = radii[i]
+
+        size_extract, index_extract, _, _ = map_to_image(point, radius, rad_prop, origin_im, spacing_im, size_im, prop=1)
+        try:
+            assembly_mask.add_segmentation(index_extract, size_extract)
+            print('Added segment', i)
+        except:
+            print('Error for segment: ', i)
+
     return assembly_mask.create_mask()
+
 
 if __name__=='__main__':
 
@@ -124,9 +131,9 @@ if __name__=='__main__':
     input_dir_global = global_config['DATA_DIR']
     modalities = global_config['MODALITY']    # create output dir for masks inside input_dir_local
     out_dir = global_config['OUT_DIR'] + 'global_masks/'
-    
-    rad_prop = 4
-    
+
+    rad_prop = 3
+
     try:
         os.mkdir(out_dir)
     except FileExistsError:
