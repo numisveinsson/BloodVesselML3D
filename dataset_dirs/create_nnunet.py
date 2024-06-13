@@ -1,6 +1,7 @@
 import os
 import shutil
 import sys
+import argparse
 
 sys.stdout.flush()
 sys.path.insert(0, '../..')
@@ -21,29 +22,54 @@ if __name__ == "__main__":
 
     (or mr instead of ct)
     Into a dataset that has the following structure:
-    
+
     Dataset
     ├── imagesTr
     ├── imagesTs
     └── labelsTr
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-outdir', '--outdir',
+                        type=str,
+                        help='Output directory')
+    parser.add_argument('-indir', '--indir',
+                        type=str,
+                        help='Input directory')
+    parser.add_argument('-name', '--name',
+                        default='AORTAS',
+                        type=str,
+                        help='Dataset name')
+    parser.add_argument('-dataset_number', '--dataset_number',
+                        default=1,
+                        type=int,
+                        help='Dataset number')
+    parser.add_argument('-modality', '--modality',
+                        type=str,
+                        help='Modality')
+    parser.add_argument('-start_from', '--start_from',
+                        type=int,
+                        default=0,
+                        help='Number to start dataset from, use if adding to existing dataset')
+    args = parser.parse_args()
 
     # global_config_file = "./config/global.yaml"
     # global_config = io.load_yaml(global_config_file)
     # modalities = global_config['MODALITY']
 
-    # directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_miccai_aortas/'
-    directory = '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/'
-    # directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
-    directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/'
-    # directory = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
-    # directory_out = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
-    modality = 'mr'
+    directory = args.indir  # '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/'
+    directory_out = args.outdir  # '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/'
+    modality = args.modality  # 'mr' or 'ct'
 
-    start_from = 0 #28707
-    name = 'SEQAORTASONE'
+    start_from = args.start_from  # 0 28707
+    name = args.name  # 'SEQAORTASONE'
+    dataset_number = args.dataset_number  # 1
+    # make number 2 digits
+    if dataset_number < 10:
+        dataset_number = '0' + str(dataset_number)
+    else:
+        dataset_number = str(dataset_number)
 
-    new_dir_dataset_name = 'Dataset018_'+name+modality.upper()
+    new_dir_dataset_name = 'Dataset'+dataset_number+'_'+name+modality.upper()
     append = name.lower() + modality.lower()
 
     also_test = False
