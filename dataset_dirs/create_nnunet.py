@@ -55,22 +55,22 @@ if __name__ == "__main__":
         os.mkdir(os.path.join(directory_out, new_dir_dataset_name))
     except FileExistsError:
         print(f'Directory {new_dir_dataset_name} already exists')
-    
+
     fns_in = [modality+'_train',
-            modality+'_train_masks',
-           ]
+              modality+'_train_masks',
+              ]
 
     if also_test:
         fns_in.append(modality+'_test')
         fns_in.append(modality+'_test_masks')
-    
+
     fns_out = ['imagesTr',
-            'labelsTr',
-           ]
+               'labelsTr',
+               ]
     if also_test:
         fns_out.append('imagesTs')
         fns_out.append('labelsTs')
-    
+
     for fn in fns_out:
         try:
             os.mkdir(os.path.join(directory_out, new_dir_dataset_name, fn))
