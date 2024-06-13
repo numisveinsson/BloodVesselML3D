@@ -33,20 +33,20 @@ if __name__ == "__main__":
     # modalities = global_config['MODALITY']
 
     # directory = '/Users/numisveins/Documents/Automatic_Tracing_Data/global_nnunet_miccai_aortas/'
-    # directory = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
+    directory = '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/'
     # directory = '/global/scratch/users/numi/MICCAI_AVT_Data/extraction_output/'
-    # directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/aortas_aortofem/'
-    directory = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
-    directory_out = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
-    modality = 'ct'
+    directory_out = '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/'
+    # directory = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
+    # directory_out = '/Users/numisveins/Documents/data_combo_paper/ct_data/'
+    modality = 'mr'
 
     start_from = 0 #28707
-    name = 'HEARTMMWHS'
+    name = 'SEQAORTASONE'
 
-    new_dir_dataset_name = 'Dataset016_'+name+modality.upper()
+    new_dir_dataset_name = 'Dataset018_'+name+modality.upper()
     append = name.lower() + modality.lower()
 
-    also_test = True
+    also_test = False
 
     out_data_dir = os.path.join(directory_out, new_dir_dataset_name)
 

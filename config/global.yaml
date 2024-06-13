@@ -1,8 +1,8 @@
 
-# DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/' # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
-DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data
-# OUT_DIR: '/global/scratch/users/numi/vascular_data_3d/extraction_output/coronaries_test/' # /Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_asoca_coronaries/ #
-OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_only_one_aorta_vmr/'
+DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/' # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
+# DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data
+OUT_DIR: '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/' # /Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_asoca_coronaries/ #
+# OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_only_one_aorta_vmr/'
 
 DATASET_NAME: 'vmr' #'vmr' # or other 'other'
 

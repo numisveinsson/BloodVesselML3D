@@ -18,7 +18,7 @@
 #SBATCH --ntasks=1
 #
 # Processors per task:
-#SBATCH --cpus-per-task=2
+#SBATCH --cpus-per-task=8
 #
 # Wall clock limit:
 #SBATCH --time=24:00:00
@@ -33,4 +33,4 @@ module load cudnn/7.5
 source activate /global/scratch/users/numi/environments/seqseg2
 cd /global/scratch/users/numi/BloodVesselML3D/
 
-python3  gather_sampling_data.py
+python3  gather_sampling_data_parallel.py
