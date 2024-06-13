@@ -35,7 +35,14 @@ def print_info_file(global_config, cases, testing_samples, info_file_name):
             f.write(" \n     Model " + str(i) + " : " + testing_samples[i])
         f.close()
 
+
 def create_directories(output_folder, modality, global_config):
+
+    # create out folder if it doesnt exist
+    try:
+        os.mkdir(output_folder)
+    except Exception as e:
+        print(e)
 
     if global_config['TESTING']:
         fns = ['_test']
@@ -47,7 +54,7 @@ def create_directories(output_folder, modality, global_config):
     if global_config['WRITE_IMG']:
         for fn in fns:
             try:
-                    os.mkdir(output_folder+modality+fn)
+                os.mkdir(output_folder+modality+fn)
             except Exception as e: print(e)
             try:
                 os.mkdir(output_folder+modality+fn+'_masks')
