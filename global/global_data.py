@@ -37,11 +37,11 @@ if __name__=='__main__':
 
     print(args)
 
-    global_config_file = "./config/global.yaml"
-    global_config = io.load_yaml(global_config_file)
+    global_config = io.load_yaml("./config/"+args.config_name+".yaml")
     modalities = global_config['MODALITY']
 
-    out_dir = global_config['OUT_DIR']
+    out_dir = args.outdir  # global_config['OUT_DIR']
+    global_config['OUT_DIR'] = out_dir
 
     # if not global_config['TESTING']:
     #     test_vars = [False]
