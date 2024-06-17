@@ -32,4 +32,9 @@ module load cuda/10.0
 module load cudnn/7.5
 source activate /global/scratch/users/numi/environments/seqseg2
 
-python3  dataset_dirs/create_nnunet.py
+python3  dataset_dirs/create_nnunet.py \
+    -indir /global/scratch/users/numi/vascular_data_3d/extraction_output/vmr_aortas_perc_data_075/ \
+    -outdir /global/scratch/users/numi/nnUnet_data/nnUnet_raw/ \
+    -dataset_number 27 \
+    -name SEQAORTAS075 \
+    -modality ct \
