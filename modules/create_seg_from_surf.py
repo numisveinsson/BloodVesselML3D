@@ -41,7 +41,6 @@ def create_seg_from_surface(surface, image):
     enclosed_filter.SetSurfaceData(surface)
     enclosed_filter.Update()
 
-    import pdb; pdb.set_trace()
     # Create new image to assemble
 
     for i in range(img_size[0]):

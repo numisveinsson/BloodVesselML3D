@@ -1,7 +1,7 @@
 from datetime import datetime
-now = datetime.now()
-dt_string = now.strftime("_%d_%m_%Y_%H_%M_%S")
 
+import argparse
+import random
 import SimpleITK as sitk
 import sys
 sys.path.insert(0, './')
@@ -11,6 +11,9 @@ from modules.sampling_functions import *
 from modules import sitk_functions as sf
 from dataset_dirs.datasets import *
 
+now = datetime.now()
+dt_string = now.strftime("_%d_%m_%Y_%H_%M_%S")
+
 if __name__=='__main__':
     """
     Does same as gather_sampling_data.py but for global data
@@ -18,6 +21,21 @@ if __name__=='__main__':
     Similarly, creates folders based on modalities
     This data then needs to be post-processed if to be used for eg nnUNet training
     """
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-outdir', '--outdir',
+                        type=str,
+                        help='Output directory')
+    parser.add_argument('-config_name', '--config_name',
+                        default='global',
+                        type=str,
+                        help='Name of configuration file')
+    parser.add_argument('-perc_dataset', '--perc_dataset',
+                        default=1.0,
+                        type=float,
+                        help='Percentage of dataset to use')
+    args = parser.parse_args()
+
+    print(args)
 
     global_config_file = "./config/global.yaml"
     global_config = io.load_yaml(global_config_file)
@@ -37,9 +55,17 @@ if __name__=='__main__':
     for modality in modalities:
 
         cases = create_dataset(global_config, modality)
+
+        # shuffle cases
+        # set random seed
+        random.seed(42)
+        random.shuffle(cases)
+        # percentage of dataset to use
+        cases = cases[:int(args.perc_dataset*len(cases))]
+
         modality = modality.lower()
         info_file_name = "info"+'_'+modality+dt_string+".txt"
-        
+
         create_directories(out_dir, modality, global_config)
 
         image_out_dir_train = out_dir+modality+'_train/'
@@ -54,7 +80,7 @@ if __name__=='__main__':
         #cases = Dataset.check_which_cases_in_image_dir(cases)
 
         for i in cases:
-            print(i)
+            print(f"Case: {i}")
 
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
