@@ -69,7 +69,7 @@ if __name__ == "__main__":
     else:
         dataset_number = str(dataset_number)
 
-    new_dir_dataset_name = 'Dataset'+dataset_number+'_'+name+modality.upper()
+    new_dir_dataset_name = 'Dataset0'+dataset_number+'_'+name+modality.upper()
     append = name.lower() + modality.lower()
 
     also_test = False
