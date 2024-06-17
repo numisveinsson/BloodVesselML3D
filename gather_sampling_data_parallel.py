@@ -352,6 +352,7 @@ if __name__=='__main__':
     modalities = global_config['MODALITY']
 
     out_dir = args.outdir  # global_config['OUT_DIR']
+    global_config['OUT_DIR'] = out_dir
     # sys.stdout = open(out_dir+"/log.txt", "w")
 
     for modality in modalities:
