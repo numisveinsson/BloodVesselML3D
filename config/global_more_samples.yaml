@@ -30,7 +30,7 @@ AUGMENT_VOLUMES: False
 
 WRITE_SAMPLES: True
 WRITE_IMG: True
-REMOVE_OTHER: True # Remove other unconnected vessels in gt volume, can cause problems where vessels are close
+REMOVE_OTHER: False # Remove other unconnected vessels in gt volume, can cause problems where vessels are close
 WRITE_SURFACE: False
 WRITE_CENTERLINE: False
 WRITE_VOXEL_PYRAMID: False
