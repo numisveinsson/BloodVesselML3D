@@ -13,11 +13,12 @@ TESTING: False
 MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
 IMG_EXT: '.mha'
 
-SCALED: False
-CROPPED: False
+BINARIZE: True
 ANATOMY: ['Aorta', 'Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
 OUTLET_CLASSES: [0,1,2,3,4,5,6,7,8,9,10]
 VALIDATION_PROP: 0.0 #0.15
+SCALED: False
+CROPPED: False
 
 EXTRACT_VOLUMES: True
 ROTATE_VOLUMES: False

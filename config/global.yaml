@@ -11,6 +11,7 @@ TESTING: False
 MODALITY: ['CT', 'MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
 IMG_EXT: '.nrrd'
 
+BINARIZE: True
 SCALED: False
 CROPPED: False
 ANATOMY: ['Aorta', 'Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
