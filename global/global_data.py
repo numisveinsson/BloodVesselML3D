@@ -119,14 +119,14 @@ if __name__=='__main__':
                 print('Seg Min value: ', min_val)
 
             # If seg max value is over 1, then divide by max value
-            if max_val > 1 and seg is not None:
+            if max_val > 1 and seg is not None and global_config['BINARIZE']:
                 seg_np = sitk.GetArrayFromImage(seg)
                 seg_np = seg_np/max_val
                 file_reader = sf.read_image(case_dict['IMAGE'])
                 seg = sf.create_new_from_numpy(file_reader, seg_np)
                 seg = sitk.Cast(seg, sitk.sitkUInt8)
-                print('Seg Max value: ', seg_np.max())
-                print('Seg Min value: ', seg_np.min())
+            print('Seg Max value: ', seg_np.max())
+            print('Seg Min value: ', seg_np.min())
 
             if global_config['WRITE_SAMPLES']:
                 sitk.WriteImage(img, image_out_dir + case_dict['NAME'] +'.nii.gz')

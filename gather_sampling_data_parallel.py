@@ -204,12 +204,12 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                         write_img(new_img_re, removed_seg_re,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],
-                                                  N, n_old, sub)
+                                                  N, n_old, sub, global_config['BINARIZE'])
                                     else:
                                         write_img(new_img, removed_seg,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],
-                                                  N, n_old, sub)
+                                                  N, n_old, sub, global_config['BINARIZE'])
                                     
                                 if global_config['WRITE_VTK']:
                                     write_vtk(new_img, removed_seg,
