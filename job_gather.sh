@@ -34,6 +34,7 @@ source activate /global/scratch/users/numi/environments/seqseg2
 cd /global/scratch/users/numi/BloodVesselML3D/
 
 python3  gather_sampling_data_parallel.py \
-    -outdir /global/scratch/users/numi/vascular_data_3d/extraction_output/vmr_aortas_perc_data_015/ \
+    -outdir /global/scratch/users/numi/aortaseg24/extraction_output/aortaseg24_binary/ \
     -config_name global_more_samples \
-    -perc_dataset 0.15 \
+    
+# -perc_dataset 0.15 \
