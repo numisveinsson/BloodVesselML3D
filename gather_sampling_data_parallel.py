@@ -75,7 +75,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
     print(f"Case: {case_fn}: Longest centerline is {ip_longest}"
           + f" with {len(cent_ids[ip_longest])} points")
 
-    for ip in [ip_longest]:  # range(num_cent):
+    for ip in range(num_cent): #[ip_longest]:
         # Choose destination directory
         (image_out_dir, seg_out_dir,
          val_port) = choose_destination(global_config['TESTING'],
