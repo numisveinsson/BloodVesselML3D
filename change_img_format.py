@@ -2,6 +2,7 @@ import os
 import SimpleITK as sitk
 from modules import vtk_functions as vf
 
+
 def change_mha_vti(file_dir):
     """
     Change the format of a file from .mha to .vti
@@ -14,8 +15,9 @@ def change_mha_vti(file_dir):
     img = sitk.ReadImage(file_dir)
     img = sitk.Cast(img, sitk.sitkUInt8)
     img = vf.exportSitk2VTK(img)[0]
-    
+
     return img
+
 
 def change_vti_sitk(file_dir):
     """
@@ -28,29 +30,30 @@ def change_vti_sitk(file_dir):
     """
     img = vf.read_img(file_dir)
     img = vf.exportVTK2Sitk(img)
-    
+
     return img
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.nii.gz'
-    output_format = '.mha'
-    label = False # false if raw image
+    input_format = '.vti'
+    output_format = '.nii.gz'
+    label = False  # false if raw image
 
-    rem_str = 'coroasocact_0'
+    rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/Karthik_coronary_data/prelim_globalnnunet_pred/2d/'
+    data_folder = '/Users/numisveins/Documents/data_combo_paper/ct_data/combined_segs/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]
-    
+
     try:
         os.mkdir(out_folder)
         imgs_old = []
-    except Exception as e: 
+    except Exception as e:
         print(e)
         imgs_old = os.listdir(out_folder)
 
@@ -79,7 +82,7 @@ if __name__=='__main__':
             elif input_format == '.vti':
                 if output_format == '.mha' or output_format == '.nii.gz':
                     img = change_vti_sitk(data_folder+fn)
-                else:   
+                else:
                     img = vf.read_img(data_folder+fn).GetOutput()
             elif output_format == '.vti':
                 if input_format == '.mha':
@@ -87,12 +90,12 @@ if __name__=='__main__':
             else:
                 print('Invalid input/output format')
                 break
-            
+
             if rem_str:
                 fn = fn.replace(rem_str, '')
-            
+
             img_name = fn.replace(input_format, '')
-            # make int and remove 1 
+            # make int and remove 1
             # img_name = str(int(img_name)-1)
             # img_name = img_name.zfill(2) + output_format
 
