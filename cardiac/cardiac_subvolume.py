@@ -2,6 +2,7 @@ import os
 import SimpleITK as sitk
 import numpy as np
 
+
 def extract_subvolume_folder(folder, subvolume_size_phys=(185, 160, 176)):
     """
     Extract a subvolume around the cardiac region from a 3D image using SimpleITK.
@@ -49,6 +50,10 @@ def extract_subvolume_folder(folder, subvolume_size_phys=(185, 160, 176)):
         # read in the binary segmentation and the image
         binary_seg = sitk.ReadImage(os.path.join(folder, 'binary_segs', f'{case}.nii.gz'))
         img = sitk.ReadImage(os.path.join(folder, 'images', f'{case}.nii.gz'))
+        img_reader = sitk.ImageFileReader()
+        img_reader.SetFileName(os.path.join(folder, 'images', f'{case}.nii.gz'))
+        img_reader.LoadPrivateTagsOn()
+        img_reader.ReadImageInformation()
 
         # calculate the center of mass of the binary segmentation
         binary_np = sitk.GetArrayFromImage(binary_seg).transpose(2, 1, 0)
@@ -76,6 +81,35 @@ def extract_subvolume_folder(folder, subvolume_size_phys=(185, 160, 176)):
 
         # extract the subvolume around the center of mass
         subvolume = sitk.RegionOfInterest(img, size=subvolume_size, index=subvolume_index)
+
+        # extract using the reader
+        img_reader.SetExtractSize(subvolume_size)
+        img_reader.SetExtractIndex(subvolume_index)
+        img_reader.ReadImageInformation()
+        subvolume = img_reader.Execute()
+
+        # shift subvolume origin to match the index
+        subvolume.SetOrigin(np.array(img.GetOrigin()) + np.array(subvolume_index) * np.array(img.GetSpacing()))
+
+        # compare bounds
+        print(f"Subvolume bounds: {subvolume.GetOrigin()} - {subvolume.GetOrigin() + np.array(subvolume.GetSize()) * np.array(subvolume.GetSpacing())}")
+        print(f"Total image bounds: {img.GetOrigin()} - {img.GetOrigin() + np.array(img.GetSize()) * np.array(img.GetSpacing())}")
+
+        # compare direction
+        print(f"Subvolume direction: {subvolume.GetDirection()}")
+        print(f"Total image direction: {img.GetDirection()}")
+
+        # compare spacing
+        print(f"Subvolume spacing: {subvolume.GetSpacing()}")
+        print(f"Total image spacing: {img.GetSpacing()}")
+
+        # compare origin
+        print(f"Subvolume origin: {subvolume.GetOrigin()}")
+        print(f"Total image origin: {img.GetOrigin()}")
+
+        # compare size
+        print(f"Subvolume size: {subvolume.GetSize()}")
+        print(f"Total image size: {img.GetSize()}")
 
         # save the subvolume
         sitk.WriteImage(subvolume, os.path.join(subvolume_folder, f'{case}.nii.gz'))
