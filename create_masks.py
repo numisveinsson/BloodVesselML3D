@@ -2,6 +2,7 @@ import os
 # from ast import literal_eval
 
 import sys
+import SimpleITK as sitk
 # sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
 # sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'dataset_dirs'))
 
@@ -91,9 +92,9 @@ def list_samples_cases(directory):
     return samples_cases, cases
 
 
-def create_mask_case(case, dir_global, rad_prop=5):
+def create_mask_case(case, dir_global, rad_prop=5, img_ext='.mha'):
 
-    dir_image, dir_seg, dir_cent, dir_surf = directories(dir_global, case, img_ext='.mha')
+    dir_image, dir_seg, dir_cent, dir_surf = directories(dir_global, case, img_ext=img_ext)
     reader_im, origin_im, size_im, spacing_im = import_image(dir_image)
 
     assembly_mask = Mask(case, dir_image)
@@ -101,7 +102,7 @@ def create_mask_case(case, dir_global, rad_prop=5):
     global_centerline = read_geo(dir_cent).GetOutput()
 
     num_points, c_loc, radii, cent_ids, bifurc_id, num_cent = sort_centerline(global_centerline)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     for i in range(num_points):
 
         point = c_loc[i]
@@ -110,7 +111,7 @@ def create_mask_case(case, dir_global, rad_prop=5):
         size_extract, index_extract, _, _ = map_to_image(point, radius, rad_prop, origin_im, spacing_im, size_im, prop=1)
         try:
             assembly_mask.add_segmentation(index_extract, size_extract)
-            print('Added segment', i)
+            # print('Added segment', i)
         except:
             print('Error for segment: ', i)
 
@@ -130,9 +131,9 @@ if __name__=='__main__':
 
     input_dir_global = global_config['DATA_DIR']
     modalities = global_config['MODALITY']    # create output dir for masks inside input_dir_local
-    out_dir = global_config['OUT_DIR'] + 'global_masks/'
+    out_dir = global_config['DATA_DIR'] + 'global_masks/'
 
-    rad_prop = 3
+    rad_prop = 6
 
     try:
         os.mkdir(out_dir)
@@ -142,9 +143,11 @@ if __name__=='__main__':
     for modality in modalities:
         # Parameters
         Dataset = create_dataset(global_config, modality)
-        cases = Dataset.sort_cases(testing=global_config['TESTING'], 
-                                   test_cases=global_config['TEST_CASES'])
-        cases = Dataset.check_which_cases_in_image_dir(cases)
+        # cases = Dataset.sort_cases(testing=global_config['TESTING'],
+        #                            test_cases=global_config['TEST_CASES'])
+        # cases = Dataset.check_which_cases_in_image_dir(cases)
+        cases = Dataset
+        cases.sort()
         # csv_file = modality+"_test_Sample_stats.csv"
         # csv_list = pandas.read_csv(input_dir_local+csv_file)
         # keep_values = ['NAME','INDEX', 'SIZE_EXTRACT', 'BIFURCATION', 'RADIUS']
@@ -153,7 +156,7 @@ if __name__=='__main__':
 
             print('\nNext case: ', case)
 
-            mask = create_mask_case(case, input_dir_global, rad_prop)
+            mask = create_mask_case(case, input_dir_global, rad_prop, img_ext=global_config['IMG_EXT'])
 
             # samples = samples_cases[case]
             # # only keep samples that have been '_0'

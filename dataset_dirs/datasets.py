@@ -13,6 +13,7 @@ def create_dataset(global_config, modality):
         cases = Dataset.sort_cases(global_config['TESTING'], global_config['TEST_CASES'])
         cases = Dataset.check_which_cases_in_image_dir(cases)
         cases = [f for f in cases if f not in global_config['BAD_CASES']]
+        import pdb; pdb.set_trace()
     elif dataset_name == 'other':
         cases = get_dataset_cases(global_config['DATA_DIR'], global_config['IMG_EXT'], global_config['TEST_CASES'], global_config['TESTING'])
     else:

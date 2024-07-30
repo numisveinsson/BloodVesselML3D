@@ -1,14 +1,15 @@
 
-DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/' # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
+# DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/' # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
 # DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data
+DATA_DIR: '/Users/numisveins/Documents/MICCAI_Challenge23_Aorta_Tree_Data/'
 # OUT_DIR: '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/' # /Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_asoca_coronaries/ #
 # OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_only_one_aorta_vmr/'
 
-DATASET_NAME: 'vmr' #'vmr' # or other 'other'
+DATASET_NAME: 'other' #'vmr' # or other 'other'
 
 TESTING: False
 MODALITY: ['CT', 'MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
-IMG_EXT: '.mha'
+IMG_EXT: '.nrrd'
 
 SCALED: False
 CROPPED: False
@@ -87,8 +88,6 @@ TEST_CASES:
   - 'R13' # no centerline
   - 'K5' # no centerline
   - 'R18' # with centerline
-  - 'D11' # with centerline
-  - 'D10' # with centerline
   - 'K11' # with centerline
   - 'K10' # with centerline
 
