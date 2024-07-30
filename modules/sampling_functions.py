@@ -305,7 +305,11 @@ def rotate_volumes(reader_im, reader_seg, tangent, point):
 
     return new_img, new_seg, origin_im
 
-def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origin_im, spacing_im, location, radius, size_r, number, name, O=None, global_img=False, remove_others=True):
+def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
+                       origin_im, spacing_im, location, radius, size_r, number, name,
+                       O=None, global_img=False,
+                       remove_others=True,
+                       binarize=True):
     """"
     Function to extract subvolumes
     Both image data and GT segmentation
@@ -322,20 +326,26 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract, origi
     seg_np = sitk.GetArrayFromImage(new_seg)
 
     if seg_np.max() > 1:
-        new_seg /= float(seg_np.max()*1.0)
+        new_seg_bin /= float(seg_np.max()*1.0)
         # make unsigned int
-        new_seg = sitk.Cast(new_seg, sitk.sitkUInt8)
+        new_seg_bin = sitk.Cast(new_seg_bin, sitk.sitkUInt8)
+    else:
+        new_seg_bin = new_seg
 
     #print("Original Seg")
     # labels, means, _ = connected_comp_info(new_seg, False)
     #print("Seg w removed bodies")
     #labels1, means1 = connected_comp_info(removed_seg)
-    
-    seed = np.rint(np.array(size_extract)/2).astype(int).tolist()
-    removed_seg = remove_other_vessels(new_seg, seed)
-    # labels, means, _ = connected_comp_info(removed_seg, True)
 
-    
+    seed = np.rint(np.array(size_extract)/2).astype(int).tolist()
+    removed_seg_bin = remove_other_vessels(new_seg_bin, seed)
+    # labels, means, _ = connected_comp_info(removed_seg, True)
+    # mask seg with removed seg
+    if binarize:
+        removed_seg = removed_seg_bin
+    else:
+        removed_seg = sitk.Mask(new_seg, removed_seg_bin)
+
     rem_np = sitk.GetArrayFromImage(removed_seg)
     blood_np = im_np[seg_np>0.1]
     ground_truth = rem_np[seg_np>0.1]
