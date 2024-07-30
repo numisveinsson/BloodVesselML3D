@@ -150,7 +150,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                      locs[count],
                                      rads[count], size_r, N,
                                      name, O,
-                                     remove_others=global_config['REMOVE_OTHER']
+                                     remove_others=global_config['REMOVE_OTHER'],
+                                     binarize=global_config['BINARIZE']
                                      )
                                 if global_config['WRITE_SURFACE']:
                                     (stats_surf, new_surf_box, new_surf_sphere
