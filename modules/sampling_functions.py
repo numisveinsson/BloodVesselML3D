@@ -859,13 +859,14 @@ def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir, case_na
     sitk.WriteImage(new_seg, out_dir+'vtk_data/vtk_throwout_' +case_name+'/'+str(N-n_old)+ '_'+str(sub)+'.mha')
 
 def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_old, sub):
+    print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
     sitk.WriteImage(new_img, image_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
     max_seg_value = sitk.GetArrayFromImage(removed_seg).max()
     if max_seg_value != 1:
         removed_seg /= float(max_seg_value*1.0)
         # make image unsigned int, removed_seg is sitk image
         removed_seg = sitk.Cast(removed_seg, sitk.sitkUInt8)
-    # print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
+    print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
     # assert max_seg_value is 1
     assert sitk.GetArrayFromImage(removed_seg).max() == 1
     sitk.WriteImage(removed_seg, seg_out_dir + case_name +'_'+ str(N-n_old) +'_'+str(sub)+'.nii.gz')
