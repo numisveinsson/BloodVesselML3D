@@ -290,7 +290,7 @@ def combine_blood_aorta(combined_seg, labels_keep=[3, 6]):
     labels = np.unique(vtk_to_numpy(combined_seg.GetPointData().GetScalars()))
     labels = [label for label in labels if label in labels_keep]
 
-    # Create a new segmentation with only the labels 3 and 6
+    # Create a new segmentation with only the labels in labels_keep
     combined_seg_new = vtk.vtkImageData()
     combined_seg_new.DeepCopy(combined_seg)
     seg_new = vtk_to_numpy(combined_seg_new.GetPointData().GetScalars())
@@ -303,7 +303,184 @@ def combine_blood_aorta(combined_seg, labels_keep=[3, 6]):
     return poly
 
 
+def remove_cells_with_region_3(polydata):
+    # Create an empty vtkPolyData object to store the filtered cells
+    filtered_polydata = vtk.vtkPolyData()
+    filtered_cells = vtk.vtkCellArray()
+    filtered_points = vtk.vtkPoints()
+    filtered_scalars = vtk.vtkFloatArray()
+
+    # Get the scalars (labels) from the original polydata
+    scalars = polydata.GetCellData().GetScalars()
+
+    # Map to track the original point indices to new indices
+    point_map = {}
+
+    # Iterate through all cells in the polydata
+    for cell_id in range(polydata.GetNumberOfCells()):
+        # Get the label of the current cell
+        label = scalars.GetTuple1(cell_id)
+
+        # If the cell's label is not region 3, keep it
+        if label != 3:
+            cell = polydata.GetCell(cell_id)
+            cell_points = cell.GetPoints()
+
+            # Add points to the filtered points list
+            new_cell_point_ids = []
+            for i in range(cell_points.GetNumberOfPoints()):
+                point = cell_points.GetPoint(i)
+                point_id = polydata.FindPoint(point)
+
+                # Check if the point has already been added to the new points list
+                if point_id in point_map:
+                    new_point_id = point_map[point_id]
+                else:
+                    new_point_id = filtered_points.InsertNextPoint(point)
+                    point_map[point_id] = new_point_id
+
+                new_cell_point_ids.append(new_point_id)
+
+            # Create the new cell with the filtered points
+            filtered_cells.InsertNextCell(len(new_cell_point_ids), new_cell_point_ids)
+            filtered_scalars.InsertNextValue(label)
+
+    # Set the points, cells, and scalars in the filtered_polydata
+    filtered_polydata.SetPoints(filtered_points)
+    filtered_polydata.SetPolys(filtered_cells)  # or SetLines, SetVerts depending on cell type
+    filtered_polydata.GetCellData().SetScalars(filtered_scalars)
+
+    return filtered_polydata
+
+
+def update_labels_based_on_polydata2(polydata1, polydata2):
+    # Remove cells with region 3
+    polydata2 = remove_cells_with_region_3(polydata2)
+
+    # Get the scalars (labels) from both polydata1 and polydata2
+    labels_polydata1 = polydata1.GetCellData().GetScalars()
+    labels_polydata2 = polydata2.GetCellData().GetScalars()
+
+    # Create a point locator for polydata2 to quickly find corresponding points
+    point_locator = vtk.vtkPointLocator()
+    point_locator.SetDataSet(polydata2)
+    point_locator.BuildLocator()
+
+    # Iterate through all cells in polydata1
+    for cell_id in range(polydata1.GetNumberOfCells()):
+        # Get the label of the current cell in polydata1
+        label_polydata1 = labels_polydata1.GetTuple1(cell_id)
+
+        # Process only cells labeled as region 3 in polydata1
+        if label_polydata1 == 3:
+            cell = polydata1.GetCell(cell_id)
+            points = cell.GetPoints()
+
+            # Assume that the first point can be used to find the corresponding cell
+            match_found = False
+            for point_id in range(points.GetNumberOfPoints()):
+                point = points.GetPoint(point_id)
+                closest_point_id = point_locator.FindClosestPoint(point)
+
+                if closest_point_id >= 0:
+                    # Get the cell in polydata2 that contains this point
+                    cell_ids = vtk.vtkIdList()
+                    polydata2.GetPointCells(closest_point_id, cell_ids)
+
+                    for i in range(cell_ids.GetNumberOfIds()):
+                        corresponding_cell_id = cell_ids.GetId(i)
+                        label_polydata2 = labels_polydata2.GetTuple1(corresponding_cell_id)
+
+                        if label_polydata2 in [2, 6]:
+                            # If a matching cell is found in polydata2, update the label in polydata1
+                            if label_polydata2 == 2:
+                                labels_polydata1.SetTuple1(cell_id, 9)
+                            elif label_polydata2 == 6:
+                                labels_polydata1.SetTuple1(cell_id, 10)
+                            match_found = True
+                            break
+
+                    if match_found:
+                        break  # Stop checking further points if a match is found
+
+    # Update the polydata
+    polydata1.Modified()
+
+    # Smooth the polydata
+    polydata1 = smooth_polydata(polydata1, iteration=25, boundary=False,
+                                feature=False, smoothingFactor=0.5)
+
+    # Rename scalar array to 'ModelFaceID'
+    polydata1.GetCellData().GetScalars().SetName('ModelFaceID')
+
+    # Make 'ModelFaceID' array an integer array
+    polydata1 = convert_modelfaceid_to_int(polydata1)
+
+    # Add new 'CapID' array that is the same as 'ModelFaceID' except scaled to start from 1
+    polydata1 = add_cap_id(polydata1)
+
+    return polydata1
+
+
+def convert_modelfaceid_to_int(polydata):
+    # Get the scalars (labels) from the polydata
+    labels = polydata.GetCellData().GetScalars()
+
+    # Create a new array to store the rescaled labels
+    model_face_id = vtk.vtkIntArray()
+    model_face_id.SetName('CapID')
+    model_face_id.SetNumberOfComponents(1)
+    model_face_id.SetNumberOfTuples(labels.GetNumberOfTuples())
+
+    # Rescale the labels to start from 1 and increment by 1
+    for i in range(labels.GetNumberOfTuples()):
+        label = labels.GetTuple1(i)
+        model_face_id.SetTuple1(i, int(label))
+
+    # Set the new labels in the polydata
+    polydata.GetCellData().AddArray(model_face_id)
+
+    return polydata
+
+
+def add_cap_id(polydata):
+    # Get the scalars (labels) from the polydata
+    labels = polydata.GetCellData().GetScalars()
+
+    # Create a new array to store the rescaled labels
+    cap_id = vtk.vtkIntArray()
+    cap_id.SetName('ModelFaceID')
+    cap_id.SetNumberOfComponents(1)
+    cap_id.SetNumberOfTuples(labels.GetNumberOfTuples())
+
+    # Define a function to rescale the labels
+    def label_id(label):
+        # 3, 6, 9, 10
+        if label == 3:
+            return 1
+        elif label == 6:
+            return 1
+        elif label == 9:
+            return 3
+        elif label == 10:
+            return 2
+        else:
+            return 0
+
+    # Rescale the labels to start from 1 and increment by 1
+    for i in range(labels.GetNumberOfTuples()):
+        label = labels.GetTuple1(i)
+        cap_id.SetTuple1(i, label_id(label))
+
+    # Set the new labels in the polydata
+    polydata.GetCellData().AddArray(cap_id)
+
+    return polydata
+
+
 if __name__ == "__main__":
+
+    write_all = False
 
     # Directory of cardiac meshes polydata
     directory = '/Users/numisveins/Documents/Heartflow/output_cardiac-meshes/'
@@ -313,7 +490,7 @@ if __name__ == "__main__":
     # sort meshes
     meshes = sorted(meshes)
 
-    # Directory of cardiac images
+    # Directory of images
     img_dir = '/Users/numisveins/Documents/data_combo_paper/ct_data/images_vti/'
     img_ext = '.vti'
     imgs = os.listdir(img_dir)
@@ -332,7 +509,7 @@ if __name__ == "__main__":
     vascular_imgs = [f for f in vascular_imgs if f.endswith(vascular_ext)]
     # vascular_imgs = [f.replace('_seg_rem_3d_fullres_0', '')
     #                  for f in vascular_imgs]
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
 
     vascular_imgs = [f for f in vascular_imgs if f.replace(vascular_ext, img_ext).replace('_seg_rem_3d_fullres_0', '') in imgs]
     # sort vascular segmentations
@@ -351,7 +528,7 @@ if __name__ == "__main__":
     meshes = [directory+f for f in meshes]
 
     # create folder for segmentations
-    segs_dir = directory + 'segmentations/'
+    segs_dir = directory + 'test/'
     if not os.path.exists(segs_dir):
         os.makedirs(segs_dir)
 
@@ -367,15 +544,17 @@ if __name__ == "__main__":
         # Convert polydata to imagedata
         segmentation = multiclass_convert_polydata_to_imagedata(poly, img)
         # Save segmentation
-        vf.write_img(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_seg.vti'), segmentation)
+        if write_all:
+            vf.write_img(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext, '_seg.vti'), segmentation)
 
         # Create a polydata from the segmentation
         poly = vtk_marching_cube_multi(segmentation, 0)
 
         # Save polydata
-        vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_seg.vtp'), poly)
+        if write_all:
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext, '_seg.vtp'), poly)
 
         # Read vascular segmentation
         vascular = vf.read_img(vascular_imgs[i]).GetOutput()
@@ -402,41 +581,61 @@ if __name__ == "__main__":
                                                          vascular)
 
         # Save combined segmentation
+        if write_all:
+            vf.write_img(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext, '_seg_combined_area.vti'),
+                         combined_seg)
         vf.write_img(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_seg_combined_area.vti'), combined_seg)
-        vf.write_img(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_vasc_combined_area.vti'), new_vasc)
+                     .replace(img_ext, '_vasc_combined_area.vti'),
+                     new_vasc)
 
         # Create a polydata from the combined segmentation
         poly = vtk_marching_cube_multi(combined_seg, 0)
 
         # Save polydata
-        vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_seg_combined_area.vtp'), poly)
+        if write_all:
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext, '_seg_combined_area.vtp'), poly)
 
         # Smooth the polydata
         poly = smooth_polydata(poly, iteration=25, boundary=False,
                                feature=False, smoothingFactor=0.5)
 
         # Save smoothed polydata
-        vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_seg_combined_area_smoothed.vtp'), poly)
+        if write_all:
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext, '_seg_combined_area_smoothed.vtp'),
+                         poly)
 
         # Create blood pool and aorta mesh
-        combined_seg_blood_aorta = combine_blood_aorta(combined_seg)
+        combined_seg_blood_aorta_vtp = combine_blood_aorta(combined_seg)
 
         # Save blood pool and aorta mesh
-        vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                     .replace(img_ext, '_seg_combined_area_blood_aorta.vtp'),
-                     combined_seg_blood_aorta)
+        if write_all:
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext,
+                                  '_seg_combined_area_blood_aorta.vtp'),
+                         combined_seg_blood_aorta_vtp)
 
-        # Save smoothed blood pool and aorta mesh
-        combined_seg_blood_aorta = smooth_polydata(combined_seg_blood_aorta,
-                                                   iteration=25,
-                                                   boundary=False,
-                                                   feature=False,
-                                                   smoothingFactor=0.5)
+        # Label the valve cells
+        combined_seg_blood_aorta_valve = update_labels_based_on_polydata2(
+            combined_seg_blood_aorta_vtp, poly)
+
+        # Save blood pool and aorta mesh with valve labels
         vf.write_geo(segs_dir + imgs[i].split('/')[-1]
                      .replace(img_ext,
-                              '_seg_combined_area_blood_aorta_smoothed.vtp'),
-                     combined_seg_blood_aorta)
+                              '_simulation.vtp'),
+                     combined_seg_blood_aorta_valve)
+
+        # Save smoothed blood pool and aorta mesh
+        combined_seg_blood_aorta_vtp_smooth = smooth_polydata(
+                                                combined_seg_blood_aorta_vtp,
+                                                iteration=25,
+                                                boundary=False,
+                                                feature=False,
+                                                smoothingFactor=0.5)
+        if write_all:
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext,
+                                  '_seg_combined_area_blood_aorta_smoothed.vtp'),
+                         combined_seg_blood_aorta_vtp_smooth)
