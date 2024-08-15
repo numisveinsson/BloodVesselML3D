@@ -6,6 +6,7 @@ if __name__=='__main__':
     # DIR = '/Users/numisveins/Documents/Automatic_Tracing_Data/train_version_5_aortas/all_train/'
     # Load your VTP file
     vtp_file_path = "/Users/numisveins/Documents/ASOCA_dataset/centerlines/Normal_10.vtp"
+    vtp_file_path = "/Users/numisveins/Downloads/segmentation/surfaces/mr_test_2005_image.vtp"
     reader = vtk.vtkXMLPolyDataReader()
     reader.SetFileName(vtp_file_path)
     reader.Update()
@@ -19,15 +20,18 @@ if __name__=='__main__':
     # Iterate through each point and flip the sign of X and Y coordinates
     for i in range(points.GetNumberOfPoints()):
         x, y, z = points.GetPoint(i)
-        points.SetPoint(i, -x, -y, z)
+        # points.SetPoint(i, -x, -y, z)
+        points.SetPoint(i, z, y, x)
 
     # Update the PolyData
     poly_data.Modified()
     # Write the modified PolyData back to a VTP file
     writer = vtk.vtkXMLPolyDataWriter()
-    writer.SetFileName("/Users/numisveins/Documents/ASOCA_dataset/centerlines/new/file.vtp")
+    writer.SetFileName("/Users/numisveins/Downloads/segmentation/surfaces/mr_test_2005_image_ras.vtp")
     writer.SetInputData(poly_data)
     writer.Write()
+
+    import pdb; pdb.set_trace()
 
     import SimpleITK as sitk
 
