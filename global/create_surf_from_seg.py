@@ -7,6 +7,81 @@ import sys, os
 sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
 import vtk_functions as vf
 
+
+def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None, rotate=False, center=None):
+    """
+    Note: another function from Arjun's code
+
+    Use the VTK marching cube to create isosrufaces
+    for all classes excluding the background
+    Args:
+        labels: vtk image containing the label map
+        bg_id: id number of background class
+        smooth: smoothing iteration
+    Returns:
+        mesh: vtk PolyData of the surface mesh
+    """
+    ids = np.unique(vtk_to_numpy(vtkLabel.GetPointData().GetScalars()))
+    ids = np.delete(ids, np.where(ids == bg_id))
+
+    # smooth the label map
+    # vtkLabel = utils.gaussianSmoothImage(vtkLabel, 2.)
+
+    contour = vtk.vtkDiscreteMarchingCubes()
+    contour.SetInputData(vtkLabel)
+    for index, i in enumerate(ids):
+        print("Setting iso-contour value: ", i)
+        contour.SetValue(index, i)
+    contour.Update()
+    mesh = contour.GetOutput()
+
+    if rotate:
+        mesh = rotate_mesh(mesh, vtkLabel, center=None)
+
+    return mesh
+
+
+def rotate_mesh(mesh, vtkLabel, center=None):
+    """
+    Rotate the mesh by 90 degrees
+    around the origin of the image y-axis
+
+    The steps are as follows:
+    1. Specify the axis of rotation
+    2. Create a transform
+    3. Apply the transform to the mesh
+
+    Args:
+        mesh: vtk PolyData
+        vtkLabel: vtk ImageData
+    Returns:
+        mesh: rotated vtk PolyData
+    """
+    # Get the origin of the image
+    origin = vtkLabel.GetOrigin()
+    # Get the center of the image
+    if center is None:
+        center = vtkLabel.GetCenter()
+    # Get the spacing of the image
+    spacing = vtkLabel.GetSpacing()
+
+    # Specify the axis of rotation
+    axis = [0, 1, 0]
+    # Create a transform
+    transform = vtk.vtkTransform()
+    transform.PostMultiply()
+    transform.Translate(-center[0], -center[1], -center[2])
+    transform.RotateWXYZ(90, axis[0], axis[1], axis[2])
+    transform.Translate(center[0], center[1], center[2])
+
+    # Apply the transform to the mesh
+    transformFilter = vtk.vtkTransformPolyDataFilter()
+    transformFilter.SetInputData(mesh)
+    transformFilter.SetTransform(transform)
+    transformFilter.Update()
+
+    return transformFilter.GetOutput()
+
 def eraseBoundary(labels, pixels, bg_id):
     """
     Erase anything on the boundary by a specified number of pixels
@@ -297,9 +372,14 @@ if __name__=='__main__':
 
     # Let's create surfaces from segmentations
     dir_segmentations = '/Users/numisveins/Documents/aortaseg24/process_binary/binary_segs/'
+    dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
     img_ext = '.mha'
     # Which folder to write surfaces to
-    out_dir = '/Users/numisveins/Documents/aortaseg24/process_binary/surfaces/'
+    out_dir = dir_segmentations + 'surfaces/'
+    try:
+        os.mkdir(out_dir)
+    except Exception as e:
+        print(e)
 
     # all segmentations we have, create surfaces for each
     imgs = os.listdir(dir_segmentations)
@@ -308,9 +388,15 @@ if __name__=='__main__':
         print("Starting case: ", img)
         # Load segmentation
         seg = sitk.ReadImage(dir_segmentations+img)
+        origin = seg.GetOrigin()
+        # if img_ext == '.nii.gz':
+        #     # Store Q matrix
+        #     # Q = seg.GetQFormMatrix()
+        #     import pdb; pdb.set_trace()
         print(f"Image spacing: {seg.GetSpacing()}")
         # Create surfaces
-        poly = convert_seg_to_surfs(seg, new_spacing=[.5,.5,.5], target_node_num=1e5, bound=False)
+        # poly = convert_seg_to_surfs(seg, new_spacing=[.5,.5,.5], target_node_num=1e5, bound=False)
+        poly = vtk_marching_cube_multi(exportSitk2VTK(seg)[0], 0, rotate=True, center=origin)
         # Write surfaces
         vf.write_geo(out_dir+img.replace(img_ext, '.vtp'), poly)
         print("Finished case: ", img)
