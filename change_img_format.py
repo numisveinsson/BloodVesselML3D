@@ -3,7 +3,7 @@ import SimpleITK as sitk
 from modules import vtk_functions as vf
 
 
-def change_mha_vti(file_dir):
+def change_mha_vti(file_dir, label=False):
     """
     Change the format of a file from .mha to .vti
     SITK does not support .vti format, so we need to use the vtk functions
@@ -13,7 +13,8 @@ def change_mha_vti(file_dir):
         None
     """
     img = sitk.ReadImage(file_dir)
-    img = sitk.Cast(img, sitk.sitkUInt8)
+    if label:
+        img = sitk.Cast(img, sitk.sitkUInt8)
     img = vf.exportSitk2VTK(img)[0]
 
     return img
@@ -38,13 +39,13 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.vti'
-    output_format = '.nii.gz'
+    input_format = '.nii.gz'
+    output_format = '.mha'
     label = False  # false if raw image
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/data_combo_paper/ct_data/combined_segs/'
+    data_folder = '/Users/numisveins/Documents/data_combo_paper/mr_data/subvolumes/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
@@ -85,8 +86,8 @@ if __name__ == '__main__':
                 else:
                     img = vf.read_img(data_folder+fn).GetOutput()
             elif output_format == '.vti':
-                if input_format == '.mha':
-                    img = change_mha_vti(data_folder+fn)
+                if input_format == '.mha' or input_format == '.nii.gz':
+                    img = change_mha_vti(data_folder+fn, label)
             else:
                 print('Invalid input/output format')
                 break
