@@ -36,7 +36,7 @@ def extract_subvolume_folder(folder, subvolume_size_phys=(185, 160, 176)):
         None
     """
     # create new folder for the subvolumes
-    subvolume_folder = os.path.join(folder, 'subvolumes')
+    subvolume_folder = os.path.join(folder, 'subvolumes_unshifted')
     try:
         os.mkdir(subvolume_folder)
     except FileExistsError:
@@ -89,7 +89,7 @@ def extract_subvolume_folder(folder, subvolume_size_phys=(185, 160, 176)):
         subvolume = img_reader.Execute()
 
         # shift subvolume origin to match the index
-        subvolume.SetOrigin(np.array(img.GetOrigin()) + np.array(subvolume_index) * np.array(img.GetSpacing()))
+        # subvolume.SetOrigin(np.array(img.GetOrigin()) + np.array(subvolume_index) * np.array(img.GetSpacing()))
 
         # compare bounds
         print(f"Subvolume bounds: {subvolume.GetOrigin()} - {subvolume.GetOrigin() + np.array(subvolume.GetSize()) * np.array(subvolume.GetSpacing())}")

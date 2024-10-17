@@ -29,7 +29,7 @@ def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None):
     contour = vtk.vtkDiscreteMarchingCubes()
     contour.SetInputData(vtkLabel)
     for index, i in enumerate(ids):
-        print("Setting iso-contour value: ", i)
+        # print("Setting iso-contour value: ", i)
         contour.SetValue(index, i)
     contour.Update()
     mesh = contour.GetOutput()
@@ -243,7 +243,7 @@ def combing_segs_aorta_area(segmentation, vascular, label=6, vascular_label=1,
     bounds[4] = max(0, bounds[4]-N)
     bounds[5] = min(dims[2]-1, bounds[5]+N)
     print(f"Bounding box of the aorta valve with N pixels added: {bounds}")
-
+    import pdb; pdb.set_trace()
     # remove the vascular label pixels that are inside the bounding box
     vas[bounds[0]:bounds[1], bounds[2]:bounds[3], bounds[4]:bounds[5]] = 2
     print(f"""Number of pixels in vas as vascular label after:
@@ -300,7 +300,52 @@ def combine_blood_aorta(combined_seg, labels_keep=[3, 6]):
     # Create a polydata from the new combined segmentation
     poly = vtk_marching_cube_multi(combined_seg_new, 0)
 
-    return poly
+    return poly, combined_seg_new
+
+
+def fully_combine_blood_aorta(combined_seg_blood_aorta_vti,
+                              combine_labels=[3, 6]):
+    """
+    Combine the blood pool and aorta into one label
+    Args:
+        combined_seg_blood_aorta_vti: vtkImageData,
+                    blood pool and aorta segmentation
+        combine_labels: list, labels to combine
+    Returns:
+        combined_seg_blood_aorta_vti: vtkImageData, combined blood pool
+                    and aorta segmentation
+    """
+    seg = vtk_to_numpy(combined_seg_blood_aorta_vti.GetPointData().GetScalars())
+    seg = np.where(np.isin(seg, combine_labels), 1, seg)
+    combined_seg_blood_aorta_vti.GetPointData().SetScalars(numpy_to_vtk(seg))
+
+    # create a polydata from the combined segmentation
+    poly = vtk_marching_cube_multi(combined_seg_blood_aorta_vti, 0)
+
+    # define normals for the polydata
+    poly = vtk_normals(poly)
+
+    return poly, combined_seg_blood_aorta_vti
+
+
+def vtk_normals(poly):
+    """
+    This function calculates the normals of a vtk polydata
+    Args:
+        poly: vtkPolyData, polydata to calculate normals
+    Returns:
+        poly: vtkPolyData, polydata with normals
+    """
+    normals = vtk.vtkPolyDataNormals()
+    normals.SetInputData(poly)
+    normals.ComputePointNormalsOn()
+    normals.ComputeCellNormalsOn()
+    normals.FlipNormalsOn()
+    normals.ConsistencyOn()
+    normals.AutoOrientNormalsOn()
+    normals.Update()
+
+    return normals.GetOutput()
 
 
 def remove_cells_with_region_3(polydata):
@@ -419,6 +464,10 @@ def update_labels_based_on_polydata2(polydata1, polydata2):
     # Add new 'CapID' array that is the same as 'ModelFaceID' except scaled to start from 1
     polydata1 = add_cap_id(polydata1)
 
+    # Define normals for the polydata
+    # for model_face_id in [1, 2, 3]:
+    #     polydata1 = ensure_outward_normals(polydata1, model_face_id)
+
     return polydata1
 
 
@@ -478,9 +527,68 @@ def add_cap_id(polydata):
     return polydata
 
 
+def bound_polydata_by_image(image, poly, threshold=10, name=""):
+    """
+    Function to cut polydata to be bounded
+    by image volume
+    """
+    bound = vtk.vtkBox()
+    image.ComputeBounds()
+    b_bound = image.GetBounds()
+
+    b_bound = define_bounding_box(b_bound, threshold, name)
+    # print("Bounding box: ", b_bound)
+    bound.SetBounds(b_bound)
+    clipper = vtk.vtkClipPolyData()
+    clipper.SetClipFunction(bound)
+    clipper.SetInputData(poly)
+    clipper.InsideOutOn()
+    clipper.Update()
+    return clipper.GetOutput()
+
+
+def define_bounding_box(bounds, threshold, name):
+    """
+    Define bounding box for the image
+    """
+    threshold = get_threshold(name)
+    # Define the bounding box
+    # b_bound = [b+threshold if (i % 2) == 0 else b-threshold
+    #            for i, b in enumerate(bounds)]
+    b_bound = [b+threshold[i] if (i % 2) == 0 else b-threshold[i]
+               for i, b in enumerate(bounds)]
+    print(f"Bounding box for {name}: {b_bound}")
+
+    return b_bound
+
+
+def get_threshold(name):
+    """
+    Get the threshold for the bounding box
+
+    Returns:
+        threshold: list, threshold for the bounding box
+                   x0, x1, y0, y1, z0, z1
+    """
+    if '0174_0000' in name:
+        threshold = [80, 30, 10, 10, 10, 5]
+    elif '0176_0000' in name:
+        threshold = [30, 30, 10, 10, 10, 10]
+    elif '0188_0001' in name:
+        threshold = [10, 10, 10, 10, 10, 10]
+    elif 'O150323_2009_aorta' in name:
+        threshold = [10, 10, 10, 10, 10, 5]
+    elif 'O344211000_2006_aorta' in name:
+        threshold = [10, 10, 10, 10, 10, 10]
+
+    return threshold
+
+
+
 if __name__ == "__main__":
 
     write_all = False
+    no_valve = True
 
     # Directory of cardiac meshes polydata
     directory = '/Users/numisveins/Documents/Heartflow/output_cardiac-meshes/'
@@ -503,7 +611,7 @@ if __name__ == "__main__":
     # Directory of vascular segmentations
     vascular_dir = """/Users/numisveins/Documents/Heartflow/
                    output_cardiac_2000_steps/new_format/"""
-    vascular_dir = '/Users/numisveins/Documents/data_combo_paper/ct_data/vascular_segs_vti/'
+    vascular_dir = '/Users/numisveins/Documents/data_combo_paper/ct_data/vascular_segs/vascular_segs_vti/'
     vascular_ext = '.vti'
     vascular_imgs = os.listdir(vascular_dir)
     vascular_imgs = [f for f in vascular_imgs if f.endswith(vascular_ext)]
@@ -608,34 +716,64 @@ if __name__ == "__main__":
                          poly)
 
         # Create blood pool and aorta mesh
-        combined_seg_blood_aorta_vtp = combine_blood_aorta(combined_seg)
+        (combined_blood_aorta_vtp,
+         combined_blood_aorta_vti) = combine_blood_aorta(combined_seg)
 
         # Save blood pool and aorta mesh
         if write_all:
             vf.write_geo(segs_dir + imgs[i].split('/')[-1]
                          .replace(img_ext,
                                   '_seg_combined_area_blood_aorta.vtp'),
-                         combined_seg_blood_aorta_vtp)
+                         combined_blood_aorta_vtp)
+
+        if no_valve:
+            # Combine the segmentations into one
+            (fully_combined_blood_aorta_vtp,
+             fully_combined_blood_aorta_vti
+             ) = fully_combine_blood_aorta(combined_blood_aorta_vti)
+            # Save fully combined blood pool and aorta mesh
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext,
+                                  '_fully_combined_blood_aorta.vtp'),
+                         fully_combined_blood_aorta_vtp)
 
         # Label the valve cells
-        combined_seg_blood_aorta_valve = update_labels_based_on_polydata2(
-            combined_seg_blood_aorta_vtp, poly)
+        blood_aorta_valve = update_labels_based_on_polydata2(
+            combined_blood_aorta_vtp, poly)
 
         # Save blood pool and aorta mesh with valve labels
         vf.write_geo(segs_dir + imgs[i].split('/')[-1]
                      .replace(img_ext,
-                              '_simulation.vtp'),
-                     combined_seg_blood_aorta_valve)
+                              '_simulation_w_valve.vtp'),
+                     blood_aorta_valve)
 
-        # Save smoothed blood pool and aorta mesh
-        combined_seg_blood_aorta_vtp_smooth = smooth_polydata(
-                                                combined_seg_blood_aorta_vtp,
-                                                iteration=25,
-                                                boundary=False,
-                                                feature=False,
-                                                smoothingFactor=0.5)
-        if write_all:
-            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                         .replace(img_ext,
-                                  '_seg_combined_area_blood_aorta_smoothed.vtp'),
-                         combined_seg_blood_aorta_vtp_smooth)
+        # Bound the polydata by the image volume
+        blood_aorta_valve = bound_polydata_by_image(img, blood_aorta_valve,
+                                                    name=imgs[i].split('/')[-1]
+                                                    )
+
+        # Save bounded polydata
+        vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                     .replace(img_ext, '_simulation_w_valve_bounded.vtp'),
+                     blood_aorta_valve)
+
+        if no_valve:
+            # Bound the polydata by the image volume
+            (fully_combined_blood_aorta_vtp
+             ) = bound_polydata_by_image(img, fully_combined_blood_aorta_vtp,
+                                         name=imgs[i].split('/')[-1])
+
+            # Save bounded polydata
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1].replace(img_ext,
+                         '_fully_combined_blood_aorta_bounded.vtp'),
+                         fully_combined_blood_aorta_vtp)
+
+            # Smooth the polydata
+            fully_combined_blood_aorta_vtp = smooth_polydata(
+                fully_combined_blood_aorta_vtp, iteration=25, boundary=False,
+                feature=False, smoothingFactor=0.5)
+
+            # Save smoothed polydata
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1].replace(img_ext,
+                         '_fully_combined_blood_aorta_bounded_smoothed.vtp'),
+                         fully_combined_blood_aorta_vtp)

@@ -45,7 +45,7 @@ if __name__ == '__main__':
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/data_combo_paper/mr_data/subvolumes/'
+    data_folder = '/Users/numisveins/Documents/data_combo_paper/mr_data/output_global_nnunet/output_2d_aortofemmr_combopaper/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)

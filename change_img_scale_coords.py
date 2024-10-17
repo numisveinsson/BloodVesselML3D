@@ -2,7 +2,7 @@ import os
 import SimpleITK as sitk
 
 
-def change_img_scale(img_path, out_path, scale):
+def change_img_scale(img_path, scale):
     """
     Change the scale of the image in the path
 
@@ -10,14 +10,26 @@ def change_img_scale(img_path, out_path, scale):
     but keeping everything else the same
 
     :param img_path: path to the image
-    :param out_path: path to save the new image
     :param scale: new scale
-    :return: None
+    :return: sitk image
     """
     img = sitk.ReadImage(img_path)
     img.SetSpacing((img.GetSpacing()[0]*scale,
                     img.GetSpacing()[1]*scale, img.GetSpacing()[2]*scale))
-    sitk.WriteImage(img, out_path)
+
+    return img
+
+
+def flip_img(img, flip_ax):
+    """
+    Flip the image in the axis
+
+    :param img: sitk image
+    :param flip_ax: list of axis to flip the image
+        [True, False, False] flips the image in the x axis
+    :return: sitk image
+    """
+    return sitk.Flip(img, flip_ax)
 
 
 if __name__ == '__main__':
@@ -32,9 +44,12 @@ if __name__ == '__main__':
     input_format = '.mha'
     output_format = '.mha'
 
-    scale = 10
+    scale = 0.1
 
-    data_folder = '/Users/numisveins/Downloads/output_2d_aortofemct_mic23/new_format/'
+    flip_axis = [True, True, False]
+
+    data_folder = '/Users/numisveins/Documents/data_combo_paper/mr_data/images_original_/'
+    data_folder = '/Users/numisveins/Documents/data_combo_paper/ct_data/vascular_segs/vascular_segs_mha/seqseg_ct/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
@@ -47,8 +62,13 @@ if __name__ == '__main__':
         print(e)
         imgs_old = os.listdir(out_folder)
 
-    for img in imgs:
+    for ind, img in enumerate(imgs):
         img_path = os.path.join(data_folder, img)
         out_path = os.path.join(out_folder, img.replace(input_format,
                                                         output_format))
-        change_img_scale(img_path, out_path, scale)
+        img = change_img_scale(img_path, scale)
+
+        if ind < 3:
+            img = flip_img(img, flip_axis)
+
+        sitk.WriteImage(img, out_path)
