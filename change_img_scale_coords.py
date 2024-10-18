@@ -54,6 +54,7 @@ if __name__ == '__main__':
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]
+    imgs = sorted(imgs)
 
     try:
         os.mkdir(out_folder)
@@ -69,6 +70,7 @@ if __name__ == '__main__':
         img = change_img_scale(img_path, scale)
 
         if ind < 3:
+            print(f'Flipping image {img_path} in axis {flip_axis}')
             img = flip_img(img, flip_axis)
 
         sitk.WriteImage(img, out_path)
