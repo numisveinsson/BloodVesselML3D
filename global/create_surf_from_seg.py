@@ -268,7 +268,7 @@ def exportPython2VTK(img):
     #vtkArray = numpy_to_vtk(img.flatten())
     return vtkArray
 
-def smooth_polydata(poly, iteration=25, boundary=False, feature=False, smoothingFactor=0.):
+def smooth_polydata(poly, iteration=25, boundary=False, feature=False, smoothingFactor=0.4):
     """
     This function smooths a vtk polydata
     Args:
@@ -373,7 +373,8 @@ if __name__=='__main__':
     # Let's create surfaces from segmentations
     dir_segmentations = '/Users/numisveins/Documents/aortaseg24/process_binary/binary_segs/'
     dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
-    img_ext = '.mha'
+    dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
+    img_ext = '.nii.gz'
     # Which folder to write surfaces to
     out_dir = dir_segmentations + 'surfaces/'
     try:
@@ -397,6 +398,8 @@ if __name__=='__main__':
         # Create surfaces
         # poly = convert_seg_to_surfs(seg, new_spacing=[.5,.5,.5], target_node_num=1e5, bound=False)
         poly = vtk_marching_cube_multi(exportSitk2VTK(seg)[0], 0, rotate=True, center=origin)
+        # smooth the surface
+        poly = smooth_polydata(poly, iteration=50)
         # Write surfaces
         vf.write_geo(out_dir+img.replace(img_ext, '.vtp'), poly)
         print("Finished case: ", img)

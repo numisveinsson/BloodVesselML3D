@@ -243,7 +243,7 @@ def combing_segs_aorta_area(segmentation, vascular, label=6, vascular_label=1,
     bounds[4] = max(0, bounds[4]-N)
     bounds[5] = min(dims[2]-1, bounds[5]+N)
     print(f"Bounding box of the aorta valve with N pixels added: {bounds}")
-    import pdb; pdb.set_trace()
+
     # remove the vascular label pixels that are inside the bounding box
     vas[bounds[0]:bounds[1], bounds[2]:bounds[3], bounds[4]:bounds[5]] = 2
     print(f"""Number of pixels in vas as vascular label after:
@@ -587,7 +587,7 @@ def get_threshold(name):
 
 if __name__ == "__main__":
 
-    write_all = False
+    write_all = True
     no_valve = True
 
     # Directory of cardiac meshes polydata
@@ -636,7 +636,7 @@ if __name__ == "__main__":
     meshes = [directory+f for f in meshes]
 
     # create folder for segmentations
-    segs_dir = directory + 'test/'
+    segs_dir = directory + 'output/'
     if not os.path.exists(segs_dir):
         os.makedirs(segs_dir)
 
@@ -646,11 +646,19 @@ if __name__ == "__main__":
         print(f"Processing image {imgs[i]}")
 
         # Read polydata
-        poly = vf.read_geo(meshes[i]).GetOutput()
+        poly_mesh = vf.read_geo(meshes[i]).GetOutput()
         print(f"Processing mesh {meshes[i]}")
 
+        # Save only region 6
+        poly_mesh_6 = thresholdPolyData(poly_mesh, 'RegionId', (6, 6), 'point')
+
+        # Save polydata
+        if write_all:
+            vf.write_geo(segs_dir + imgs[i].split('/')[-1]
+                         .replace(img_ext, '_region6.vtp'), poly_mesh_6)
+
         # Convert polydata to imagedata
-        segmentation = multiclass_convert_polydata_to_imagedata(poly, img)
+        segmentation = multiclass_convert_polydata_to_imagedata(poly_mesh, img)
         # Save segmentation
         if write_all:
             vf.write_img(segs_dir + imgs[i].split('/')[-1]
@@ -700,19 +708,19 @@ if __name__ == "__main__":
         # Create a polydata from the combined segmentation
         poly = vtk_marching_cube_multi(combined_seg, 0)
 
-        # Save polydata
+        # Save polydata - combined model
         if write_all:
             vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                         .replace(img_ext, '_seg_combined_area.vtp'), poly)
+                         .replace(img_ext, '_combined_model_unsmoothed.vtp'), poly)
 
         # Smooth the polydata
         poly = smooth_polydata(poly, iteration=25, boundary=False,
                                feature=False, smoothingFactor=0.5)
 
-        # Save smoothed polydata
+        # Save smoothed polydata - combined model
         if write_all:
             vf.write_geo(segs_dir + imgs[i].split('/')[-1]
-                         .replace(img_ext, '_seg_combined_area_smoothed.vtp'),
+                         .replace(img_ext, '_combined_model_smoothed.vtp'),
                          poly)
 
         # Create blood pool and aorta mesh
@@ -723,7 +731,7 @@ if __name__ == "__main__":
         if write_all:
             vf.write_geo(segs_dir + imgs[i].split('/')[-1]
                          .replace(img_ext,
-                                  '_seg_combined_area_blood_aorta.vtp'),
+                                  '_blood_aorta.vtp'),
                          combined_blood_aorta_vtp)
 
         if no_valve:
@@ -734,7 +742,7 @@ if __name__ == "__main__":
             # Save fully combined blood pool and aorta mesh
             vf.write_geo(segs_dir + imgs[i].split('/')[-1]
                          .replace(img_ext,
-                                  '_fully_combined_blood_aorta.vtp'),
+                                  '_blood_aorta_no_valve.vtp'),
                          fully_combined_blood_aorta_vtp)
 
         # Label the valve cells

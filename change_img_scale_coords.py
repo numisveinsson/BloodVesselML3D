@@ -1,8 +1,9 @@
 import os
 import SimpleITK as sitk
+import math
 
 
-def change_img_scale(img_path, scale):
+def change_img_scale(img_path, scale, scale_origin=None):
     """
     Change the scale of the image in the path
 
@@ -16,6 +17,10 @@ def change_img_scale(img_path, scale):
     img = sitk.ReadImage(img_path)
     img.SetSpacing((img.GetSpacing()[0]*scale,
                     img.GetSpacing()[1]*scale, img.GetSpacing()[2]*scale))
+
+    if scale_origin:
+        img.SetOrigin((img.GetOrigin()[0]*scale_origin,
+                       img.GetOrigin()[1]*scale_origin, img.GetOrigin()[2]*scale_origin))
 
     return img
 
@@ -41,15 +46,18 @@ if __name__ == '__main__':
 
     """
 
-    input_format = '.mha'
-    output_format = '.mha'
+    input_format = '.nrrd'
+    output_format = '.nrrd'
 
+    flip = False
+    permute = False
     scale = 0.1
 
-    flip_axis = [True, True, False]
+    scale_origin = 0.1  # or None
 
-    data_folder = '/Users/numisveins/Documents/data_combo_paper/mr_data/images_original_/'
-    data_folder = '/Users/numisveins/Documents/data_combo_paper/ct_data/vascular_segs/vascular_segs_mha/seqseg_ct/'
+    flip_axis = [False, True, False]
+
+    data_folder = '/Users/numisveins/Documents/vascular_data_3d/mmwhs_mr_train_manual_gt/images/new_format/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
@@ -67,10 +75,13 @@ if __name__ == '__main__':
         img_path = os.path.join(data_folder, img)
         out_path = os.path.join(out_folder, img.replace(input_format,
                                                         output_format))
-        img = change_img_scale(img_path, scale)
+        img = change_img_scale(img_path, scale, scale_origin)
 
-        if ind < 3:
+        if flip:
             print(f'Flipping image {img_path} in axis {flip_axis}')
             img = flip_img(img, flip_axis)
+
+        if permute:
+            img = sitk.PermuteAxes(img, [0, 1, 2])
 
         sitk.WriteImage(img, out_path)

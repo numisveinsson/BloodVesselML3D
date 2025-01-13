@@ -39,13 +39,14 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.nii.gz'
+    input_format = '.vtk'
     output_format = '.mha'
     label = False  # false if raw image
+    surface = False  # true if we want to save the surface vtp file
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/data_combo_paper/mr_data/output_global_nnunet/output_2d_aortofemmr_combopaper/'
+    data_folder = '/Users/numisveins/Documents/datasets/new_aortas_vmr_data/images/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
@@ -105,3 +106,8 @@ if __name__ == '__main__':
                 sitk.WriteImage(img, out_folder+img_name+output_format)
             else:
                 vf.write_img(out_folder+img_name+output_format, img)
+
+            if surface:
+                img_vtk = vf.exportSitk2VTK(img)[0]
+                poly = vf.vtk_marching_cube(img_vtk, 0, 1)
+                vf.write_geo(out_folder+img_name+'.vtp', poly)
