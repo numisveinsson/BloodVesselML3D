@@ -66,6 +66,10 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
     (_, c_loc, radii, cent_ids,
      bifurc_id, num_cent) = sort_centerline(global_centerline)
 
+    # Check radii and add if necessary
+    radii += global_config['RADIUS_ADD']
+    radii *= global_config['RADIUS_SCALE']
+
     ids_total = []
     m_old = M
     n_old = N
@@ -295,8 +299,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
     print_model_info(case_dict['NAME'],  N, n_old, M, m_old)
     # info[case_dict['NAME']] = [ N-n_old, M-m_old, K-k_old]
     print(f"Total time for this case: {(time.time() - time_now_case):.2f} sec")
-    print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K,
-                    k_old, out_dir)
+    # print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K,
+    #                 k_old, out_dir)
     write_csv(csv_list, csv_list_val, modality, global_config)
     if global_config['WRITE_DISCRETE_CENTERLINE']:
         write_csv_discrete_cent(csv_discrete_centerline,
@@ -308,8 +312,12 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                modality, global_config)
         write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val,
                                modality, global_config)
+    # write to done.txt the name of the case
+    with open(out_dir+"done.txt", "a") as f:
+        f.write(case_dict['NAME']+'\n')
+        f.close()
 
-    return (csv_list, csv_list_val, csv_discrete_centerline,
+    return (case_fn, csv_list, csv_list_val, csv_discrete_centerline,
             csv_discrete_centerline_val, csv_outlet_stats,
             csv_outlet_stats_val)
 
@@ -346,6 +354,14 @@ if __name__ == '__main__':
                         default=1.0,
                         type=float,
                         help='Percentage of dataset to use')
+    parser.add_argument('-num_cores', '--num_cores',
+                        default=1,
+                        type=int,
+                        help='Number of cores to use')
+    parser.add_argument('-start_from', '--start_from',
+                        default=0,
+                        type=int,
+                        help='Start from case number')
     args = parser.parse_args()
 
     print(args)
@@ -367,11 +383,13 @@ if __name__ == '__main__':
         random.shuffle(cases)
         # percentage of dataset to use
         cases = cases[:int(args.perc_dataset*len(cases))]
-        # cases = cases[:10]
+
+        # start from case number
+        cases = cases[args.start_from:]
 
         modality = modality.lower()
         info_file_name = "info"+'_'+modality+dt_string+".txt"
-        
+
         create_directories(out_dir, modality, global_config)
 
         image_out_dir_train = out_dir+modality+'_train/'
@@ -394,12 +412,19 @@ if __name__ == '__main__':
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
         # Multiprocessing
-        num_cores = multiprocessing.cpu_count()
-        print(f"Number of cores: {num_cores}")
-        pool = multiprocessing.Pool(num_cores)
-        results = [pool.apply_async(sample_case, args=(case, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality)) for case in cases]
-        pool.close()
-        pool.join()
+        num_cores_pos = multiprocessing.cpu_count()
+        print(f"Number of possible cores: {num_cores_pos}")
+
+        if args.num_cores > 1:
+            pool = multiprocessing.Pool(args.num_cores)
+            results = [pool.apply_async(sample_case, args=(case, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality)) for case in cases]
+            pool.close()
+            pool.join()
+
+        else:
+            for case in cases:
+                results = sample_case(case, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality)
+
         # Collect results
         # for result in results:
         #     csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val = result.get()

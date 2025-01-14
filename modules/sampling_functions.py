@@ -122,8 +122,10 @@ def sort_centerline(centerline):
     num_points = centerline.GetNumberOfPoints()               # number of points in centerline
     cent_data = collect_arrays(centerline.GetPointData())
     c_loc = v2n(centerline.GetPoints().GetData())             # point locations as numpy array
-    radii = cent_data['MaximumInscribedSphereRadius']   # Max Inscribed Sphere Radius as numpy array
-    
+    try:
+        radii = cent_data['MaximumInscribedSphereRadius']   # Max Inscribed Sphere Radius as numpy array
+    except:
+        radii = cent_data['f']
     # get cent_ids, a list of lists
     # each list is the ids of the points belonging to a centerline
     try:
@@ -135,7 +137,7 @@ def sort_centerline(centerline):
         cent_ids = get_point_ids_no_post_proc(centerline)
         bifurc_id = np.zeros(num_points)
         print(f"\nCenterline has not been processed, no known bifurcations\n")
-    
+
     # check if there are duplicate points
     if np.unique(c_loc, axis=0).shape[0] != c_loc.shape[0]:
         # remove duplicate points
@@ -874,9 +876,10 @@ def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N, n_
     max_seg_value = sitk.GetArrayFromImage(removed_seg).max()
     if max_seg_value != 1 and binarize:
         removed_seg /= float(max_seg_value*1.0)
-        # make image unsigned int, removed_seg is sitk image
-        removed_seg = sitk.Cast(removed_seg, sitk.sitkUInt8)
-    print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
+        print(f"Max seg value after scaling: {sitk.GetArrayFromImage(removed_seg).max()}")
+        
+    # make image unsigned int, removed_seg is sitk image
+    removed_seg = sitk.Cast(removed_seg, sitk.sitkUInt8)
     # assert max_seg_value is 1
     if binarize:
         assert sitk.GetArrayFromImage(removed_seg).max() == 1
