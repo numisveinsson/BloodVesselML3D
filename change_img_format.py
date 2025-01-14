@@ -39,18 +39,21 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.vtk'
+    input_format = '.nii.gz'
     output_format = '.mha'
     label = False  # false if raw image
     surface = False  # true if we want to save the surface vtp file
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/datasets/new_aortas_vmr_data/images/'
+    data_folder = '/Users/numisveins/Documents/datasets/TOPCOW_willis_dataset/topcow_batch-1_40pairMRCT_30062023/imagesTr/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]
+
+    # sort the files
+    imgs = sorted(imgs)
 
     try:
         os.mkdir(out_folder)

@@ -4,6 +4,7 @@ from datetime import datetime
 import argparse
 import sys
 import random
+import os
 
 from modules import vtk_functions as vf
 from modules import sitk_functions as sf
@@ -26,7 +27,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                 modality):
 
     """ Sample a case and write out the results """
-    N, M, K, O = 0, 0, 0, 0
+    N, M, K, O, skipped = 0, 0, 0, 0, 0
     csv_list, csv_list_val = [], []
 
     # if global_config['WRITE_DISCRETE_CENTERLINE']:
@@ -79,7 +80,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
     print(f"Case: {case_fn}: Longest centerline is {ip_longest}"
           + f" with {len(cent_ids[ip_longest])} points")
 
-    for ip in range(num_cent): #[ip_longest]:
+    for ip in range(num_cent):  # [ip_longest]: #
         # Choose destination directory
         (image_out_dir, seg_out_dir,
          val_port) = choose_destination(global_config['TESTING'],
@@ -130,6 +131,12 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                 size_r, origin_im,
                                                 spacing_im, size_im,
                                                 global_config['CAPFREE_PROP'])
+                    # if any dim is less than 5, skip
+                    if np.any(size_extract < 5):
+                        print("Size extract too small, skipping")
+                        skipped += 1
+                        continue
+
                     # Check if a surface cap is in volume
                     if global_config['CAPFREE']:
                         is_inside = vf.voi_contain_caps(voi_min, voi_max,
@@ -215,7 +222,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],
                                                   N, n_old, sub, global_config['BINARIZE'])
-                                    
+
                                 if global_config['WRITE_VTK']:
                                     write_vtk(new_img, removed_seg,
                                               out_dir, case_dict['NAME'],
@@ -291,16 +298,25 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                 # print(" " + str(sub) + " variations")
                 N += 1
 
+                if N*n_samples - skipped > global_config['MAX_SAMPLES']:
+                    print("Max samples reached")
+                    on_cent = False
+                    break
+
             count, on_cent = find_next_point(count, locs, rads, bifurc,
                                              global_config, on_cent)
         # keep track of ids that have already been operated on   
         ids_total.extend(ids)
 
+        if N*n_samples - skipped > global_config['MAX_SAMPLES']:
+            print("Max samples reached")
+            break
+
     print_model_info(case_dict['NAME'],  N, n_old, M, m_old)
     # info[case_dict['NAME']] = [ N-n_old, M-m_old, K-k_old]
     print(f"Total time for this case: {(time.time() - time_now_case):.2f} sec")
-    # print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K,
-    #                 k_old, out_dir)
+    print_into_info(info_file_name, case_dict['NAME'], N, n_old, M, m_old, K,
+                    k_old, out_dir)
     write_csv(csv_list, csv_list_val, modality, global_config)
     if global_config['WRITE_DISCRETE_CENTERLINE']:
         write_csv_discrete_cent(csv_discrete_centerline,
@@ -386,6 +402,15 @@ if __name__ == '__main__':
 
         # start from case number
         cases = cases[args.start_from:]
+
+        # skip ones in done.txt if it exists
+        if os.path.exists(out_dir+"done.txt"):
+            with open(out_dir+"done.txt", "r") as f:
+                done = f.read().splitlines()
+                f.close()
+            for case in done:
+                print(f"Skipping {case}")
+            cases = [case for case in cases if case not in done]
 
         modality = modality.lower()
         info_file_name = "info"+'_'+modality+dt_string+".txt"
