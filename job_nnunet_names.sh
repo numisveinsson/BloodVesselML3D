@@ -33,8 +33,8 @@ module load cudnn/7.5
 source activate /global/scratch/users/numi/environments/seqseg2
 
 python3  dataset_dirs/create_nnunet.py \
-    -indir /global/scratch/users/numi/aortaseg24/extraction_output/global_aortaseg24_binary/ \
+    -indir /global/scratch/users/numi/aortaseg24/extraction_output/aortaseg24_labelll/ \
     -outdir /global/scratch/users/numi/nnUnet_data/nnUnet_raw/ \
-    -dataset_number 38 \
-    -name GLOBALAORTASEGBINARY \
+    -dataset_number 37 \
+    -name AORTASEGLABEL \
     -modality ct \
