@@ -18,7 +18,7 @@
 #SBATCH --ntasks=1
 #
 # Processors per task:
-#SBATCH --cpus-per-task=8
+#SBATCH --cpus-per-task=12
 #
 # Wall clock limit:
 #SBATCH --time=24:00:00
@@ -35,6 +35,7 @@ cd /global/scratch/users/numi/BloodVesselML3D/
 
 python3  gather_sampling_data_parallel.py \
     -outdir /global/scratch/users/numi/aortaseg24/extraction_output/aortaseg24_labelll/ \
-    -config_name global_more_samples \
+    -config_name global_fewer_samples \
+    -num_cores 12 \
     
 # -perc_dataset 0.15 \
