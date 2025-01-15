@@ -1,7 +1,8 @@
-## Functions to bind SITK functionality
+# Functions to bind SITK functionality
 
 import SimpleITK as sitk
 import numpy as np
+
 
 def read_image(file_dir_image):
     """
@@ -15,6 +16,7 @@ def read_image(file_dir_image):
     file_reader.SetFileName(file_dir_image)
     file_reader.ReadImageInformation()
     return file_reader
+
 
 def read_image_numpy(file_dir_image):
     """
@@ -34,6 +36,7 @@ def read_image_numpy(file_dir_image):
 
     return file_reader, file_np_array
 
+
 def create_new(file_reader):
     """
     Create new SITK image with same formating as another
@@ -49,6 +52,7 @@ def create_new(file_reader):
     result_img.SetDirection(file_reader.GetDirection())
     return result_img
 
+
 def create_new_from_numpy(file_reader, np_array):
     """
     Create new SITK image with same formating as another
@@ -63,8 +67,9 @@ def create_new_from_numpy(file_reader, np_array):
     result_img.SetSpacing(file_reader.GetSpacing())
     result_img.SetOrigin(file_reader.GetOrigin())
     result_img.SetDirection(file_reader.GetDirection())
-    
+
     return result_img
+
 
 def write_image(image, outputImageFileName):
     """
@@ -77,8 +82,9 @@ def write_image(image, outputImageFileName):
     writer = sitk.ImageFileWriter()
     writer.SetFileName(outputImageFileName)
     writer.Execute(image)
-    
+
     return None
+
 
 def remove_other_vessels(image, seed):
     """
@@ -91,10 +97,10 @@ def remove_other_vessels(image, seed):
     ccimage = sitk.ConnectedComponent(image)
     # check number of components in image
     num_components = sitk.GetArrayFromImage(ccimage).max()
-    
+
     if num_components == 1:
         return image
-    
+
     # print("Before num comp: " + str(num_components))
     # get label of component containing seed point
     label = ccimage[seed]
@@ -109,6 +115,7 @@ def remove_other_vessels(image, seed):
 
     return labelImage
 
+
 def connected_comp_info(original_seg, print_condition):
     """
     Print info on the component being kept
@@ -122,8 +129,9 @@ def connected_comp_info(original_seg, print_condition):
         if print_condition:
             print("Label: {0} -> Mean: {1} Size: {2}".format(l, stats.GetMean(l), stats.GetPhysicalSize(l)))
         means.append(stats.GetMean(l))
-        
+
     return stats.GetLabels(), means, removed_seg
+
 
 def extract_volume(reader_im, index_extract, size_extract):
     """
@@ -148,6 +156,7 @@ def extract_volume(reader_im, index_extract, size_extract):
         return None
 
     return new_img
+
 
 def rotate_volume_tangent(sitk_img, tangent, point):
     """
@@ -188,13 +197,18 @@ def rotate_volume_tangent(sitk_img, tangent, point):
     # check how many unique values there are in the image
     # if there are only 2, then it is a segmentation
     if len(np.unique(sitk.GetArrayFromImage(sitk_img))) == 2:
-        sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkNearestNeighbor, 0.0, sitk_img.GetPixelID())
+        sitk_img = sitk.Resample(sitk_img, sitk_img, affine,
+                                 sitk.sitkNearestNeighbor, 0.0,
+                                 sitk_img.GetPixelID())
     else:
-        sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear, 0.0, sitk_img.GetPixelID())
+        sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear,
+                                 0.0, sitk_img.GetPixelID())
 
     return sitk_img
 
-def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im, prop=1, min_dim=5):
+
+def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im,
+                 prop=1, min_dim=5):
     """
     Function to map a point and radius to volume metrics
     args:
@@ -210,7 +224,7 @@ def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im, pro
         index_extract: index for sitk volume extraction
         voi_min/max: boundaries of volume for caps constraint
     """
-    ratio = 1/2 # how much can be outside volume
+    ratio = 1/2  # how much can be outside volume
 
     size_extract = np.ceil(size_volume*radius/spacing_im)
 
@@ -220,7 +234,8 @@ def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im, pro
     voi_min = point - (size_volume/2)*radius*prop
     voi_max = point + (size_volume/2)*radius*prop
 
-    for i, ind in enumerate(np.logical_and(end_bounds > size_im,(end_bounds- size_im) < ratio*size_extract )):
+    for i, ind in enumerate(np.logical_and(end_bounds > size_im,
+                                           (end_bounds - size_im) < ratio * size_extract)):
         if ind:
             # print('\nsub-volume outside global volume, correcting\n')
             size_extract[i] = size_im[i] - index_extract[i]
@@ -231,6 +246,7 @@ def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im, pro
             index_extract[i] = 0
 
     return size_extract, index_extract, voi_min, voi_max
+
 
 def import_image(image_dir):
     """
@@ -250,12 +266,14 @@ def import_image(image_dir):
 
     return reader_im, origin_im, size_im, spacing_im
 
+
 def sitk_to_numpy(Image):
 
     np_array = sitk.GetArrayFromImage(Image)
     return np_array
 
-def numpy_to_sitk(numpy, file_reader = None):
+
+def numpy_to_sitk(numpy, file_reader=None):
 
     Image = sitk.GetImageFromArray(numpy)
 

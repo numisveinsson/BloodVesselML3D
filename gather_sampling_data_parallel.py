@@ -5,13 +5,25 @@ import argparse
 import sys
 import random
 import os
+import numpy as np
 
 from modules import vtk_functions as vf
 from modules import sitk_functions as sf
 from modules import io
-from modules.sampling_functions import *
-from modules.pre_process import *
-from dataset_dirs.datasets import *
+from modules.sampling_functions import (
+    create_vtk_dir, get_surf_caps, sort_centerline, choose_destination,
+    get_tangent, rotate_volumes, calc_samples, extract_subvolumes,
+    extract_surface, get_outlet_stats, write_2d_planes,
+    write_img, write_vtk, write_vtk_throwout, find_next_point,
+    create_base_stats, add_tangent_stats, extract_centerline,
+    discretize_centerline, write_surface, write_centerline, write_csv,
+    write_csv_discrete_cent, write_csv_outlet_stats, write_pkl_outlet_stats,
+    print_model_info, print_info_file,
+    print_into_info, print_into_info_all_done,
+    append_stats, create_directories
+    )
+from modules.pre_process import resample_spacing
+from dataset_dirs.datasets import get_case_dict_dir, create_dataset
 
 import multiprocessing
 
@@ -49,7 +61,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
     if global_config['WRITE_VTK']:
         try:
             create_vtk_dir(out_dir, case_dict['NAME'], global_config['CAPFREE'])
-        except Exception as e: print(e)
+        except Exception as e:
+            print(e)
 
     # Read Image Metadata
     reader_seg0 = sf.read_image(case_dict['SEGMENTATION'])
@@ -205,11 +218,11 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                          N, n_old, sub)
                                 if global_config['WRITE_IMG']:
                                     if global_config['RESAMPLE_VOLUMES']:
-                                        removed_seg_re  = resample_spacing(
+                                        removed_seg_re = resample_spacing(
                                             removed_seg,
                                             template_size=global_config['RESAMPLE_SIZE'],
                                             order=1)[0]
-                                        new_img_re  = resample_spacing(
+                                        new_img_re = resample_spacing(
                                             new_img,
                                             template_size=global_config['RESAMPLE_SIZE'],
                                             order=1)[0]
@@ -293,7 +306,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             K += 1
                     sub += 1
 
-                print('\n Finished: ' + case_dict['NAME'] +'_'+ str(N-n_old))
+                print('\n Finished: ' + case_dict['NAME'] + '_' + str(N-n_old))
                 print(f"Time for this point: {(time.time() - time_now):.2f} sec")
                 # print(" " + str(sub) + " variations")
                 N += 1
@@ -456,8 +469,6 @@ if __name__ == '__main__':
 
         # print_all_done(info, N, M, K, O)
             # write_csv(csv_list, csv_list_val, modality, global_config)
-            
-
 
         print_into_info_all_done(info_file_name, N, M, K, O, out_dir, start_time=start_time)
         print(f"\n--- {(time.time() - start_time)/60:.2f} min ---")

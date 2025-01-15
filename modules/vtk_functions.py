@@ -1,10 +1,9 @@
 # Built on top of code from Martin Pfaller
 
-#!/usr/bin/env python
+# !/usr/bin/env python
 
 import os
 import vtk
-import pdb
 
 import numpy as np
 from collections import defaultdict
@@ -165,6 +164,7 @@ def write_geo(fname, input):
     writer.Update()
     writer.Write()
 
+
 def read_img(fname):
     """
     Read image from file, chose corresponding vtk reader
@@ -183,6 +183,7 @@ def read_img(fname):
     reader.Update()
 
     return reader
+
 
 def write_img(fname, input):
     """
@@ -208,6 +209,7 @@ def write_img(fname, input):
     writer.Update()
     writer.Write()
 
+
 def change_vti_vtk(fname):
     """
     Change image file from vti to vtk
@@ -224,6 +226,7 @@ def change_vti_vtk(fname):
     writer.SetFileName(fname.replace('.vti','.vtk'))
     writer.SetInputConnection(reader.GetOutputPort())
     writer.Write()
+
 
 def threshold(inp, t, name):
     """
@@ -290,6 +293,7 @@ def cut_plane(inp, origin, normal):
     cut.Update()
     return cut
 
+
 def get_points_cells_pd(polydata):
     cells = []
     for i in range(polydata.GetNumberOfCells()):
@@ -298,6 +302,7 @@ def get_points_cells_pd(polydata):
             cell_points += [polydata.GetCell(i).GetPointId(j)]
         cells += [cell_points]
     return v2n(polydata.GetPoints().GetData()), np.array(cells)
+
 
 def get_points_cells(inp):
     cells = []
@@ -422,8 +427,8 @@ def region_grow(geo, seed_points, seed_ids, n_max=99):
     pids_all = set(seed_points.tolist())
     pids_new = set(seed_points.tolist())
 
-    surf = extract_surface(geo)
-    pids_surf = set(v2n(surf.GetPointData().GetArray('GlobalNodeID')).tolist())
+    # surf = extract_surface(geo)
+    # pids_surf = set(v2n(surf.GetPointData().GetArray('GlobalNodeID')).tolist())
 
     # loop until region stops growing or reaches maximum number of iterations
     i = 0
@@ -529,6 +534,7 @@ def cell_connectivity(geo):
 
     return cells
 
+
 def get_location_cells(surface):
     """
     Compute centers of cells and return their surface_locations
@@ -562,9 +568,9 @@ def voi_contain_caps(voi_min, voi_max, caps_locations):
     contain = np.any(np.logical_and(smaller.all(axis=1), larger.all(axis=1)))
     return contain
 
+
 def calc_caps(polyData):
 
-    #import pdb; pdb.set_trace()
     # Now extract feature edges
     boundaryEdges = vtk.vtkFeatureEdges()
     boundaryEdges.SetInputData(polyData)
@@ -606,6 +612,7 @@ def calc_caps(polyData):
 
     return caps_locs, caps_areas
 
+
 def get_largest_connected_polydata(poly):
 
     connectivity = vtk.vtkPolyDataConnectivityFilter()
@@ -616,15 +623,6 @@ def get_largest_connected_polydata(poly):
 
     return poly
 
-# def organize_cents(cent_id):
-#
-#
-#     num_p, num_cent = cent_id.shape
-#     for i in range(num_cent):
-#         ids = np.where(cent_id[:,i] == 1)[0]
-#         cent_org[i] = ids
-#
-#     return cent_org
 
 def get_seed(cent_fn, centerline_num, point_on_cent):
     """
@@ -662,6 +660,7 @@ def get_seed(cent_fn, centerline_num, point_on_cent):
 
     return locs[count], rads[count]
 
+
 def calc_normal_vectors(vec0):
     """
     Function to calculate two orthonormal vectors
@@ -675,6 +674,7 @@ def calc_normal_vectors(vec0):
 
     return vec1, vec2
 
+
 def clean_boundaries(resampled_image_array):
     """
     Function to see which pixels are inside mesh.
@@ -682,11 +682,10 @@ def clean_boundaries(resampled_image_array):
     Input: a binary seg array that has been resampled.
     """
     import pdb; pdb.set_trace()
-    #for pixel in resampled_image:
-
-
+    # for pixel in resampled_image:
 
     return new_image
+
 
 def bound_polydata_by_image(image, poly, threshold):
     """
@@ -706,6 +705,7 @@ def bound_polydata_by_image(image, poly, threshold):
     clipper.Update()
     return clipper.GetOutput()
 
+
 def bound_polydata_by_sphere(poly, center, radius):
 
     sphereSource = vtk.vtkSphere()
@@ -719,7 +719,8 @@ def bound_polydata_by_sphere(poly, center, radius):
     clipper.Update()
     return clipper.GetOutput()
 
-def exportSitk2VTK(sitkIm,spacing=None):
+
+def exportSitk2VTK(sitkIm, spacing=None):
     """
     This function creates a vtk image from a simple itk image
     Args:
@@ -752,9 +753,10 @@ import SimpleITK as sitk
     reslice.SetInterpolationModeToNearestNeighbor()
     reslice.Update()
     imageData = reslice.GetOutput()
-    #imageData.SetDirectionMatrix(sitkIm.GetDirection())
+    # imageData.SetDirectionMatrix(sitkIm.GetDirection())
 
     return imageData, vtkmatrix
+
 
 def exportVTK2Sitk(vtkIm):
     """
@@ -769,17 +771,19 @@ def exportVTK2Sitk(vtkIm):
     vtkIm.GetPointData().GetScalars().SetName('Scalars_')
     vtkArray = v2n(vtkIm.GetPointData().GetScalars())
     vtkArray = np.reshape(vtkArray, vtkIm.GetDimensions(), order='F')
-    vtkArray = np.transpose(vtkArray, (2,1,0))
+    vtkArray = np.transpose(vtkArray, (2, 1, 0))
     sitkIm = sitk.GetImageFromArray(vtkArray)
     sitkIm.SetSpacing(vtkIm.GetSpacing())
     sitkIm.SetOrigin(vtkIm.GetOrigin())
     return sitkIm
+
 
 def build_transform_matrix(image):
     matrix = np.eye(4)
     matrix[:-1,:-1] = np.matmul(np.reshape(image.GetDirection(), (3,3)), np.diag(image.GetSpacing()))
     matrix[:-1,-1] = np.array(image.GetOrigin())
     return matrix
+
 
 def exportPython2VTK(img):
     """
@@ -790,8 +794,9 @@ def exportPython2VTK(img):
         imageData: vtk image
     """
     vtkArray = n2v(num_array=img.flatten('F'), deep=True, array_type=get_vtk_array_type(img.dtype))
-    #vtkArray = n2v(img.flatten())
+    # vtkArray = n2v(img.flatten())
     return vtkArray
+
 
 def points2polydata(xyz):
     """
@@ -818,6 +823,7 @@ def points2polydata(xyz):
     polydata.Modified()
 
     return polydata
+
 
 def remove_duplicate_points(centerline):
     """
@@ -866,6 +872,7 @@ def remove_duplicate_points(centerline):
     # Return the new polydata
     return new_centerline
 
+
 def vtk_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
     """
     Use the VTK marching cube to create isosrufaces for all classes excluding the background
@@ -883,6 +890,7 @@ def vtk_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
     mesh = contour.GetOutput()
 
     return mesh
+
 
 def vectors2polydata(vectors):
     """

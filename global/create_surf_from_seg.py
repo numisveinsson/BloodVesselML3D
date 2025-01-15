@@ -2,7 +2,8 @@ import numpy as np
 import SimpleITK as sitk
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy, get_vtk_array_type
-import sys, os
+import sys
+import os
 # add the path to the modules ../modules/
 sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
 import vtk_functions as vf
@@ -370,13 +371,20 @@ def convertPolyDataToImageData(poly, ref_im):
 
 if __name__=='__main__':
 
+    if_smooth = False
+    if_keep_largest = True
+
+    if_spacing_file = True
+    spacing_file = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/meta.csv'
+
     # Let's create surfaces from segmentations
     dir_segmentations = '/Users/numisveins/Documents/aortaseg24/process_binary/binary_segs/'
     dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
     dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
+    dir_segmentations = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/truths/'
     img_ext = '.nii.gz'
     # Which folder to write surfaces to
-    out_dir = dir_segmentations + 'surfaces/'
+    out_dir = dir_segmentations + 'surfaces_largest/'
     try:
         os.mkdir(out_dir)
     except Exception as e:
@@ -385,22 +393,39 @@ if __name__=='__main__':
     # all segmentations we have, create surfaces for each
     imgs = os.listdir(dir_segmentations)
     imgs = [img for img in imgs if img.endswith(img_ext)]
+    imgs.sort()
+
+    if if_spacing_file:
+        import pandas as pd
+        spacing_df = pd.read_csv(spacing_file)
+        # only keep 'spacing', they are sorted
+        spacing_values = spacing_df['spacing'].values
+        # read as tuples
+        spacing_values = [tuple(map(float, x[1:-1].split(','))) for x in spacing_values]
+
     for img in imgs:
         print("Starting case: ", img)
         # Load segmentation
         seg = sitk.ReadImage(dir_segmentations+img)
         origin = seg.GetOrigin()
-        # if img_ext == '.nii.gz':
-        #     # Store Q matrix
-        #     # Q = seg.GetQFormMatrix()
-        #     import pdb; pdb.set_trace()
+
+        if if_spacing_file:
+            # set the spacing
+            seg.SetSpacing(spacing_values[imgs.index(img)])
+        print(f"Image size: {seg.GetSize()}")
         print(f"Image spacing: {seg.GetSpacing()}")
         # Create surfaces
         # poly = convert_seg_to_surfs(seg, new_spacing=[.5,.5,.5], target_node_num=1e5, bound=False)
-        poly = vtk_marching_cube_multi(exportSitk2VTK(seg)[0], 0, rotate=True, center=origin)
-        # smooth the surface
-        poly = smooth_polydata(poly, iteration=50)
+        poly = vtk_marching_cube_multi(exportSitk2VTK(seg)[0], 0, rotate=False, center=origin)
+
+        if if_keep_largest:
+            # keep only the largest connected component
+            poly = vf.get_largest_connected_polydata(poly)
+
+        if if_smooth:
+            # smooth the surface
+            poly = smooth_polydata(poly, iteration=50)
         # Write surfaces
         vf.write_geo(out_dir+img.replace(img_ext, '.vtp'), poly)
         print("Finished case: ", img)
-
+    print("All done.")
