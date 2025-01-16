@@ -39,10 +39,20 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                 modality):
 
     """ Sample a case and write out the results """
+
+    # Check if case is in done.txt
+    if os.path.exists(out_dir+"done.txt"):
+        with open(out_dir+"done.txt", "r") as f:
+            done = f.read().splitlines()
+            f.close()
+        if case_fn in done:
+            print(f"Skipping {case_fn}")
+            return (case_fn, [], [], [], [], [], [])
+
     N, M, K, O, skipped = 0, 0, 0, 0, 0
     csv_list, csv_list_val = [], []
 
-    # if global_config['WRITE_DISCRETE_CENTERLINE']:
+    # If global_config['WRITE_DISCRETE_CENTERLINE']:
     csv_discrete_centerline, csv_discrete_centerline_val = [], []
 
     # if global_config['WRITE_OUTLET_STATS']:
@@ -145,10 +155,10 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                 spacing_im, size_im,
                                                 global_config['CAPFREE_PROP'])
                     # if any dim is less than 5, skip
-                    if np.any(size_extract < 5):
-                        print("Size extract too small, skipping")
-                        skipped += 1
-                        continue
+                    # if np.any(size_extract < 5):
+                    #     print("Size extract too small, skipping")
+                    #     skipped += 1
+                    #     continue
 
                     # Check if a surface cap is in volume
                     if global_config['CAPFREE']:
@@ -376,7 +386,6 @@ if __name__ == '__main__':
                         type=str,
                         help='Output directory')
     parser.add_argument('-config_name', '--config_name',
-                        default='global',
                         type=str,
                         help='Name of configuration file')
     parser.add_argument('-perc_dataset', '--perc_dataset',

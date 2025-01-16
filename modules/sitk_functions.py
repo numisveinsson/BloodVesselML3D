@@ -219,6 +219,7 @@ def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im,
         origin_im: image origin
         spacing_im: image spacing
         prop: proportion of image to be counted for caps contraint
+        min_dim: minimum number of voxels in each dimension
     return:
         size_extract: number of voxels to extract in each dim
         index_extract: index for sitk volume extraction
@@ -227,6 +228,8 @@ def map_to_image(point, radius, size_volume, origin_im, spacing_im, size_im,
     ratio = 1/2  # how much can be outside volume
 
     size_extract = np.ceil(size_volume*radius/spacing_im)
+    # if size_extract is smaller than min_dim, set to min_dim
+    size_extract = np.maximum(size_extract, min_dim)
 
     index_extract = np.rint((point-origin_im - (size_volume/2)*radius)/spacing_im)
     end_bounds = index_extract+size_extract

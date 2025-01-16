@@ -27,14 +27,12 @@
 #SBATCH --mail-user=numi@berkeley.edu
 #
 ## Command(s) to run (example):
-module load gcc
-module load cuda/10.0
-module load cudnn/7.5
+
 source activate /global/scratch/users/numi/environments/seqseg2
 
 python3  dataset_dirs/create_nnunet.py \
-    -indir /global/scratch/users/numi/aortaseg24/extraction_output/aortaseg24_labelll/ \
+    -indir //global/scratch/users/numi/PARSE_dataset/local_extraction_fewer/ \
     -outdir /global/scratch/users/numi/nnUnet_data/nnUnet_raw/ \
-    -dataset_number 37 \
-    -name AORTASEGLABEL \
+    -dataset_number 40 \
+    -name SEQPULMPARSE \
     -modality ct \
