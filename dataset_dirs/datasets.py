@@ -43,21 +43,26 @@ def get_dataset_cases(directory, img_ext, test_cases, testing=False):
     cases_cent = [f.replace('.vtp', '') for f in cases_cent]
     print(f"Found {len(cases_cent)} centerlines")
 
-    cases_surf = os.listdir(directory+'surfaces/')
-    cases_surf = [f for f in cases_surf if f.endswith('.vtp')]
-    cases_surf = [f.replace('.vtp', '') for f in cases_surf]
-    cases_surf = [f.replace('.seg', '') for f in cases_surf]
-    print(f"Found {len(cases_surf)} surfaces")
+    # if surface folder exists
+    if os.path.exists(directory+'surfaces/'):
+        cases_surf = os.listdir(directory+'surfaces/')
+        cases_surf = [f for f in cases_surf if f.endswith('.vtp')]
+        cases_surf = [f.replace('.vtp', '') for f in cases_surf]
+        cases_surf = [f.replace('.seg', '') for f in cases_surf]
+        print(f"Found {len(cases_surf)} surfaces")
+    else:
+        print("No surfaces found")
+        cases_surf = []
 
     if testing:
         test_cases_w_img = [f for f in test_cases if f in cases_im]
         print(f"Found {len(test_cases_w_img)} test cases in cases dataset, returning them")
-        #sort
+        # sort
         test_cases_w_img.sort()
         return test_cases_w_img
     else:
         # only keep cases that have all files
-        cases = [f for f in cases_im if f in cases_cent and f in cases_surf]
+        cases = [f for f in cases_im if f in cases_cent]
         print(f"Found {len(cases)} training cases with all files")
         print(f"Returning {len(cases_cent)} cases, that all have centerlines")
         print(f"The cases that have images but no centerlines are:")
