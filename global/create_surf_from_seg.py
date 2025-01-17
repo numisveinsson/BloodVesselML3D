@@ -374,7 +374,7 @@ if __name__=='__main__':
     if_smooth = False
     if_keep_largest = True
 
-    if_spacing_file = True
+    if_spacing_file = False
     spacing_file = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/meta.csv'
 
     # Let's create surfaces from segmentations
@@ -382,7 +382,8 @@ if __name__=='__main__':
     dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
     dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
     dir_segmentations = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/truths/'
-    img_ext = '.nii.gz'
+    dir_segmentations = '/Users/numisveins/Documents/datasets/ASOCA_dataset/truths/'
+    img_ext = '.nrrd'
     # Which folder to write surfaces to
     out_dir = dir_segmentations + 'surfaces_largest/'
     try:

@@ -121,6 +121,16 @@ TEST_CASES:
   - '17'
   - '18'
   - '19'
+  - 'Normal_14'
+  - 'Diseased_16'
+  - 'Diseased_3'
+  - 'Diseased_1'
+  - 'Normal_11'
+  - 'Diseased_8'
+  - 'Diseased_4'
+  - 'Normal_16'
+  - 'Normal_9'
+  - 'Diseased_10'
   
 # PARSE
   - 'PA000198'
@@ -138,6 +148,28 @@ TEST_CASES:
   - 'PA000301'
   - 'PA000118'
   - 'PA000027'
+
+  # CAS dataset
+  - '050'
+  - '051'
+  - '054'
+  - '055'
+  - '056'
+  - '059'
+  - '061'
+  - '064'
+  - '066'
+  - '069'
+  - '068'
+  - '048'
+  - '043'
+  - '046'
+  - '079'
+  - '081'
+  - '087'
+  - '093'
+  - '097'
+  - '098'
 
 # Which cases not to use in extraction
 BAD_CASES:
