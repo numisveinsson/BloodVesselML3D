@@ -1,5 +1,5 @@
 
-DATA_DIR: '/global/scratch/users/numi/CAS_dataset/CAS2023_trainingdataset/'
+DATA_DIR: '/global/scratch/users/numi/ASOCA/'
 
 # '/global/scratch/users/numi/vascular_data_3d/'
 # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
@@ -47,7 +47,7 @@ WRITE_VTK_THROWOUT: False
 
 MOVE_DIST: 1 # 1.5 how far to move along centerline between sampling, in terms of radius
 SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
-RADIUS_ADD: 0.2 # how much to add to radius values (to correct bias)
+RADIUS_ADD: 0 # how much to add to radius values (to correct bias)
 RADIUS_SCALE: 1 # how much to add to radius values (to correct bias)
 
 CAPFREE: False # whether to require a certain amount of cap-free volume
