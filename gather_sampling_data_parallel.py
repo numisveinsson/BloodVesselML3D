@@ -20,7 +20,7 @@ from modules.sampling_functions import (
     write_csv_discrete_cent, write_csv_outlet_stats, write_pkl_outlet_stats,
     print_model_info, print_info_file,
     print_into_info, print_into_info_all_done,
-    append_stats, create_directories
+    append_stats, create_directories, print_csv_stats
     )
 from modules.pre_process import resample_spacing
 from dataset_dirs.datasets import get_case_dict_dir, create_dataset
@@ -383,6 +383,7 @@ if __name__ == '__main__':
     """ Set up"""
     parser = argparse.ArgumentParser()
     parser.add_argument('-outdir', '--outdir',
+                        default='./extracted_data/',
                         type=str,
                         help='Output directory')
     parser.add_argument('-config_name', '--config_name',
@@ -400,6 +401,10 @@ if __name__ == '__main__':
                         default=0,
                         type=int,
                         help='Start from case number')
+    parser.add_argument('-end_at', '--end_at',
+                        default=-1,
+                        type=int,
+                        help='End at case number')
     args = parser.parse_args()
 
     print(args)
@@ -410,6 +415,10 @@ if __name__ == '__main__':
     out_dir = args.outdir  # global_config['OUT_DIR']
     global_config['OUT_DIR'] = out_dir
     # sys.stdout = open(out_dir+"/log.txt", "w")
+
+    # make output directory
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
     for modality in modalities:
 
@@ -423,7 +432,10 @@ if __name__ == '__main__':
         cases = cases[:int(args.perc_dataset*len(cases))]
 
         # start from case number
-        cases = cases[args.start_from:]
+        if args.end_at != -1:
+            cases = cases[args.start_from:args.end_at]
+        else:
+            cases = cases[args.start_from:]
 
         # skip ones in done.txt if it exists
         if os.path.exists(out_dir+"done.txt"):
@@ -455,7 +467,7 @@ if __name__ == '__main__':
         print(f"--- {len(cases)} cases ---")
         for i in cases:
             print(f"Case: {i}")
-        
+
         print_info_file(global_config, cases, global_config['TEST_CASES'], info_file_name)
 
         # Multiprocessing
@@ -481,4 +493,8 @@ if __name__ == '__main__':
 
         print_into_info_all_done(info_file_name, N, M, K, O, out_dir, start_time=start_time)
         print(f"\n--- {(time.time() - start_time)/60:.2f} min ---")
-        print("Continue to write out csv file w info")
+        print(f"--- {(time.time() - start_time)/3600:.2f} hours ---")
+
+        print_csv_stats(out_dir, global_config, modality)
+
+    print("All done")

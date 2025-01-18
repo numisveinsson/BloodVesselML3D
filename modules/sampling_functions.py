@@ -336,8 +336,8 @@ def rotate_volumes(reader_im, reader_seg, tangent, point):
 
 
 def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
-                       origin_im, spacing_im, location, radius, size_r, number, name,
-                       O=None, global_img=False,
+                       origin_im, spacing_im, location, radius, size_r, number,
+                       name, O=None, global_img=False,
                        remove_others=True,
                        binarize=True):
     """"
@@ -378,7 +378,11 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
 
     rem_np = sitk.GetArrayFromImage(removed_seg)
     blood_np = im_np[seg_np > 0.1]
-    ground_truth = rem_np[seg_np > 0.1]
+
+    if remove_others:
+        ground_truth = rem_np
+    else:
+        ground_truth = seg_np
 
     center_volume = (seed)*spacing_im + origin_im
     stats = create_base_stats(number, name, size_r, radius, size_extract,
@@ -796,7 +800,7 @@ def binarize_bifurc(bifurc):
 def add_local_stats(stats, location, diff_cent, blood_np, ground_truth, means, removed_seg, im_np, O):
     """
     Function to add local stats to the stats dictionary
-    """    
+    """
     stats.update({"DIFF_CENT": diff_cent, "POINT_CENT": location.tolist(),
                   "BLOOD_MEAN": np.mean(blood_np),     "BLOOD_MIN": np.amin(blood_np),
                   "BLOOD_STD": np.std(blood_np),       "BLOOD_MAX": np.amax(blood_np),  
@@ -983,13 +987,16 @@ def write_csv(csv_list, csv_list_val, modality, global_config):
                    "TANGENTZ",      "BIFURCATION",  "NUM_VOX",  "OUTLETS",      "NUM_OUTLETS"]
     with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
-        writer.writeheader()
+        # write header if file is empty
+        if csvfile.tell() == 0:
+            writer.writeheader()
         for data in csv_list:
             writer.writerow(data)
     if not global_config['TESTING'] and global_config['VALIDATION_PROP'] > 0:
         with open(global_config['OUT_DIR']+modality+csv_file.replace('train', 'val'), 'w') as csvfile:
             writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
-            writer.writeheader()
+            if csvfile.tell() == 0:
+                writer.writeheader()
             for data in csv_list_val:
                 writer.writerow(data)
 
@@ -1056,3 +1063,45 @@ def write_pkl_outlet_stats(pkl_outlet_stats, pkl_outlet_stats_val, modality,
     if not global_config['TESTING'] and global_config['VALIDATION_PROP'] > 0:
         with open(global_config['OUT_DIR']+modality+pkl_file.replace('train', 'val'), 'wb') as f:
             pickle.dump(pkl_outlet_stats_val, f)
+
+
+def print_csv_stats(out_dir, global_config, modality):
+    import csv
+    csv_file = "_Sample_stats.csv"
+    if global_config['TESTING']:
+        csv_file = modality + '_test'+csv_file
+    else:
+        csv_file = modality + '_train'+csv_file
+
+    print("Here come some AVG stats for the samples")
+    # Calculate avg GT mean and std
+    with open(out_dir+csv_file, 'r') as f:
+        reader = csv.DictReader(f)
+        GT_MEAN = []
+        GT_STD = []
+        for row in reader:
+            GT_MEAN.append(float(row['GT_MEAN']))
+            GT_STD.append(float(row['GT_STD']))
+        print("GT_MEAN: " + str(np.mean(GT_MEAN)))
+        print("GT_STD: " + str(np.mean(GT_STD)))
+    # Calculate avg IM mean and std
+    with open(out_dir+csv_file, 'r') as f:
+        reader = csv.DictReader(f)
+        IM_MEAN = []
+        IM_STD = []
+        for row in reader:
+            IM_MEAN.append(float(row['IM_MEAN']))
+            IM_STD.append(float(row['IM_STD']))
+        print("IM_MEAN: " + str(np.mean(IM_MEAN)))
+        print("IM_STD: " + str(np.mean(IM_STD)))
+    # Calculate avg radius and number of voxels
+    with open(out_dir+csv_file, 'r') as f:
+        reader = csv.DictReader(f)
+        RADIUS = []
+        NUM_VOX = []
+        for row in reader:
+            RADIUS.append(float(row['RADIUS']))
+            NUM_VOX.append(float(row['NUM_VOX']))
+        print("RADIUS: " + str(np.mean(RADIUS)))
+        print("NUM_VOX: " + str(np.mean(NUM_VOX)))
+        print("DIM: " + str(np.mean(NUM_VOX)**(1/3)))

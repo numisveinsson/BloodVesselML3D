@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/datasets/TOPCOW_willis_dataset/topcow_batch-1_40pairMRCT_30062023/imagesTr/'
+    data_folder = '/Users/numisveins/Documents/datasets/PARSE_dataset/images/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
