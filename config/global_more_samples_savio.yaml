@@ -1,5 +1,6 @@
 
-DATA_DIR: '/global/scratch/users/numi/ASOCA/'
+'/global/scratch/users/numi/CAS_dataset/CAS2023_trainingdataset/'
+# DATA_DIR: '/global/scratch/users/numi/ASOCA/'
 
 # '/global/scratch/users/numi/vascular_data_3d/'
 # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
@@ -10,13 +11,13 @@ DATA_DIR: '/global/scratch/users/numi/ASOCA/'
 DATASET_NAME: 'other' #'vmr' # or other 'other'
 
 TESTING: False
-MODALITY: ['MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
-IMG_EXT: '.mha'
+MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
+IMG_EXT: '.nrrd'
 
 BINARIZE: False
 ANATOMY: ['Aorta', 'Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
 OUTLET_CLASSES: [0,1,2,3,4,5,6,7,8,9,10]
-VALIDATION_PROP: 0.0 #0.15
+VALIDATION_PROP: 0.0 # 0.15
 SCALED: False
 CROPPED: False
 
@@ -121,6 +122,16 @@ TEST_CASES:
   - '17'
   - '18'
   - '19'
+  - 'Normal_14'
+  - 'Diseased_16'
+  - 'Diseased_3'
+  - 'Diseased_1'
+  - 'Normal_11'
+  - 'Diseased_8'
+  - 'Diseased_4'
+  - 'Normal_16'
+  - 'Normal_9'
+  - 'Diseased_10'
   
 # PARSE
   - 'PA000198'
