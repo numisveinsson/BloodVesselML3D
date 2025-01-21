@@ -873,13 +873,12 @@ def remove_duplicate_points(centerline):
     return new_centerline
 
 
-def vtk_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
+def vtk_marching_cube(vtkLabel, bg_id, seg_id):
     """
     Use the VTK marching cube to create isosrufaces for all classes excluding the background
     Args:
         labels: vtk image contraining the label map
         bg_id: id number of background class
-        smooth: smoothing iteration
     Returns:
         mesh: vtk PolyData of the surface mesh
     """

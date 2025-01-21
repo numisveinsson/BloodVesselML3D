@@ -9,7 +9,8 @@ sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
 import vtk_functions as vf
 
 
-def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None, rotate=False, center=None):
+def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None, rotate=False,
+                            center=None):
     """
     Note: another function from Arjun's code
 
@@ -58,13 +59,10 @@ def rotate_mesh(mesh, vtkLabel, center=None):
     Returns:
         mesh: rotated vtk PolyData
     """
-    # Get the origin of the image
-    origin = vtkLabel.GetOrigin()
+
     # Get the center of the image
     if center is None:
         center = vtkLabel.GetCenter()
-    # Get the spacing of the image
-    spacing = vtkLabel.GetSpacing()
 
     # Specify the axis of rotation
     axis = [0, 1, 0]
@@ -83,6 +81,7 @@ def rotate_mesh(mesh, vtkLabel, center=None):
 
     return transformFilter.GetOutput()
 
+
 def eraseBoundary(labels, pixels, bg_id):
     """
     Erase anything on the boundary by a specified number of pixels
@@ -93,15 +92,16 @@ def eraseBoundary(labels, pixels, bg_id):
     Returns:
         labels: editted label maps
     """
-    x,y,z = labels.shape
-    labels[:pixels,:,:] = bg_id
-    labels[-pixels:,:,:] = bg_id
-    labels[:,:pixels,:] = bg_id
-    labels[:,-pixels:,:] = bg_id
-    labels[:,:,:pixels] = bg_id
-    labels[:,:,-pixels:] = bg_id
+    x, y, z = labels.shape
+    labels[:pixels, :, :] = bg_id
+    labels[-pixels:, :, :] = bg_id
+    labels[:, :pixels, :] = bg_id
+    labels[:, -pixels:, :] = bg_id
+    labels[:, :, :pixels] = bg_id
+    labels[:, :, -pixels:] = bg_id
 
     return labels
+
 
 def surface_to_image(mesh, image):
     """
@@ -125,32 +125,35 @@ def surface_to_image(mesh, image):
         new_image.GetPointData().SetScalars(numpy_to_vtk(py_im.flatten('F')))
     elif type(image) == sitk.Image:
         matrix = build_transform_matrix(image)
-        mesh_coords = np.append(mesh_coords, np.ones((len(mesh_coords),1)),axis=1)
+        mesh_coords = np.append(mesh_coords, np.ones((len(mesh_coords), 1)),
+                                axis=1)
         matrix = np.linalg.inv(matrix)
         indices = np.matmul(matrix, mesh_coords.transpose()).transpose().astype(int)
-        py_im = sitk.GetArrayFromImage(image).transpose(2,1,0)
+        py_im = sitk.GetArrayFromImage(image).transpose(2, 1, 0)
         for i in indices:
             py_im[i[0], i[1], i[2]] = 1000.
-        new_image = sitk.GetImageFromArray(py_im.transpose(2,1,0))
+        new_image = sitk.GetImageFromArray(py_im.transpose(2, 1, 0))
         new_image.SetOrigin(image.GetOrigin())
         new_image.SetSpacing(image.GetSpacing())
         new_image.SetDirection(image.GetDirection())
     return new_image
 
-def convert_seg_to_surfs(seg, new_spacing=[1.,1.,1.], target_node_num=2048, bound=False):
+
+def convert_seg_to_surfs(seg, new_spacing=[1., 1., 1.], target_node_num=2048,
+                         bound=False):
     py_seg = sitk.GetArrayFromImage(seg)
     py_seg = eraseBoundary(py_seg, 1, 0)
     labels = np.unique(py_seg)
     for i, l in enumerate(labels):
-        py_seg[py_seg==l] = i
+        py_seg[py_seg == l] = i
     seg2 = sitk.GetImageFromArray(py_seg)
     seg2.CopyInformation(seg)
 
-    seg_vtk,_ = exportSitk2VTK(seg2)
-    seg_vtk = vtkImageResample(seg_vtk,new_spacing,'NN')
+    seg_vtk, _ = exportSitk2VTK(seg2)
+    seg_vtk = vtkImageResample(seg_vtk, new_spacing, 'NN')
     poly_l = []
     for i, _ in enumerate(labels):
-        if i==0:
+        if i == 0:
             continue
         p = vtk_marching_cube(seg_vtk, 0, i)
         p = smooth_polydata(p, iteration=50)
@@ -167,13 +170,16 @@ def convert_seg_to_surfs(seg, new_spacing=[1.,1.,1.], target_node_num=2048, boun
         poly = bound_polydata_by_image(seg_vtk, poly, 1.5)
     return poly
 
+
 def build_transform_matrix(image):
     matrix = np.eye(4)
-    matrix[:-1,:-1] = np.matmul(np.reshape(image.GetDirection(), (3,3)), np.diag(image.GetSpacing()))
-    matrix[:-1,-1] = np.array(image.GetOrigin())
+    matrix[:-1, :-1] = np.matmul(np.reshape(image.GetDirection(), (3, 3)),
+                                 np.diag(image.GetSpacing()))
+    matrix[:-1, -1] = np.array(image.GetOrigin())
     return matrix
 
-def exportSitk2VTK(sitkIm,spacing=None):
+
+def exportSitk2VTK(sitkIm, spacing=None):
     """
     This function creates a vtk image from a simple itk image
     Args:
@@ -184,12 +190,12 @@ def exportSitk2VTK(sitkIm,spacing=None):
     """
     if not spacing:
         spacing = sitkIm.GetSpacing()
-    img = sitk.GetArrayFromImage(sitkIm).transpose(2,1,0)
+    img = sitk.GetArrayFromImage(sitkIm).transpose(2, 1, 0)
     vtkArray = exportPython2VTK(img)
     imageData = vtk.vtkImageData()
     imageData.SetDimensions(sitkIm.GetSize())
     imageData.GetPointData().SetScalars(vtkArray)
-    imageData.SetOrigin([0.,0.,0.])
+    imageData.SetOrigin([0., 0., 0.])
     imageData.SetSpacing(spacing)
     matrix = build_transform_matrix(sitkIm)
     space_matrix = np.diag(list(spacing)+[1.])
@@ -198,17 +204,17 @@ def exportSitk2VTK(sitkIm,spacing=None):
     vtkmatrix = vtk.vtkMatrix4x4()
     for i in range(4):
         for j in range(4):
-            vtkmatrix.SetElement(i, j, matrix[i,j])
+            vtkmatrix.SetElement(i, j, matrix[i, j])
     reslice = vtk.vtkImageReslice()
     reslice.SetInputData(imageData)
     reslice.SetResliceAxes(vtkmatrix)
     reslice.SetInterpolationModeToNearestNeighbor()
     reslice.Update()
     imageData = reslice.GetOutput()
-    #imageData.SetDirectionMatrix(sitkIm.GetDirection())
-
+    # imageData.SetDirectionMatrix(sitkIm.GetDirection())
 
     return imageData, vtkmatrix
+
 
 def vtkImageResample(image, spacing, opt):
     """
@@ -222,22 +228,23 @@ def vtkImageResample(image, spacing, opt):
     """
     reslicer = vtk.vtkImageReslice()
     reslicer.SetInputData(image)
-    if opt=='linear':
+    if opt == 'linear':
         reslicer.SetInterpolationModeToLinear()
-    elif opt=='NN':
+    elif opt == 'NN':
         reslicer.SetInterpolationModeToNearestNeighbor()
-    elif opt=='cubic':
+    elif opt == 'cubic':
         reslicer.SetInterpolationModeToCubic()
     else:
         raise ValueError("interpolation option not recognized")
 
-    #size = np.array(image.GetSpacing())*np.array(image.GetDimensions())
-    #new_spacing = size/np.array(dims)
+    # size = np.array(image.GetSpacing())*np.array(image.GetDimensions())
+    # new_spacing = size/np.array(dims)
 
     reslicer.SetOutputSpacing(*spacing)
     reslicer.Update()
 
     return reslicer.GetOutput()
+
 
 def vtk_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
     """
@@ -257,6 +264,7 @@ def vtk_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
 
     return mesh
 
+
 def exportPython2VTK(img):
     """
     This function creates a vtk image from a python array
@@ -266,10 +274,12 @@ def exportPython2VTK(img):
         imageData: vtk image
     """
     vtkArray = numpy_to_vtk(num_array=img.flatten('F'), deep=True, array_type=get_vtk_array_type(img.dtype))
-    #vtkArray = numpy_to_vtk(img.flatten())
+    # vtkArray = numpy_to_vtk(img.flatten())
     return vtkArray
 
-def smooth_polydata(poly, iteration=25, boundary=False, feature=False, smoothingFactor=0.4):
+
+def smooth_polydata(poly, iteration=25, boundary=False, feature=False,
+                    smoothingFactor=0.):
     """
     This function smooths a vtk polydata
     Args:
@@ -288,11 +298,10 @@ def smooth_polydata(poly, iteration=25, boundary=False, feature=False, smoothing
     smoother.NormalizeCoordinatesOn()
     smoother.Update()
 
-
     smoothed = smoother.GetOutput()
 
-
     return smoothed
+
 
 def decimation(poly, rate):
     """
@@ -309,8 +318,9 @@ def decimation(poly, rate):
     decimate.VolumePreservationOff()
     decimate.Update()
     output = decimate.GetOutput()
-    #output = cleanPolyData(output, 0.)
+    # output = cleanPolyData(output, 0.)
     return output
+
 
 def appendPolyData(poly_list):
     """
@@ -327,12 +337,14 @@ def appendPolyData(poly_list):
     out = appendFilter.GetOutput()
     return out
 
+
 def bound_polydata_by_image(image, poly, threshold):
     bound = vtk.vtkBox()
     image.ComputeBounds()
     b_bound = image.GetBounds()
-    b_bound = [b+threshold if (i % 2) ==0 else b-threshold for i, b in enumerate(b_bound)]
-    #print("Bounding box: ", b_bound)
+    b_bound = [b+threshold if (i % 2) == 0 else b-threshold
+               for i, b in enumerate(b_bound)]
+    # print("Bounding box: ", b_bound)
     bound.SetBounds(b_bound)
     clipper = vtk.vtkClipPolyData()
     clipper.SetClipFunction(bound)
@@ -340,6 +352,7 @@ def bound_polydata_by_image(image, poly, threshold):
     clipper.InsideOutOn()
     clipper.Update()
     return clipper.GetOutput()
+
 
 def convertPolyDataToImageData(poly, ref_im):
     """
@@ -351,14 +364,15 @@ def convertPolyDataToImageData(poly, ref_im):
         output: resulted vtkImageData
     """
 
-    ref_im.GetPointData().SetScalars(numpy_to_vtk(np.zeros(vtk_to_numpy(ref_im.GetPointData().GetScalars()).shape)))
+    ref_im.GetPointData().SetScalars(
+        numpy_to_vtk(np.zeros(vtk_to_numpy(
+            ref_im.GetPointData().GetScalars()).shape)))
     ply2im = vtk.vtkPolyDataToImageStencil()
     ply2im.SetTolerance(0.05)
     ply2im.SetInputData(poly)
     ply2im.SetOutputSpacing(ref_im.GetSpacing())
     ply2im.SetInformationInput(ref_im)
     ply2im.Update()
-
 
     stencil = vtk.vtkImageStencil()
     stencil.SetInputData(ref_im)
@@ -369,7 +383,8 @@ def convertPolyDataToImageData(poly, ref_im):
 
     return output
 
-if __name__=='__main__':
+
+if __name__ == '__main__':
 
     if_smooth = False
     if_keep_largest = True
@@ -382,8 +397,8 @@ if __name__=='__main__':
     dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
     dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
     dir_segmentations = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/truths/'
-    dir_segmentations = '/Users/numisveins/Documents/datasets/ASOCA_dataset/truths/'
-    img_ext = '.nrrd'
+    dir_segmentations = '/Users/numisveins/Documents/datasets/PARSE_dataset/truths/'
+    img_ext = '.nii.gz'
     # Which folder to write surfaces to
     out_dir = dir_segmentations + 'surfaces_largest/'
     try:
