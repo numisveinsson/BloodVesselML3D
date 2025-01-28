@@ -1,17 +1,15 @@
 
-DATA_DIR: '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/'
+DATA_DIR: '/Users/numisveins/Documents/datasets/ASOCA_dataset/'
 
 # '/global/scratch/users/numi/vascular_data_3d/'
 # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
 # DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data
-# OUT_DIR: '/global/scratch/users/numi/vascular_data_3d/extraction_output/nnunet_only_one_aorta_vmr/' # /Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_asoca_coronaries/ #
-# OUT_DIR: '/Users/numisveins/Documents/Automatic_Tracing_Data/nnunet_only_one_aorta_vmr/'
 
 DATASET_NAME: 'other' #'vmr' # or other 'other'
 
 TESTING: False
-MODALITY: ['MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
-IMG_EXT: '.mha'
+MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
+IMG_EXT: '.nrrd'
 
 BINARIZE: False
 ANATOMY: ['Aorta', 'Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
@@ -21,7 +19,7 @@ SCALED: False
 CROPPED: False
 
 EXTRACT_VOLUMES: True
-ROTATE_VOLUMES: False
+ROTATE_VOLUMES: True
 
 RESAMPLE_VOLUMES: False
 RESAMPLE_SIZE: [64, 64, 64]
@@ -32,7 +30,7 @@ WRITE_SAMPLES: True
 WRITE_IMG: True
 REMOVE_OTHER: True # Remove other unconnected vessels in gt volume, can cause problems where vessels are close
 WRITE_SURFACE: False
-WRITE_CENTERLINE: False
+WRITE_CENTERLINE: True
 WRITE_VOXEL_PYRAMID: False
 
 WRITE_DISCRETE_CENTERLINE: False
@@ -41,6 +39,9 @@ DISCRETE_CENTERLINE_N_POINTS: 10
 WRITE_OUTLET_STATS: False
 WRITE_OUTLET_IMG: False
 UPSAMPLE_OUTLET_IMG: False
+
+WRITE_CROSS_SECTIONAL: True
+WRITE_TRAJECTORIES: True
 
 WRITE_VTK: True
 WRITE_VTK_THROWOUT: False
@@ -121,6 +122,16 @@ TEST_CASES:
   - '17'
   - '18'
   - '19'
+  - 'Normal_14'
+  - 'Diseased_16'
+  - 'Diseased_3'
+  - 'Diseased_1'
+  - 'Normal_11'
+  - 'Diseased_8'
+  - 'Diseased_4'
+  - 'Normal_16'
+  - 'Normal_9'
+  - 'Diseased_10'
   
 # PARSE
   - 'PA000198'

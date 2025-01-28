@@ -5,7 +5,8 @@ import random
 from .vtk_functions import (
     collect_arrays, calc_normal_vectors, get_location_cells, clean_boundaries,
     exportSitk2VTK, bound_polydata_by_image, bound_polydata_by_sphere,
-    get_largest_connected_polydata, points2polydata, write_geo, calc_caps
+    get_largest_connected_polydata, points2polydata, write_geo, calc_caps,
+    subdivide_lines, connectivity_points,
     )
 from .sitk_functions import (
     extract_volume, rotate_volume_tangent, remove_other_vessels,
@@ -128,10 +129,78 @@ def get_surf_caps(surface):
     return cap_locs
 
 
-def sort_centerline(centerline):
+def get_longest_centerline(cent_ids, c_loc):
+    """ Get the longest centerline by computing the total
+        accumulated length of the centerline between each point
+    Args:
+        cent_ids: list of centerline ids
+        c_loc: centerline locations
+    """
+    lengths = []
+    for ids in cent_ids:
+        locs = c_loc[ids]
+        length = 0
+        for i in range(len(locs)-1):
+            length += np.linalg.norm(locs[i+1] - locs[i])
+        lengths.append(length)
+    return np.argmax(lengths)
+
+
+def sort_centerline_by_length(cent_ids, c_loc):
+    """ Sort centerline ids by length
+        The longest come first
+    Args:
+        cent_ids: list of centerline ids
+        c_loc: centerline locations
+    """
+    lengths = []
+    for ids in cent_ids:
+        locs = c_loc[ids]
+        length = 0
+        for i in range(len(locs)-1):
+            length += np.linalg.norm(locs[i+1] - locs[i])
+        lengths.append(length)
+    return np.argsort(lengths)[::-1]
+
+
+def flip_radius(cent_ids, radii):
+    """ Flip the centerline ids so that the radius is always larger
+    Args:
+        cent_ids: list of centerline ids
+        radii: list of radii
+    """
+    for i in range(len(cent_ids)):
+        if radii[cent_ids[i][0]] < radii[cent_ids[i][-1]]:
+            cent_ids[i] = cent_ids[i][::-1]
+    return cent_ids
+
+
+def sort_centerline(centerline, sub_divide=1, debug=False):
     """
     Function to sort the centerline data
     """
+    # if sub_divide > 1:
+    #     if debug:
+    #         print(f"Subdividing centerline by {sub_divide}")
+    #     # subsample the centerline
+    #     for i in range(int(np.sqrt(sub_divide))):
+    #         centerline = subdivide_lines(centerline)
+    #     # write the centerline to file
+    #     write_geo('./output_debug/centerline_subdivided.vtp', centerline)
+
+    # point_to_cells, non_connected = connectivity_points(centerline)
+
+    # if non_connected:
+    #     # Some points are not connected in any cells
+    #     if debug:
+    #         print(f"Centerline has {len(non_connected)} points not connected to any cells")
+    #     # remove all except the connected points
+    #     centerline0 = get_largest_connected_polydata(centerline)
+    #     centerline = centerline0
+    #     if debug:
+    #         print("Centerline has been filtered to only include largest connected component")
+    #     point_to_cells, non_connected = connectivity_points(centerline)
+    #     write_geo('./output_debug/centerline_connected.vtp', centerline)
 
     num_points = centerline.GetNumberOfPoints()               # number of points in centerline
     cent_data = collect_arrays(centerline.GetPointData())
@@ -153,6 +222,21 @@ def sort_centerline(centerline):
         bifurc_id = np.zeros(num_points)
         print("\nCenterline has not been processed, no known bifurcations\n")
 
+    # print(f"Number of branches: {len(cent_ids)}")
+    # # remove identical centerlines
+    # cent_ids_new = []
+    # for i in range(len(cent_ids)):
+    #     if not cent_ids[i]:
+    #         # empty list
+    #         continue
+    #     if cent_ids[i] not in cent_ids_new:
+    #         cent_ids_new.append(cent_ids[i])
+    # cent_ids = cent_ids_new
+    # print(f"Number of branches after removing duplicates: {len(cent_ids)}")    
+
+    # cent_ids = sort_centerline_ids(cent_ids, point_to_cells, centerline)
+    # print("\nCenterline has been sorted\n")
+
     # check if there are duplicate points
     if np.unique(c_loc, axis=0).shape[0] != c_loc.shape[0]:
         # remove duplicate points
@@ -173,6 +257,92 @@ def sort_centerline(centerline):
     return num_points, c_loc, radii, cent_ids, bifurc_id, num_cent
 
 
+def sort_centerline_ids(cent_ids, point_to_cells, centerline_poly, debug=False):
+    """
+    Function to sort the centerline ids
+    by connectivity of the points
+
+    Args:
+        cent_ids: list of lists of point ids
+        point_to_cells: dictionary with points as keys and cells
+            as values
+        centerline_poly: vtk polydata of centerline
+    Returns:
+        cent_ids: list of lists of point ids
+    """
+    import pdb; pdb.set_trace()
+    # sort the centerline ids
+    # by connectivity of the points
+    cent_ids_sorted = []
+    for ids in cent_ids:
+        if not ids:
+            # empty list
+            cent_ids_sorted.append([])
+            continue
+        ids_sorted = []
+        if len(ids) == 1:
+            ids_sorted.append(ids[0])
+        else:
+            # find ids at the ends
+            end_ids = find_end_ids(ids, point_to_cells)
+            if len(end_ids) == 0:
+                print("No end points found")
+                ids_sorted.append(ids[0])
+            else:
+                print(f"End points found: {end_ids}")
+                ids_sorted.append(end_ids[0])
+                # NOTE: we can start from either end
+
+            for i in range(len(ids)-1):
+                # find the point that share a cell with the previous point
+                # and is not in the list
+                cell_ids = point_to_cells[ids_sorted[-1]]
+                # loop through the cells of the previous point
+                if debug:
+                    print(f"Point {ids_sorted[-1]} is connected to cells {cell_ids}")
+                for cell_id in cell_ids:
+                    # get the cell
+                    cell = centerline_poly.GetCell(cell_id)
+                    # loop through the points of the cell
+                    for j in range(cell.GetNumberOfPoints()):
+                        point_id = cell.GetPointId(j)
+                        if debug:
+                            print(f"Checking point {point_id}")
+                        # check if the point is in the list
+                        # and if it is not in the sorted list
+                        if point_id in ids:
+                            if point_id not in ids_sorted:
+                                # add the point to the sorted list
+                                ids_sorted.append(point_id)
+                                break
+                            # else:
+                            #     print(f"Point {point_id} is already in the list")
+            # assert the last ids is the other end id
+            if len(end_ids) == 2:
+                assert ids_sorted[-1] == end_ids[-1], "Last point should be the other end point"
+
+        if debug:
+            print(f"Sorted ids: {ids_sorted}")
+
+        cent_ids_sorted.append(ids_sorted)
+
+    return cent_ids_sorted
+
+
+def find_end_ids(ids, point_to_cells):
+    """
+    Function to find the end ids
+    based on which points are connected to only one cell
+    """
+    end_ids = []
+    for i in range(len(ids)):
+        if ids[i] < len(point_to_cells):
+            cell_ids = point_to_cells[ids[i]]
+        if len(cell_ids) == 1:
+            end_ids.append(ids[i])
+    return end_ids
+
+
 def get_point_ids_post_proc(centerline_poly):
 
     cent = centerline_poly
@@ -182,7 +352,6 @@ def get_point_ids_post_proc(centerline_poly):
     cent_data = collect_arrays(cent.GetPointData())
 
     # cell_data = collect_arrays(cent.GetCellData())
-    # points_in_cells = get_points_cells_pd(cent)
 
     cent_id = cent_data['CenterlineId']
     # number of centerlines (one is assembled of multiple)
@@ -226,6 +395,8 @@ def get_point_ids_no_post_proc(centerline_poly):
                 # point = centerline_poly.GetPoint(point_id)
                 point_ids.append(point_id)
             point_ids_list.append(point_ids)
+        else:
+            print(f"Cell {i} is not a line")
 
     return point_ids_list
 
@@ -262,6 +433,9 @@ def get_tangent(locs, count):
         tangent = locs[count] - locs[count-1]
     else:
         tangent = locs[count+1] - locs[count-1]
+
+    # normalize
+    tangent = tangent/np.linalg.norm(tangent)
 
     return tangent
 
@@ -328,11 +502,13 @@ def rotate_volumes(reader_im, reader_seg, tangent, point):
     reader_seg = reader_seg.Execute()
 
     # rotate the volumes
-    new_img = rotate_volume_tangent(reader_im, tangent, point)
-    new_seg = rotate_volume_tangent(reader_seg, tangent, point)
+    new_img, y, z = rotate_volume_tangent(reader_im, tangent, point,
+                                          return_vecs=True)
+    new_seg, y, z = rotate_volume_tangent(reader_seg, tangent, point,
+                                          return_vecs=True)
     origin_im = np.array(list(new_img.GetOrigin()))
 
-    return new_img, new_seg, origin_im
+    return new_img, new_seg, origin_im, y, z
 
 
 def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
@@ -356,9 +532,10 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
     seg_np = sitk.GetArrayFromImage(new_seg)
 
     if seg_np.max() > 1:
-        new_seg_bin = seg_np / float(seg_np.max()*1.0)
-        # make unsigned int
+        # binarize the segmentation
+        new_seg_bin = new_seg / seg_np.max()
         new_seg_bin = sitk.Cast(new_seg_bin, sitk.sitkUInt8)
+        seg_np = sitk.GetArrayFromImage(new_seg_bin)
     else:
         new_seg_bin = new_seg
 
@@ -472,8 +649,8 @@ def extract_centerline(img, centerline):
     vtkimage = exportSitk2VTK(img)
     cent_local = bound_polydata_by_image(vtkimage[0], centerline, 0)
     # cent_local = get_largest_connected_polydata(cent_local)
-    print(f"Skipping keeping largest connected centerline")
-
+    print("Skipping keeping largest connected centerline")
+    point_to_cells, non_connected = connectivity_points(cent_local)
     return stats, cent_local
 
 
@@ -545,7 +722,7 @@ def discretize_centerline(centerline, img, N = None, sub = None, name = None, ou
     bounds = get_bounds(img)
 
     num_points, c_loc, radii, cent_id, bifurc_id, num_cent = sort_centerline(centerline)
-    
+
     c_loc = transform_to_ref(c_loc, bounds)
     # cent_id, num_cent = clean_cent_ids(cent_id, num_cent)
     total_ids = []
@@ -614,6 +791,53 @@ def get_outlet_stats(stats, img, seg, upsample=False):
     return stats_all, planes_img, planes_seg, pos_example
 
 
+def get_cross_sectional_planes(stats, img, seg, upsample=True):
+    """
+    Function to get cross sectional planes
+
+    :param stats: dictionary with stats
+    :param img: sitk image
+    :param seg: sitk segmentation
+    :param upsample: bool to upsample the planes
+    :param traj: trajectory of centerline
+    """
+    img = sitk.GetArrayFromImage(img)
+    seg = sitk.GetArrayFromImage(seg)
+
+    planes_img = []
+    planes_seg = []
+    for i in range(3):
+        # Get the middle plane
+        if i == 0:
+            plane_img = img[int(img.shape[0]/2), :, :]
+            plane_seg = seg[int(seg.shape[0]/2), :, :]
+        elif i == 1:
+            plane_img = img[:, int(img.shape[1]/2), :]
+            plane_seg = seg[:, int(seg.shape[1]/2), :]
+        else:
+            plane_img = img[:, :, int(img.shape[2]/2)]
+            plane_seg = seg[:, :, int(seg.shape[2]/2)]
+
+        planes_img.append(plane_img)
+        planes_seg.append(plane_seg)
+
+    if upsample:
+        planes_img = upsample_planes(planes_img, size=200, seg=False)
+        planes_seg = upsample_planes(planes_seg, size=200, seg=True)
+
+    names = ['x', 'y', 'z']
+    stats_all = []
+    for i in range(3):
+        name = stats['NAME'] + '_' + names[i]
+        stats_new = {}
+        stats_new['NAME'] = name
+        stats_new['SIZE'] = planes_seg[i].shape
+
+        stats_all.append(stats_new)
+
+    return stats_all, planes_img, planes_seg
+
+
 def upsample_planes(planes, size=480, seg=False):
     """
     Function to resample images to size
@@ -652,17 +876,20 @@ def upsample_planes(planes, size=480, seg=False):
     return planes_up
 
 
-def write_2d_planes(planes, stats_out, image_out_dir):
+def write_2d_planes(planes, stats_out, image_out_dir,
+                    add='_img_outlet_detection'):
     """
     Function to write 2d planes
     Values are normalized to 0-255
     Written out as png
     """
     import cv2
-
-    add = '_img_outlet_detection'
     # add to dir name end
-    image_out_dir = image_out_dir[:-1]+ add + '/'
+    image_out_dir = image_out_dir[:-1] + add + '/'
+
+    # make dir if it doesnt exist
+    if not os.path.exists(image_out_dir):
+        os.makedirs(image_out_dir)
 
     for i in range(len(planes)):
         plane = planes[i]
@@ -678,11 +905,71 @@ def write_2d_planes(planes, stats_out, image_out_dir):
         # plane = plane/max([np.amax(plane),1])*255
         # # make unsigned int
         # plane = plane.astype(np.uint8)
-        
+
         plane = cv2.convertScaleAbs(plane, alpha=(255.0/np.amax(plane)))
         # print(f"Shape of plane: {plane.shape}")
         fn_name = image_out_dir + stats_out[i]['NAME']+'.png'
         cv2.imwrite(fn_name, plane)
+
+
+def get_proj_traj(stats, img, global_centerline,
+                  tangent=None, y_vec=None, z_vec=None,
+                  outdir=None):
+    """
+    Function to get the projected trajectory
+    of the centerline
+
+    Note: The tangent is the x-axis
+          the y_vec is the y-axis
+          the z_vec is the z-axis
+    """
+    if tangent is None:
+        tangent = np.array([1, 0, 0])
+    if y_vec is None:
+        y_vec = np.array([0, 1, 0])
+    if z_vec is None:
+        z_vec = np.array([0, 0, 1])
+
+    print(f"tangent: {tangent}")
+
+    trajs = []
+
+    # if outdir is not None:
+        # write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_centerline.vtp', bounded_cent)
+
+    num_points, c_loc, radii, cent_id, bifurc_id, num_cent = sort_centerline(global_centerline)
+
+    # get bounds of image
+    bounds = get_bounds(img)
+    # keep only the points that are in the image
+    c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
+    # update cent_id
+    cent_id = keep_indices(cent_id, c_loc_indes)
+    import pdb; pdb.set_trace()
+    # transform to reference frame
+    c_loc = transform_to_ref(c_loc, bounds)
+
+    # cent_id, num_cent = clean_cent_ids(cent_id, num_cent)
+
+    for ip in range(num_cent):
+        if not cent_id[ip]:
+            continue
+        ids = cent_id[ip]
+        locs, rads, bifurc = c_loc[ids], radii[ids], bifurc_id[ids]
+        import pdb; pdb.set_trace()
+
+
+def keep_indices(cent_id, c_loc_indes):
+    """
+    Function to keep only the indices
+    that are in the image
+    """
+    cent_id_new = []
+    for ids in cent_id:
+        ids_new = [ids[i] for i in range(len(ids)) if c_loc_indes[ids[i]]]
+        cent_id_new.append(ids_new)
+
+    return cent_id_new
 
 
 def get_boxes(planes):

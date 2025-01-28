@@ -8,7 +8,21 @@ sys.path.insert(0, '../..')
 sys.path.insert(0, '..')
 # from modules import io
 
-# main script
+
+def save_json(data, filename):
+    """
+    Save json file
+    Args:
+        data: data to save
+        filename: filename
+    Returns:
+        json file
+    """
+    import json
+    with open(filename, 'w') as f:
+        json.dump(data, f, indent=4)
+
+
 if __name__ == "__main__":
     """
     This script is used to create the nnUNet dataset names
@@ -27,6 +41,29 @@ if __name__ == "__main__":
     ├── imagesTr
     ├── imagesTs
     └── labelsTr
+
+    Example command:
+
+    python3 dataset_dirs/create_nnunet.py \
+            -outdir /Users/numisveins/Documents/datasets/ASOCA_dataset/global_trainset/ \
+            -indir /Users/numisveins/Documents/datasets/ASOCA_dataset/global_trainset/ \
+            -name AORTAS \
+            -dataset_number 1 \
+            -modality ct \
+            -start_from 0
+
+    example dataset.json
+    dataset_json = { 
+            "channel_names": {
+                "0": "CT"
+            },
+            "labels": {
+                "background": 0,
+                "vessel": 1
+            },
+            "numTraining": 35362, 
+            "file_ending": ".nii.gz"
+            }
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-outdir', '--outdir',
@@ -120,3 +157,18 @@ if __name__ == "__main__":
             if img != new_name:
                 # copy with new name
                 shutil.copy(os.path.join(directory, fn, img), os.path.join(out_data_dir, fns_out[fns_in.index(fn)], new_name))
+
+    # Create a dataset.json file
+    dataset_json = {
+        "channel_names": {
+            "0": modality.upper()
+        },
+        "labels": {
+            "background": 0,
+            "vessel": 1
+        },
+        "numTraining": len(imgs),
+        "file_ending": ".nii.gz"
+        }
+    # Save dataset.json
+    save_json(dataset_json, os.path.join(out_data_dir, 'dataset.json'))

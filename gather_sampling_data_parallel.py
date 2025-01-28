@@ -5,7 +5,7 @@ import argparse
 import sys
 import random
 import os
-import numpy as np
+import pandas as pd
 
 from modules import vtk_functions as vf
 from modules import sitk_functions as sf
@@ -18,9 +18,11 @@ from modules.sampling_functions import (
     create_base_stats, add_tangent_stats, extract_centerline,
     discretize_centerline, write_surface, write_centerline, write_csv,
     write_csv_discrete_cent, write_csv_outlet_stats, write_pkl_outlet_stats,
-    print_model_info, print_info_file,
+    print_model_info, print_info_file, get_cross_sectional_planes,
     print_into_info, print_into_info_all_done,
-    append_stats, create_directories, print_csv_stats
+    append_stats, create_directories, print_csv_stats,
+    get_longest_centerline, sort_centerline_by_length, flip_radius,
+    get_proj_traj
     )
 from modules.pre_process import resample_spacing
 from dataset_dirs.datasets import get_case_dict_dir, create_dataset
@@ -48,6 +50,11 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
         if case_fn in done:
             print(f"Skipping {case_fn}")
             return (case_fn, [], [], [], [], [], [])
+
+    if global_config['WRITE_TRAJECTORIES']:
+        traj_list = []
+    else:
+        traj_list = None
 
     N, M, K, O, skipped = 0, 0, 0, 0, 0
     csv_list, csv_list_val = [], []
@@ -103,7 +110,14 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
     print(f"Case: {case_fn}: Longest centerline is {ip_longest}"
           + f" with {len(cent_ids[ip_longest])} points")
 
-    for ip in range(num_cent):  # [ip_longest]: #
+    # Sort centerlines by length, starting with longest
+    ips_sorted_length = sort_centerline_by_length(cent_ids, c_loc)
+
+    # Make all cent_ids start where the radius is larger
+    cent_ids = flip_radius(cent_ids, radii)
+
+    # Loop over centerlines
+    for ip in ips_sorted_length:
         # Choose destination directory
         (image_out_dir, seg_out_dir,
          val_port) = choose_destination(global_config['TESTING'],
@@ -128,22 +142,29 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
         while on_cent:
             # Only continue if we've not walked this centerline before
             if not (ids[count] in ids_total):
+
                 print('The point # along centerline is ' + str(count))
+                print('The radius is ' + str(rads[count]))
+
                 time_now = time.time()
                 # check if we need to rotate the volume
                 if global_config['ROTATE_VOLUMES']:
+                    print("Rotating volume")
                     tangent = get_tangent(locs, count)
                     (reader_im, reader_seg,
-                     origin_im) = rotate_volumes(reader_im0, reader_seg0,
-                                                 tangent, locs[count])
+                     origin_im, y_vec, z_vec) = rotate_volumes(
+                         reader_im0, reader_seg0,
+                         tangent, locs[count])
                 else:
                     reader_im, reader_seg = reader_im0, reader_seg0
                     origin_im = origin_im0
+                    tangent, y_vec, z_vec = None, None, None
 
                 # Calculate centers and sizes of samples for this point
                 (centers, sizes, save_bif,
                  n_samples, vec0) = calc_samples(count, bifurc, locs, rads,
                                                  global_config)
+                print(f"Vec0 is {vec0}")
                 sub = 0  # In the case of multiple samples at this point
                 for sample in range(n_samples):
                     # Map each center and size to image data
@@ -197,6 +218,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     num_out = len(stats_surf['OUTLETS'])
                                     # print(f"Outlets are: {num_out}")
                                     stats.update(stats_surf)
+                                else:
+                                    num_out = 0
                             else:
                                 stats = create_base_stats(N, name, size_r,
                                                           rads[count],
@@ -255,7 +278,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             if global_config['WRITE_DISCRETE_CENTERLINE']:
                                 _, new_cent = extract_centerline(
                                     new_img,
-                                    global_centerline)
+                                    global_centerline,
+                                    tangent=tangent)
                                 cent_stats = discretize_centerline(
                                     new_cent,
                                     new_img,
@@ -293,6 +317,37 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
                             # Append stats to csv list
                             csv_list, csv_list_val = append_stats(stats, csv_list, csv_list_val, val_port)
+
+                            # Cross sectional planes
+                            if global_config['WRITE_CROSS_SECTIONAL']:
+                                (stats_out, planes_img, planes_seg
+                                 ) = get_cross_sectional_planes(
+                                     stats, new_img, removed_seg)
+                                # write cross sectional planes
+                                write_2d_planes(planes_img, stats_out,
+                                                image_out_dir, add='_cross_rot')
+                                write_2d_planes(planes_seg, stats_out,
+                                                seg_out_dir, add='_cross_rot')
+                            if global_config['WRITE_TRAJECTORIES']:
+                                trajs = get_proj_traj(stats, new_img,
+                                                      global_centerline,
+                                                      tangent=tangent,
+                                                      y_vec=y_vec,
+                                                      z_vec=z_vec,
+                                                      outdir=out_dir)
+                                traj_list.append(trajs)
+
+                            # # Angled planes
+                            # if global_config['WRITE_ANGLED_PLANES']:
+                            #     (stats_out, planes_img, planes_seg
+                            #      ) = get_angled_cross_sectional_planes(
+                            #          stats, new_img, removed_seg,
+                            #          vector0=vec0)
+                            #     # write cross sectional planes
+                            #     write_2d_planes(planes_img, stats_out,
+                            #                     image_out_dir, add='_angled')
+                            #     write_2d_planes(planes_seg, stats_out,
+                            #                     seg_out_dir, add='_angled')
 
                         except Exception as e:
                             print(e)
@@ -361,26 +416,19 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
             csv_outlet_stats_val)
 
 
-def get_longest_centerline(cent_ids, c_loc):
-    """ Get the longest centerline by computing the total
-        accumulated length of the centerline between each point
-    Args:
-        cent_ids: list of centerline ids
-        c_loc: centerline locations
-    """
-    import numpy as np
-    lengths = []
-    for ids in cent_ids:
-        locs = c_loc[ids]
-        length = 0
-        for i in range(len(locs)-1):
-            length += np.linalg.norm(locs[i+1] - locs[i])
-        lengths.append(length)
-    return np.argmax(lengths)
-
-
 if __name__ == '__main__':
-    """ Set up"""
+    """ Set up
+
+    Example:
+
+    python3 gather_sampling_data_parallel.py \
+        -outdir ./extracted_data/ \
+        -config_name config \
+        -perc_dataset 1.0 \
+        -num_cores 1 \
+        -start_from 0 \
+        -end_at -1
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument('-outdir', '--outdir',
                         default='./extracted_data/',

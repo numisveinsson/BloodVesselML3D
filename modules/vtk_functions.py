@@ -696,7 +696,7 @@ def bound_polydata_by_image(image, poly, threshold):
     image.ComputeBounds()
     b_bound = image.GetBounds()
     b_bound = [b+threshold if (i % 2) ==0 else b-threshold for i, b in enumerate(b_bound)]
-    #print("Bounding box: ", b_bound)
+    # print("Bounding box: ", b_bound)
     bound.SetBounds(b_bound)
     clipper = vtk.vtkClipPolyData()
     clipper.SetClipFunction(bound)
@@ -986,3 +986,237 @@ def vectors2polydata(vectors):
 
     # Return the polydata
     return polydata
+
+
+def subdivide_lines(polydata, num_subdivisions=2):
+    """
+    Create a function to subdivide the line cells
+    in a polydata object
+    Done by creating a new point in the middle of each line
+    These new points are then used to create new lines
+    and assemble the new polydata object
+    so each cell is divided into num_subdivisions cells
+    Args:
+        polydata: vtkPolyData
+        num_subdivisions: int, number of subdivisions
+    Returns:
+        polydata: vtkPolyData
+    """
+    # New polydata object
+    new_polydata = vtk.vtkPolyData()
+
+    # Get the number of cells
+    num_cells = polydata.GetNumberOfCells()
+    c_loc = v2n(polydata.GetPoints().GetData())
+
+    # Initialize a new points array
+    new_points = vtk.vtkPoints()
+    new_points.DeepCopy(polydata.GetPoints())
+
+    # Initialize a new cells array
+    new_cells = vtk.vtkCellArray()
+
+    # Collect arrays
+    arrays = collect_arrays(polydata.GetPointData())
+
+    # If contains 'MaximumInscribedSphereRadius' in point data, create new array
+    if 'MaximumInscribedSphereRadius' in arrays.keys():
+        new_point_data0 = vtk.vtkDoubleArray()
+        new_point_data0.DeepCopy(polydata.GetPointData().GetArray('MaximumInscribedSphereRadius'))
+        new_point_data0.SetName('MaximumInscribedSphereRadius')
+
+    if 'CenterlineId' in arrays.keys():
+        # numpy array Nx10
+        new_point_data1 = arrays['CenterlineId']
+
+    if 'BifurcationIdTmp' in arrays.keys():
+        # numpy array Nx1
+        new_point_data2 = arrays['BifurcationIdTmp']
+
+    # Loop through each cell
+    for cell_id in range(num_cells):
+        # Get the current cell
+        line = polydata.GetCell(cell_id)
+
+        # Get the number of points in the line
+        num_points = line.GetNumberOfPoints()
+
+        # Loop through each point in the line
+        for i in range(num_points - 1):
+
+            # Get the current point
+            point0 = c_loc[line.GetPointId(i)]
+            point1 = c_loc[line.GetPointId(i + 1)]
+
+            # Calculate the new point
+            new_point = [(point0[0] + point1[0]) / 2,
+                         (point0[1] + point1[1]) / 2,
+                         (point0[2] + point1[2]) / 2]
+
+            # Add the new point to the points array
+            new_point_id = new_points.InsertNextPoint(new_point)
+
+            # Add the new cell to the cells array
+            new_line = vtk.vtkLine()
+            new_line.GetPointIds().SetId(0, line.GetPointId(i))
+            new_line.GetPointIds().SetId(1, new_point_id)
+            new_cells.InsertNextCell(new_line)
+
+            # If contains 'MaximumInscribedSphereRadius' in data, add to new point data
+            if 'MaximumInscribedSphereRadius' in arrays.keys():
+                # Get the index of the old points
+                old_point_id0 = line.GetPointId(i)
+                old_point_id1 = line.GetPointId(i + 1)
+                old_radius0 = arrays['MaximumInscribedSphereRadius'][old_point_id0]
+                old_radius1 = arrays['MaximumInscribedSphereRadius'][old_point_id1]
+
+                # Calculate the new radius
+                new_radius = (old_radius0 + old_radius1) / 2
+
+                # Add the new radius to the new point data with the right index
+                new_point_data0.InsertNextValue(new_radius)
+
+            if 'CenterlineId' in arrays.keys():
+                # Get the index of the old point
+                old_point_id0 = line.GetPointId(i)
+                old_point_id1 = line.GetPointId(i + 1)
+
+                # Add the new centerline id
+                new_centerline_id0 = arrays['CenterlineId'][old_point_id0]
+                new_centerline_id1 = arrays['CenterlineId'][old_point_id1]
+
+                # Append to numpy array so N+1x10
+                # If the centerline id is the same, keep the first id
+                if (new_centerline_id0 == new_centerline_id1).all():
+                    new_point_data1 = np.append(new_point_data1, np.expand_dims(new_centerline_id0,0), axis=0)
+                # If the centerline id is different, add the new centerline id
+                else:
+                    new_point_data1 = np.append(new_point_data1, np.expand_dims(new_centerline_id1,0), axis=0)
+
+            if 'BifurcationIdTmp' in arrays.keys():
+                # Get the index of the old point
+                old_point_id0 = line.GetPointId(i)
+
+                # Add the new bifurcation id
+                new_bifurcation_id = arrays['BifurcationIdTmp'][old_point_id0]
+
+                # Append to numpy array so N+1x1
+                new_point_data2 = np.append(new_point_data2, new_bifurcation_id)
+
+            # If we are at the last point, add the last line
+            if i == num_points - 2:
+                new_line = vtk.vtkLine()
+                new_line.GetPointIds().SetId(0, new_point_id)
+                new_line.GetPointIds().SetId(1, line.GetPointId(i + 1))
+                new_cells.InsertNextCell(new_line)
+
+    # Update the polydata
+    new_polydata.SetPoints(new_points)
+    new_polydata.SetLines(new_cells)
+
+    # If contains 'MaximumInscribedSphereRadius' in data, add to new polydata
+    if 'MaximumInscribedSphereRadius' in arrays.keys():
+        # assert same number of points and radii
+        assert (new_point_data0.GetNumberOfTuples() == new_polydata.GetNumberOfPoints()), "Number of radii should be the same as the number of points"
+        new_polydata.GetPointData().AddArray(new_point_data0)
+
+    if 'CenterlineId' in arrays.keys():
+        new_array1 = n2v(new_point_data1)
+        new_array1.SetName('CenterlineId')
+        new_polydata.GetPointData().AddArray(new_array1)
+
+    if 'BifurcationIdTmp' in arrays.keys():
+        new_array2 = n2v(new_point_data2)
+        new_array2.SetName('BifurcationIdTmp')
+        new_polydata.GetPointData().AddArray(new_array2)
+
+    return new_polydata
+
+
+def connectivity_points(polydata, debug=False):
+    """
+    Function to find the connectivity of points in a polydata
+    Args:
+        polydata: vtkPolyData
+    Returns:
+        point_to_cells: dictionary with points as keys and cells
+            as values
+    """
+
+    # Ensure your polydata contains vtkLine cells
+    if polydata.GetNumberOfCells() > 0 and polydata.GetCellType(0) == vtk.VTK_LINE:
+        print("PolyData contains vtkLine cells.")
+
+    # Initialize a dictionary to track the connectivity (points to cells)
+    point_to_cells = {}
+
+    # Get the number of cells (lines)
+    num_cells = polydata.GetNumberOfCells()
+    print(f"PolyData contains {num_cells} cells.")
+    print(f"PolyData contains {polydata.GetNumberOfPoints()} points.")
+
+    # Loop through each cell (line) to find the points that it connects
+    for cell_id in range(num_cells):
+        line = polydata.GetCell(cell_id)  # Get the current cell
+        cell_points = line.GetPoints()    # Get the points of the current cell
+
+        # Loop through each point in the line
+        for i in range(cell_points.GetNumberOfPoints()):
+            point_id = line.GetPointId(i)  # Get the point ID
+
+            # Add the cell to the connectivity mapping for this point
+            if point_id not in point_to_cells:
+                point_to_cells[point_id] = []
+            point_to_cells[point_id].append(cell_id)
+
+    # Display the connectivity (which cells share points)
+    if debug:
+        for point_id, connected_cells in point_to_cells.items():
+            print(f"Point {point_id} is used by cells: {connected_cells}")
+
+    # Check which points are not connected to any cells
+    non_cell_points = []
+    c_loc = v2n(polydata.GetPoints().GetData())
+    for i in range(polydata.GetNumberOfPoints()):
+        if i not in point_to_cells:
+            non_cell_points.append(c_loc[i])
+            if debug:
+                print(f"Point {i} is not connected to any cells.")
+    # Write the points to a file
+    # write_geo("./output_debug/non_cell_points.vtp", points2polydata(non_cell_points))
+
+    return point_to_cells, non_cell_points
+
+
+def reorganize_cells(cent_local, point_to_cells):
+    """
+    Function to reorganize/combine the cells in a centerline
+
+    One cell per centerline instead of multiple cells per centerline
+    with cell type 4 = vtkLine
+    """
+    # Initialize a new cells array
+    new_cells = vtk.vtkCellArray()
+
+    # Loop through each cell in the centerline
+    for point_id, connected_cells in point_to_cells.items():
+        # Create a new cell
+        new_line = vtk.vtkLine()
+
+        # Get the points of the current cell
+        cell = cent_local.GetCell(connected_cells[0])
+        cell_points = cell.GetPoints()
+
+        # Loop through each point in the line
+        for i in range(cell_points.GetNumberOfPoints()):
+            point_id = cell.GetPointId(i)  # Get the point ID
+            new_line.GetPointIds().SetId(i, point_id)
+
+        # Add the new line to the cells array
+        new_cells.InsertNextCell(new_line)
+
+    # Update the polydata
+    cent_local.SetLines(new_cells)
+
+    return cent_local
+

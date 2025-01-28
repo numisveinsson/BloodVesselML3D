@@ -158,7 +158,7 @@ def extract_volume(reader_im, index_extract, size_extract):
     return new_img
 
 
-def rotate_volume_tangent(sitk_img, tangent, point):
+def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False):
     """
     Function to rotate a volume so that the tangent is aligned with the x-axis
     args:
@@ -203,6 +203,15 @@ def rotate_volume_tangent(sitk_img, tangent, point):
     else:
         sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear,
                                  0.0, sitk_img.GetPixelID())
+
+    if return_vecs:
+        # return the transformed y and z vectors
+        rot_matrix_np = np.array(rotation.GetMatrix()).reshape(3,3)
+        y_og_np = np.array(direction[3:6])
+        z_og_np = np.array(direction[6:9])
+        y = np.dot(rot_matrix_np, y_og_np)
+        z = np.dot(rot_matrix_np, z_og_np)
+        return sitk_img, y, z
 
     return sitk_img
 
