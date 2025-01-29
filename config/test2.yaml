@@ -8,11 +8,11 @@ DATA_DIR: '/Users/numisveins/Documents/datasets/vascular_data_3d/'
 DATASET_NAME: 'vmr' #'vmr' # or other 'other'
 
 TESTING: False
-MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
+MODALITY: ['CT','MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
 IMG_EXT: '.mha'
 
 BINARIZE: True
-ANATOMY: ['Coronary'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
+ANATOMY: ['Aorta', 'Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
 OUTLET_CLASSES: [0,1,2,3,4,5,6,7,8,9,10]
 VALIDATION_PROP: 0.0 #0.15
 SCALED: False
@@ -46,8 +46,8 @@ WRITE_TRAJECTORIES: True
 WRITE_VTK: True
 WRITE_VTK_THROWOUT: False
 
-MOVE_DIST: 5 # 1.5 how far to move along centerline between sampling, in terms of radius
-SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
+MOVE_DIST: 1 # 1.5 how far to move along centerline between sampling, in terms of radius
+SIZE_RADIUS: 3 # how big a volume to sample, x radius at each location
 RADIUS_ADD: 0.5 # how much to add to radius values (to correct bias) done before scale
 RADIUS_SCALE: 1 # how much to add to radius values (to correct bias)
 

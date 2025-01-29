@@ -1091,8 +1091,8 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                     plane_normal = tangent
 
                 if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
-                        or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
-                        or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
+                        # or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
+                        # or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
                         ):
                     # import pdb; pdb.set_trace()
                     continue
@@ -1114,7 +1114,9 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 if visualize:
                     # visualize the projected points
                     visualize_points(locs_proj, plane, planes_img[i], stats['NAME'],
-                                     ip, outdir)
+                                     ip, outdir, split_dirs=False)
+                    visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
+                                     ip, outdir, split_dirs=False, seg=True)
 
                 for j in range(len(locs_proj)):
                     # time is % of centerline, max 228
@@ -1127,10 +1129,15 @@ def get_proj_traj(stats, img, global_centerline, trajs,
             locs_proj_accumulated = []
             sceneId = stats['NAME'] + '_' + plane
             num_cent_plotted = 0
+            ids_done = []
             for ip in range(num_cent):
                 if not cent_id[ip]:
                     continue
                 ids = cent_id[ip]
+                # remove ids that have already been plotted
+                ids = [i for i in ids if i not in ids_done]
+                ids_done.append(ids)
+
                 locs = c_loc[ids]
                 if keep_only_if_intersect:
                     # Check if the line intersects the plane
@@ -1161,7 +1168,9 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 if locs_proj_accumulated:
                     locs_proj_accumulated = np.concatenate(locs_proj_accumulated, axis=0)
                 visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME'],
-                                 num_cent_plotted, outdir)
+                                 num_cent_plotted, outdir, split_dirs=False)
+                visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME'],
+                                 num_cent_plotted, outdir, split_dirs=False, seg=True)
 
     return trajs, num_trajs
 
@@ -1212,7 +1221,7 @@ def line_intersects_plane(line_points, plane_point, plane_normal):
 
 
 def visualize_points(locs_proj, plane, planes, name, nr, outdir,
-                     split_dirs=True):
+                     split_dirs=False, seg=False):
     """
     Function to visualize the projected points on top of the image.
     All points are shown on one image.
@@ -1228,6 +1237,8 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
     import cv2
     # Create the output directory if it doesn't exist
     image_out_dir = os.path.join(outdir, 'img_traj')
+    if seg:
+        image_out_dir = os.path.join(outdir, 'seg_traj')
     os.makedirs(image_out_dir, exist_ok=True)
 
     # Normalize and convert planes to grayscale if necessary
@@ -1257,7 +1268,7 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
 
     # Save the output image
     if not split_dirs:
-        output_filename = os.path.join(image_out_dir, f"{name}_{plane}_{nr}.png")
+        output_filename = os.path.join(image_out_dir, f"{name}_{nr}_{plane}.png")
         cv2.imwrite(output_filename, planes_color)
         print(f"Image saved to {output_filename}")
     else:

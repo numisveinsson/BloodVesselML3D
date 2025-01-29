@@ -46,7 +46,7 @@ if __name__ == '__main__':
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/datasets/PARSE_dataset/images/'
+    data_folder = '/Users/numisveins/Documents/datasets/Task08_HepaticVessel/labelsTr/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)
