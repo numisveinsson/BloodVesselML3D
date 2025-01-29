@@ -24,19 +24,15 @@ This code relies on the data being stored in a particular folder structure:
         - case0.x
     - surfaces (if applicable)
 
-The main folder should have the path indicated by `DATA_DIR` in the config file `/config/global.yaml` in this repository. 'OUT_DIR' refers to where the samples will be saved.
+The main folder should have the path indicated by `DATA_DIR` in the config file `/config/global.yaml` in this repository.
 
-1. python3 gather_sampling_data.py
+1. `python3 gather_sampling_data_parallel.py`
 
 This is the main script. This collects data about all positions of sampling to take place and size of sub-volumes. Then runs through the locations and actually extracts the sub-volumes and saves them.
 
 In the case of resampling use
 
-2. python3 additional_pre_process.py
-
-And in the case of generating labels run
-
-3. python3 generate_labels.py
+2. `python3 additional_pre_process.py`
 
 ### gather_sampling_data_parallel.py
 
@@ -99,3 +95,9 @@ This YAML file contains configuration settings for a data processing script. Her
 - `WRITE_OUTLET_IMG`: A boolean flag indicating whether outlet images should be written out.
 
 These variables allow the user to customize the behavior of the script to suit their specific needs.
+
+### additional labels (most likely not needed)
+
+And in the case of generating labels run
+
+`python3 generate_labels.py`
