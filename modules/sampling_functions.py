@@ -488,7 +488,8 @@ def calc_samples(count, bifurc, locs, rads, global_config):
     return centers, sizes, save_bif, n_samples, vec0
 
 
-def rotate_volumes(reader_im, reader_seg, tangent, point):
+def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
+                   outdir=None):
     """
     Function to rotate the volumes
     Inputs are:
@@ -502,20 +503,114 @@ def rotate_volumes(reader_im, reader_seg, tangent, point):
     reader_seg = reader_seg.Execute()
 
     # rotate the volumes
-    new_img, y, z = rotate_volume_tangent(reader_im, tangent, point,
+    new_img, y, z, rot_matrix = rotate_volume_tangent(reader_im, tangent, point,
                                           return_vecs=True)
-    new_seg, y, z = rotate_volume_tangent(reader_seg, tangent, point,
+    new_seg, y, z, rot_matrix = rotate_volume_tangent(reader_seg, tangent, point,
                                           return_vecs=True)
     origin_im = np.array(list(new_img.GetOrigin()))
+    if visualize and outdir:
+        # write the rotated volumes and non-rotated volumes
+        # sitk.WriteImage(new_img, outdir + '/rotated_image.mha')
+        # sitk.WriteImage(new_seg, outdir + '/rotated_seg.mha')
+        # sitk.WriteImage(reader_im, outdir + '/original_image.mha')
+        # sitk.WriteImage(reader_seg, outdir + '/original_seg.mha')
+        # write the tangent and normal vectors as polydata
+        tangent_pd = points2polydata([point, point + tangent])
+        write_geo(outdir + '/tangent.vtp', tangent_pd)
+        normal_pd = points2polydata([point, point + z])
+        write_geo(outdir + '/normal.vtp', normal_pd)
+        binormal_pd = points2polydata([point, point + y])
+        write_geo(outdir + '/binormal.vtp', binormal_pd)
+        # create a plane from the tangent and normal vectors
+        create_plane_from_vectors(point, tangent, z, outdir=outdir, name='planey')
+        create_plane_from_vectors(point, tangent, y, outdir=outdir, name='planez')
+        create_plane_from_vectors(point, z, y, outdir=outdir, name='planex')
 
-    return new_img, new_seg, origin_im, y, z
+    return new_img, new_seg, origin_im, y, z, rot_matrix
+
+
+def create_plane_from_vectors(origin, vec1, vec2, resolution=(10, 10),
+                              size=(10, 10),
+                              outdir=None, name='plane'):
+    """
+    Creates a VTK polydata plane from two vectors and a point, and writes it to a VTP file.
+
+    Parameters:
+        origin (list or np.ndarray): A point [x, y, z] defining the center of the plane.
+        vec1 (list or np.ndarray): A vector defining one axis of the plane.
+        vec2 (list or np.ndarray): A vector defining the other axis of the plane.
+        resolution (tuple): The resolution (number of subdivisions) of the plane along each vector.
+        size (tuple): The size of the plane along each vector.
+        output_file (str): The name of the output VTP file.
+        name (str): The name of the plane.
+
+    Returns:
+        None
+    """
+    import vtk
+    import numpy as np
+
+    # Normalize input vectors
+    vec1 = np.array(vec1, dtype=np.float64)
+    vec2 = np.array(vec2, dtype=np.float64)
+    origin = np.array(origin, dtype=np.float64)
+
+    # Create a vtkPoints object to hold the plane points
+    points = vtk.vtkPoints()
+
+    # Create a vtkCellArray to hold the plane's cells
+    cells = vtk.vtkCellArray()
+
+    # Define the grid resolution
+    res_x, res_y = resolution
+
+    # Generate points for the plane with origin at the center
+    for i in range(res_x):
+        for j in range(res_y):
+            # Calculate the point coordinates
+            x = origin + (i - res_x / 2) / res_x * size[0] * vec1 + (j - res_y / 2) / res_y * size[1] * vec2
+            # Add the point to the vtkPoints object
+            points.InsertNextPoint(x)
+
+    # Generate cells for the plane (quads)
+    for i in range(res_x - 1):
+        for j in range(res_y - 1):
+            # Define the quad points
+            p0 = i * res_y + j
+            p1 = i * res_y + j + 1
+            p2 = (i + 1) * res_y + j + 1
+            p3 = (i + 1) * res_y + j
+            # Create a vtkQuad object
+            quad = vtk.vtkQuad()
+            quad.GetPointIds().SetId(0, p0)
+            quad.GetPointIds().SetId(1, p1)
+            quad.GetPointIds().SetId(2, p2)
+            quad.GetPointIds().SetId(3, p3)
+            # Add the quad to the vtkCellArray
+            cells.InsertNextCell(quad)
+
+    # Create the polydata object
+    plane_polydata = vtk.vtkPolyData()
+    plane_polydata.SetPoints(points)
+    plane_polydata.SetPolys(cells)
+
+    # Write to a VTP file
+    writer = vtk.vtkXMLPolyDataWriter()
+    output_file = outdir + '/' + name + '.vtp'
+    writer.SetFileName(output_file)
+    writer.SetInputData(plane_polydata)
+    writer.Write()
+
+    print(f"Plane polydata saved to {output_file}")
 
 
 def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
                        origin_im, spacing_im, location, radius, size_r, number,
                        name, O=None, global_img=False,
                        remove_others=True,
-                       binarize=True):
+                       binarize=True, rotate=False,
+                       orig_im=None, orig_seg=None,
+                       outdir=None):
     """"
     Function to extract subvolumes
     Both image data and GT segmentation
@@ -530,6 +625,13 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
     new_seg = extract_volume(reader_seg, index_extract, size_extract)
     im_np = sitk.GetArrayFromImage(new_img)
     seg_np = sitk.GetArrayFromImage(new_seg)
+
+    # if rotate:
+    #     # also extract the original image and segmentation
+    #     orig_img = extract_volume(orig_im, index_extract, size_extract)
+    #     orig_seg = extract_volume(orig_seg, index_extract, size_extract)
+    #     sitk.WriteImage(orig_img, outdir + '/orig_image.mha')
+    #     sitk.WriteImage(orig_seg, outdir + '/orig_seg.mha')
 
     if seg_np.max() > 1:
         # binarize the segmentation
@@ -825,7 +927,7 @@ def get_cross_sectional_planes(stats, img, seg, upsample=True):
         planes_img = upsample_planes(planes_img, size=200, seg=False)
         planes_seg = upsample_planes(planes_seg, size=200, seg=True)
 
-    names = ['x', 'y', 'z']
+    names = ['z', 'y', 'x']
     stats_all = []
     for i in range(3):
         name = stats['NAME'] + '_' + names[i]
@@ -912,9 +1014,12 @@ def write_2d_planes(planes, stats_out, image_out_dir,
         cv2.imwrite(fn_name, plane)
 
 
-def get_proj_traj(stats, img, global_centerline,
-                  tangent=None, y_vec=None, z_vec=None,
-                  outdir=None):
+def get_proj_traj(stats, img, global_centerline, trajs,
+                  num_trajs, tangent=None, y_vec=None, z_vec=None,
+                  rot_point=None, rot_matrix=None,
+                  outdir=None, planes_img=None, planes_seg=None,
+                  upsample=False, visualize=False,
+                  write_rotated_centerline=False):
     """
     Function to get the projected trajectory
     of the centerline
@@ -922,22 +1027,38 @@ def get_proj_traj(stats, img, global_centerline,
     Note: The tangent is the x-axis
           the y_vec is the y-axis
           the z_vec is the z-axis
+    params:
+        stats: dictionary with stats
+        img: sitk image
+        global_centerline: vtk polydata of centerline
+        trajs: list of lists of trajectories
+        tangent: tangent vector
+        y_vec: y-axis vector
+        z_vec: z-axis vector
+        outdir: output directory
+
+    returns:
+        trajs: list of lists of trajectories
     """
-    if tangent is None:
-        tangent = np.array([1, 0, 0])
-    if y_vec is None:
-        y_vec = np.array([0, 1, 0])
-    if z_vec is None:
-        z_vec = np.array([0, 0, 1])
+    one_img_per_centerline = False
+    one_img_all_centerlines = True
+
+    keep_only_if_intersect = True
+
+    # if tangent is None:
+    tangent = np.array([1, 0, 0])
+    # if y_vec is None:
+    y_vec = np.array([0, 1, 0])
+    # if z_vec is None:
+    z_vec = np.array([0, 0, 1])
+    if rot_point is None:
+        rot_point = np.array([0, 0, 0])
+    if rot_matrix is None:
+        rot_matrix = np.eye(3)
 
     print(f"tangent: {tangent}")
 
-    trajs = []
-
-    # if outdir is not None:
-        # write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_centerline.vtp', bounded_cent)
-
-    num_points, c_loc, radii, cent_id, bifurc_id, num_cent = sort_centerline(global_centerline)
+    _, c_loc, _, cent_id, _, num_cent = sort_centerline(global_centerline)
 
     # get bounds of image
     bounds = get_bounds(img)
@@ -945,18 +1066,248 @@ def get_proj_traj(stats, img, global_centerline,
     c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
     # update cent_id
     cent_id = keep_indices(cent_id, c_loc_indes)
-    import pdb; pdb.set_trace()
+    # perform affine transformation (if necessary)
+    c_loc_aff = np.dot(c_loc - rot_point, rot_matrix) + rot_point
+    # write the centerline to file
+    if outdir and write_rotated_centerline:
+        locs_pd = points2polydata(c_loc_aff)
+        write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_centerline.vtp', locs_pd)
     # transform to reference frame
-    c_loc = transform_to_ref(c_loc, bounds)
+    c_loc = transform_to_ref(c_loc_aff, bounds)
 
-    # cent_id, num_cent = clean_cent_ids(cent_id, num_cent)
+    if one_img_per_centerline:
+        for ip in range(num_cent):
+            if not cent_id[ip]:
+                continue
+            ids = cent_id[ip]
+            locs = c_loc[ids]
+            if keep_only_if_intersect:
+                # Check if the line intersects the plane
+                if plane == 'z':
+                    plane_normal = z_vec
+                elif plane == 'y':
+                    plane_normal = y_vec
+                elif plane == 'x':
+                    plane_normal = tangent
 
-    for ip in range(num_cent):
-        if not cent_id[ip]:
-            continue
-        ids = cent_id[ip]
-        locs, rads, bifurc = c_loc[ids], radii[ids], bifurc_id[ids]
-        import pdb; pdb.set_trace()
+                if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
+                        or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
+                        or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
+                        ):
+                    # import pdb; pdb.set_trace()
+                    continue
+            trackId = ip
+            for i, plane in enumerate(['z', 'y', 'x']):
+                sceneId = stats['NAME'] + '_' + plane
+                metaId = num_trajs
+                locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                if keep_only_if_intersect:
+                    # Check if the line intersects the plane
+                    if plane == 'z':
+                        plane_normal = z_vec
+                    elif plane == 'y':
+                        plane_normal = y_vec
+                    elif plane == 'x':
+                        plane_normal = tangent
+                    if not line_intersects_plane(locs, [0.5,0.5], plane_normal):
+                        continue
+                if visualize:
+                    # visualize the projected points
+                    visualize_points(locs_proj, plane, planes_img[i], stats['NAME'],
+                                     ip, outdir)
+
+                for j in range(len(locs_proj)):
+                    # time is % of centerline, max 228
+                    time = j/len(locs_proj)*228
+                    traj = [time, trackId, locs_proj[j][0], locs_proj[j][1], sceneId, metaId]
+                    trajs.append(traj)
+                num_trajs += 1
+    elif one_img_all_centerlines:
+        for i, plane in enumerate(['z', 'y', 'x']):
+            locs_proj_accumulated = []
+            sceneId = stats['NAME'] + '_' + plane
+            num_cent_plotted = 0
+            for ip in range(num_cent):
+                if not cent_id[ip]:
+                    continue
+                ids = cent_id[ip]
+                locs = c_loc[ids]
+                if keep_only_if_intersect:
+                    # Check if the line intersects the plane
+                    if plane == 'z':
+                        plane_normal = z_vec
+                    elif plane == 'y':
+                        plane_normal = y_vec
+                    elif plane == 'x':
+                        plane_normal = tangent
+                    
+                    if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
+                            or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
+                            or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
+                            ):
+                        # import pdb; pdb.set_trace()
+                        continue
+                num_cent_plotted += 1
+                locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                locs_proj_accumulated.append(locs_proj)
+                for j in range(len(locs_proj)):
+                    # time is % of centerline, max 228
+                    time = j/len(locs_proj)*228
+                    traj = [time, ip, locs_proj[j][0], locs_proj[j][1], sceneId, num_trajs]
+                    trajs.append(traj)
+                num_trajs += 1
+            if visualize:
+                # visualize the projected points
+                if locs_proj_accumulated:
+                    locs_proj_accumulated = np.concatenate(locs_proj_accumulated, axis=0)
+                visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME'],
+                                 num_cent_plotted, outdir)
+
+    return trajs, num_trajs
+
+
+def line_intersects_plane(line_points, plane_point, plane_normal):
+    """
+    Checks if a line intersects a plane.
+    
+    Parameters:
+        line_points (np.ndarray): Nx3 array of ordered points forming the line.
+        plane_point (np.ndarray): A point on the plane (1x3).
+        plane_normal (np.ndarray): The normal vector to the plane (1x3).
+        
+    Returns:
+        bool: True if the line intersects the plane, False otherwise.
+    """
+    # Ensure numpy arrays
+    line_points = np.array(line_points)
+    plane_point = np.array(plane_point)
+    plane_normal = np.array(plane_normal)
+    # import pdb; pdb.set_trace()
+    # Normalize the plane normal for safety
+    plane_normal = plane_normal / np.linalg.norm(plane_normal)
+    
+    # Loop through consecutive points in the line
+    for i in range(len(line_points) - 1):
+        # Points defining the line segment
+        p1 = line_points[i]
+        p2 = line_points[i + 1]
+        
+        # Direction vector of the line segment
+        line_dir = p2 - p1
+        
+        # Check if the line segment is parallel to the plane
+        denom = np.dot(plane_normal, line_dir)
+        if np.isclose(denom, 0):
+            continue  # Skip parallel segments
+        
+        # Compute the parameter t for intersection
+        t = np.dot(plane_normal, plane_point - p1) / denom
+        
+        # Check if the intersection point lies within the segment
+        if 0 <= t <= 1:
+            return True  # Intersection found
+    
+    # No intersection
+    return False
+
+
+def visualize_points(locs_proj, plane, planes, name, nr, outdir,
+                     split_dirs=True):
+    """
+    Function to visualize the projected points on top of the image.
+    All points are shown on one image.
+    Image is saved as a PNG.
+
+    Parameters:
+        locs_proj (np.ndarray): Projected points (Nx2).
+        plane (str): Plane name ('x', 'y', or 'z').
+        planes (np.ndarray): Image of the plane.
+        name (str): Name to use for the saved image.
+        outdir (str): Output directory for saving the image.
+    """
+    import cv2
+    # Create the output directory if it doesn't exist
+    image_out_dir = os.path.join(outdir, 'img_traj')
+    os.makedirs(image_out_dir, exist_ok=True)
+
+    # Normalize and convert planes to grayscale if necessary
+    if len(planes.shape) == 3 and planes.shape[-1] != 1:
+        # Assume RGB, convert to grayscale
+        planes = cv2.cvtColor(planes, cv2.COLOR_BGR2GRAY)
+    planes = planes - np.amin(planes)  # Shift values to be positive
+    planes = (planes / max(np.amax(planes), 1)) * 255  # Normalize to [0, 255]
+    planes = planes.astype(np.uint8)
+
+    # Convert grayscale to BGR for visualization
+    planes_color = cv2.cvtColor(planes, cv2.COLOR_GRAY2BGR)
+
+    # Get image dimensions
+    img_height, img_width = planes_color.shape[:2]
+
+    for loc in locs_proj:
+        # Scale to image size
+        x = int(loc[0] * img_width)
+        y = int(loc[1] * img_height)
+        # Clamp the values to be within the image bounds
+        x = min(max(x, 0), img_width - 1)
+        y = min(max(y, 0), img_height - 1)
+
+        # Draw a red dot at the location
+        cv2.circle(planes_color, (x, y), 2, (0, 0, 255), -1)
+
+    # Save the output image
+    if not split_dirs:
+        output_filename = os.path.join(image_out_dir, f"{name}_{plane}_{nr}.png")
+        cv2.imwrite(output_filename, planes_color)
+        print(f"Image saved to {output_filename}")
+    else:
+        # make dir for nr
+        image_out_dir = os.path.join(image_out_dir, f"{nr}")
+        os.makedirs(image_out_dir, exist_ok=True)
+        output_filename = os.path.join(image_out_dir, f"{name}_{plane}.png")
+        cv2.imwrite(output_filename, planes_color)
+
+
+def project_points(locs, plane, x_vec, y_vec, z_vec):
+    """
+    Function to project points to a plane.
+    If the plane is x, project to yz defined by y_vec and z_vec.
+    If the plane is y, project to xz defined by x_vec and z_vec.
+    If the plane is z, project to xy defined by x_vec and y_vec.
+
+    Parameters:
+        locs (np.ndarray): Array of locations (Nx3).
+        plane (str): Plane to project to ('x', 'y', or 'z').
+        x_vec (np.ndarray): x-axis vector (1x3).
+        y_vec (np.ndarray): y-axis vector (1x3).
+        z_vec (np.ndarray): z-axis vector (1x3).
+
+    Returns:
+        np.ndarray: List of projected locations.
+    """
+    # Normalize the input vectors
+    x_vec = x_vec / np.linalg.norm(x_vec)
+    y_vec = y_vec / np.linalg.norm(y_vec)
+    z_vec = z_vec / np.linalg.norm(z_vec)
+
+    # Initialize the projection basis
+    if plane == 'x':
+        basis = np.stack([y_vec, z_vec], axis=0)
+    elif plane == 'y':
+        basis = np.stack([x_vec, z_vec], axis=0)
+    elif plane == 'z':
+        basis = np.stack([x_vec, y_vec], axis=0)
+    else:
+        raise ValueError("Plane must be one of 'x', 'y', or 'z'.")
+
+    # Project each point onto the specified plane
+    locs_proj = np.dot(locs, basis.T)
+
+    # # Shift coordinates to ensure all values are non-negative
+    # min_vals = np.min(locs_proj, axis=0)
+    # locs_proj -= min_vals  # Subtract minimums to make all coordinates >= 0
+
+    return locs_proj
 
 
 def keep_indices(cent_id, c_loc_indes):

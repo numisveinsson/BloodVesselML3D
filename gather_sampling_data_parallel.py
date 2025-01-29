@@ -53,8 +53,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
     if global_config['WRITE_TRAJECTORIES']:
         traj_list = []
-    else:
-        traj_list = None
+        num_trajs = 0
 
     N, M, K, O, skipped = 0, 0, 0, 0, 0
     csv_list, csv_list_val = [], []
@@ -152,13 +151,14 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                     print("Rotating volume")
                     tangent = get_tangent(locs, count)
                     (reader_im, reader_seg,
-                     origin_im, y_vec, z_vec) = rotate_volumes(
+                     origin_im, y_vec, z_vec,
+                     rot_matrix) = rotate_volumes(
                          reader_im0, reader_seg0,
-                         tangent, locs[count])
+                         tangent, locs[count], outdir=out_dir)
                 else:
                     reader_im, reader_seg = reader_im0, reader_seg0
                     origin_im = origin_im0
-                    tangent, y_vec, z_vec = None, None, None
+                    tangent, y_vec, z_vec, rot_matrix = None, None, None, None
 
                 # Calculate centers and sizes of samples for this point
                 (centers, sizes, save_bif,
@@ -206,8 +206,12 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                      rads[count], size_r, N,
                                      name, O,
                                      remove_others=global_config['REMOVE_OTHER'],
-                                     binarize=global_config['BINARIZE']
+                                     binarize=global_config['BINARIZE'],
+                                     rotate=global_config['ROTATE_VOLUMES'],
+                                     orig_im=reader_im0, orig_seg=reader_seg0,
+                                     outdir=out_dir
                                      )
+
                                 if global_config['WRITE_SURFACE']:
                                     (stats_surf, new_surf_box, new_surf_sphere
                                      ) = extract_surface(
@@ -329,13 +333,20 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                 write_2d_planes(planes_seg, stats_out,
                                                 seg_out_dir, add='_cross_rot')
                             if global_config['WRITE_TRAJECTORIES']:
-                                trajs = get_proj_traj(stats, new_img,
-                                                      global_centerline,
-                                                      tangent=tangent,
-                                                      y_vec=y_vec,
-                                                      z_vec=z_vec,
-                                                      outdir=out_dir)
-                                traj_list.append(trajs)
+                                (traj_list,
+                                 num_trajs) = get_proj_traj(stats, new_img,
+                                                            global_centerline,
+                                                            traj_list,
+                                                            num_trajs,
+                                                            tangent=tangent,
+                                                            y_vec=y_vec,
+                                                            z_vec=z_vec,
+                                                            rot_point=locs[count],
+                                                            rot_matrix=rot_matrix,
+                                                            outdir=out_dir,
+                                                            planes_img=planes_img,
+                                                            planes_seg=planes_seg,
+                                                            visualize=True)
 
                             # # Angled planes
                             # if global_config['WRITE_ANGLED_PLANES']:

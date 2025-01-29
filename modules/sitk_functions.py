@@ -204,14 +204,39 @@ def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False):
         sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear,
                                  0.0, sitk_img.GetPixelID())
 
+    # return the transformed y and z vectors
+    rot_matrix_np = np.array(rotation.GetMatrix()).reshape(3,3)
+    x_og_np = np.array(direction[0:3])
+    y_og_np = np.array(direction[3:6])
+    z_og_np = np.array(direction[6:9])
+    x = np.dot(rot_matrix_np, x_og_np)
+    y = np.dot(rot_matrix_np, y_og_np)
+    z = np.dot(rot_matrix_np, z_og_np)
+
+    # Check rotation matrix
+    # R = rot_matrix_np
+    # is_orthogonal = np.allclose(np.dot(R.T, R), np.eye(3))
+    # is_right_handed = np.isclose(np.linalg.det(R), 1)
+    # print(f"Orthogonal: {is_orthogonal}, Right-Handed: {is_right_handed}")
+
+    # original_basis = np.eye(3)  # [1,0,0], [0,1,0], [0,0,1]
+    # new_basis = np.dot(R, original_basis.T).T  # Transform basis vectors
+    # print("New Basis Vectors:", new_basis)
+
+    # # Project a simple point, e.g., [1, 1, 1]
+    # point = np.array([1, 1, 1])
+    # projected_point = np.dot(point, new_basis.T)
+    # print("Projected Point in New Basis:", projected_point)
+
+    # compare the rotated vectors to the original vectors
+    print(f"Original x: {x_og_np}, Rotated x: {x}")
+    print(f"Original y: {y_og_np}, Rotated y: {y}")
+    print(f"Original z: {z_og_np}, Rotated z: {z}")
+    # compare the rotated vectors to the tangent
+    print(f"Tangent: {tangent}, Rotated x: {x}")
+
     if return_vecs:
-        # return the transformed y and z vectors
-        rot_matrix_np = np.array(rotation.GetMatrix()).reshape(3,3)
-        y_og_np = np.array(direction[3:6])
-        z_og_np = np.array(direction[6:9])
-        y = np.dot(rot_matrix_np, y_og_np)
-        z = np.dot(rot_matrix_np, z_og_np)
-        return sitk_img, y, z
+        return sitk_img, y, z, rot_matrix_np
 
     return sitk_img
 
