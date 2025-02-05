@@ -334,31 +334,20 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                 seg_out_dir, add='_cross_rot')
                             if global_config['WRITE_TRAJECTORIES']:
                                 (traj_list,
-                                 num_trajs) = get_proj_traj(stats, new_img,
-                                                            global_centerline,
-                                                            traj_list,
-                                                            num_trajs,
-                                                            tangent=tangent,
-                                                            y_vec=y_vec,
-                                                            z_vec=z_vec,
-                                                            rot_point=locs[count],
-                                                            rot_matrix=rot_matrix,
-                                                            outdir=out_dir,
-                                                            planes_img=planes_img,
-                                                            planes_seg=planes_seg,
-                                                            visualize=True)
-
-                            # # Angled planes
-                            # if global_config['WRITE_ANGLED_PLANES']:
-                            #     (stats_out, planes_img, planes_seg
-                            #      ) = get_angled_cross_sectional_planes(
-                            #          stats, new_img, removed_seg,
-                            #          vector0=vec0)
-                            #     # write cross sectional planes
-                            #     write_2d_planes(planes_img, stats_out,
-                            #                     image_out_dir, add='_angled')
-                            #     write_2d_planes(planes_seg, stats_out,
-                            #                     seg_out_dir, add='_angled')
+                                 num_trajs) = get_proj_traj(
+                                    stats, new_img,
+                                    global_centerline,
+                                    traj_list,
+                                    num_trajs,
+                                    tangent=tangent,
+                                    y_vec=y_vec,
+                                    z_vec=z_vec,
+                                    rot_point=locs[count],
+                                    rot_matrix=rot_matrix,
+                                    outdir=out_dir,
+                                    planes_img=planes_img,
+                                    planes_seg=planes_seg,
+                                    visualize=True)
 
                         except Exception as e:
                             print(e)
@@ -424,7 +413,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
     return (case_fn, csv_list, csv_list_val, csv_discrete_centerline,
             csv_discrete_centerline_val, csv_outlet_stats,
-            csv_outlet_stats_val)
+            csv_outlet_stats_val, traj_list, num_trajs)
 
 
 if __name__ == '__main__':
@@ -542,6 +531,28 @@ if __name__ == '__main__':
         else:
             for case in cases:
                 results = sample_case(case, global_config, out_dir, image_out_dir_train, seg_out_dir_train, image_out_dir_val, seg_out_dir_val, image_out_dir_test, seg_out_dir_test, info_file_name, modality)
+
+        if global_config['WRITE_TRAJECTORIES']:
+            traj_list_all = []
+            num_trajs = 0
+            if args.num_cores > 1:
+                for result in results:
+                    case_fn, csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, traj_list, num_trajs = result
+                    traj_list_all.extend(traj_list)
+                    num_trajs += num_trajs
+            else:
+                case_fn, csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, traj_list, num_trajs = results
+                traj_list_all.extend(traj_list)
+                num_trajs += num_trajs
+            # write as pandas dataframe
+            column_names = ['frame', 'trackId', 'x', 'y', 'sceneId', 'metaId']
+            df = pd.DataFrame(traj_list_all, columns=column_names)
+            # write as pickle
+            df.to_pickle(out_dir+"trajectories.pkl")
+
+            # test read in
+            df = pd.read_pickle(out_dir+"trajectories.pkl")
+            print(df[df['metaId'] == 0])
 
         # Collect results
         # for result in results:

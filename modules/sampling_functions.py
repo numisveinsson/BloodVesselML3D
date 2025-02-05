@@ -1010,7 +1010,7 @@ def write_2d_planes(planes, stats_out, image_out_dir,
 
         plane = cv2.convertScaleAbs(plane, alpha=(255.0/np.amax(plane)))
         # print(f"Shape of plane: {plane.shape}")
-        fn_name = image_out_dir + stats_out[i]['NAME']+'.png'
+        fn_name = image_out_dir + stats_out[i]['NAME']+'.jpg'
         cv2.imwrite(fn_name, plane)
 
 
@@ -1043,7 +1043,11 @@ def get_proj_traj(stats, img, global_centerline, trajs,
     one_img_per_centerline = False
     one_img_all_centerlines = True
 
-    keep_only_if_intersect = True
+    keep_only_if_intersect = False
+
+    split_dirs = True
+
+    planes_loop = ['z', 'y']#, 'x']
 
     # if tangent is None:
     tangent = np.array([1, 0, 0])
@@ -1081,6 +1085,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 continue
             ids = cent_id[ip]
             locs = c_loc[ids]
+            
             if keep_only_if_intersect:
                 # Check if the line intersects the plane
                 if plane == 'z':
@@ -1097,10 +1102,12 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                     # import pdb; pdb.set_trace()
                     continue
             trackId = ip
-            for i, plane in enumerate(['z', 'y', 'x']):
+            for i, plane in enumerate(planes_loop):
                 sceneId = stats['NAME'] + '_' + plane
                 metaId = num_trajs
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                # set to length of 20
+                locs_proj = downsample(locs_proj, number_points=20)
                 if keep_only_if_intersect:
                     # Check if the line intersects the plane
                     if plane == 'z':
@@ -1109,36 +1116,39 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                         plane_normal = y_vec
                     elif plane == 'x':
                         plane_normal = tangent
-                    if not line_intersects_plane(locs, [0.5,0.5], plane_normal):
+                    if not line_intersects_plane(locs, [0.5, 0.5], plane_normal):
                         continue
                 if visualize:
                     # visualize the projected points
                     visualize_points(locs_proj, plane, planes_img[i], stats['NAME'],
-                                     ip, outdir, split_dirs=False)
+                                     ip, outdir, split_dirs=split_dirs)
                     visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
-                                     ip, outdir, split_dirs=False, seg=True)
-
+                                     ip, outdir, split_dirs=split_dirs, seg=True)
+                locs_proj = shift_invert(locs_proj)
+                print(f"***Length of locs_proj is {len(locs_proj)}")
                 for j in range(len(locs_proj)):
-                    # time is % of centerline, max 228
-                    time = j/len(locs_proj)*228
+                    time = int(j/len(locs_proj)*228)
                     traj = [time, trackId, locs_proj[j][0], locs_proj[j][1], sceneId, metaId]
                     trajs.append(traj)
                 num_trajs += 1
+
+    # One image for all centerlines 
     elif one_img_all_centerlines:
-        for i, plane in enumerate(['z', 'y', 'x']):
+        for i, plane in enumerate(planes_loop):
             locs_proj_accumulated = []
             sceneId = stats['NAME'] + '_' + plane
             num_cent_plotted = 0
-            ids_done = []
+            # ids_done = []
             for ip in range(num_cent):
                 if not cent_id[ip]:
                     continue
                 ids = cent_id[ip]
                 # remove ids that have already been plotted
-                ids = [i for i in ids if i not in ids_done]
-                ids_done.append(ids)
+                # ids = [i for i in ids if i not in ids_done]
+                # ids_done.append(ids)
 
                 locs = c_loc[ids]
+                
                 if keep_only_if_intersect:
                     # Check if the line intersects the plane
                     if plane == 'z':
@@ -1149,17 +1159,22 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                         plane_normal = tangent
                     
                     if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
-                            or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
-                            or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
+                            # or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
+                            # or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
                             ):
                         # import pdb; pdb.set_trace()
                         continue
                 num_cent_plotted += 1
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                # set to length of 20
+                locs_proj = downsample(locs_proj, number_points=20)
                 locs_proj_accumulated.append(locs_proj)
+
+                locs_proj = shift_invert(locs_proj)
+                print(f"***Length of locs_proj is {len(locs_proj)}")
                 for j in range(len(locs_proj)):
-                    # time is % of centerline, max 228
-                    time = j/len(locs_proj)*228
+                    # time is % of centerline, max 228, integers
+                    time = int(j/len(locs_proj)*228)
                     traj = [time, ip, locs_proj[j][0], locs_proj[j][1], sceneId, num_trajs]
                     trajs.append(traj)
                 num_trajs += 1
@@ -1168,11 +1183,52 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 if locs_proj_accumulated:
                     locs_proj_accumulated = np.concatenate(locs_proj_accumulated, axis=0)
                 visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME'],
-                                 num_cent_plotted, outdir, split_dirs=False)
+                                 num_cent_plotted, outdir, split_dirs=split_dirs)
                 visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME'],
-                                 num_cent_plotted, outdir, split_dirs=False, seg=True)
+                                 num_cent_plotted, outdir, split_dirs=split_dirs, seg=True)
 
     return trajs, num_trajs
+
+
+def downsample(locs, number_points=20):
+    """
+    Function to make the trajectory a set length
+
+    We use interpolation to get the correct number of points
+    """
+    if len(locs) < number_points:
+        locs = interpolate(locs, number_points)
+    elif len(locs) > number_points:
+        locs = interpolate(locs, number_points)
+
+    print(f"**Length of locs is {len(locs)}")
+    assert len(locs) == number_points, f"Length of locs is {len(locs)}"
+
+    return locs
+
+
+def interpolate(locs, number_points):
+    """
+    Function to interpolate the trajectory
+    to number_points
+    """
+    from scipy.interpolate import interp1d
+    x = np.arange(len(locs))
+    f = interp1d(x, locs, axis=0)
+    xnew = np.linspace(0, len(locs)-1, number_points)
+    locs = f(xnew)
+    return locs
+
+
+def shift_invert(locs_proj):
+    """
+    Function to shift the points in y-dir by 0.5
+    and invert the y-dir values
+    """
+    locs_proj_shifted = locs_proj.copy()
+    locs_proj_shifted[:, 1] = 1 - locs_proj_shifted[:, 1]
+    # locs_proj[:, 1] = locs_proj[:, 1] - 0.5
+    return locs_proj_shifted
 
 
 def line_intersects_plane(line_points, plane_point, plane_normal):
@@ -1241,6 +1297,12 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
         image_out_dir = os.path.join(outdir, 'seg_traj')
     os.makedirs(image_out_dir, exist_ok=True)
 
+    # Create the output directory for grayscale images
+    image_out_dir_gray = os.path.join(outdir, 'gray')
+    if seg:
+        image_out_dir_gray = os.path.join(outdir, 'gray_seg')
+    os.makedirs(image_out_dir_gray, exist_ok=True)
+
     # Normalize and convert planes to grayscale if necessary
     if len(planes.shape) == 3 and planes.shape[-1] != 1:
         # Assume RGB, convert to grayscale
@@ -1248,6 +1310,14 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
     planes = planes - np.amin(planes)  # Shift values to be positive
     planes = (planes / max(np.amax(planes), 1)) * 255  # Normalize to [0, 255]
     planes = planes.astype(np.uint8)
+
+    # Create dir for grayscale image
+    new_dir_name = name + '_' + plane
+    new_image_out_dir_gray = os.path.join(image_out_dir_gray, new_dir_name)
+    os.makedirs(new_image_out_dir_gray, exist_ok=True)
+    # Save grayscale image as 'reference.jpg' image
+    filename = os.path.join(new_image_out_dir_gray, 'reference.jpg')
+    cv2.imwrite(filename, planes)
 
     # Convert grayscale to BGR for visualization
     planes_color = cv2.cvtColor(planes, cv2.COLOR_GRAY2BGR)
@@ -1268,14 +1338,14 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
 
     # Save the output image
     if not split_dirs:
-        output_filename = os.path.join(image_out_dir, f"{name}_{nr}_{plane}.png")
+        output_filename = os.path.join(image_out_dir, f"{name}_{nr}_{plane}.jpg")
         cv2.imwrite(output_filename, planes_color)
         print(f"Image saved to {output_filename}")
     else:
         # make dir for nr
         image_out_dir = os.path.join(image_out_dir, f"{nr}")
         os.makedirs(image_out_dir, exist_ok=True)
-        output_filename = os.path.join(image_out_dir, f"{name}_{plane}.png")
+        output_filename = os.path.join(image_out_dir, f"{name}_{plane}.jpg")
         cv2.imwrite(output_filename, planes_color)
 
 
@@ -1313,10 +1383,8 @@ def project_points(locs, plane, x_vec, y_vec, z_vec):
 
     # Project each point onto the specified plane
     locs_proj = np.dot(locs, basis.T)
-
-    # # Shift coordinates to ensure all values are non-negative
-    # min_vals = np.min(locs_proj, axis=0)
-    # locs_proj -= min_vals  # Subtract minimums to make all coordinates >= 0
+    # Remove coordinates that have either negative or greater than 1 values
+    locs_proj = locs_proj[(locs_proj >= 0).all(axis=1) & (locs_proj <= 1).all(axis=1)]
 
     return locs_proj
 
