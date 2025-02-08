@@ -270,7 +270,6 @@ def sort_centerline_ids(cent_ids, point_to_cells, centerline_poly, debug=False):
     Returns:
         cent_ids: list of lists of point ids
     """
-    import pdb; pdb.set_trace()
     # sort the centerline ids
     # by connectivity of the points
     cent_ids_sorted = []
@@ -489,7 +488,7 @@ def calc_samples(count, bifurc, locs, rads, global_config):
 
 
 def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
-                   outdir=None):
+                   outdir=None, angle=None):
     """
     Function to rotate the volumes
     Inputs are:
@@ -498,9 +497,10 @@ def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
         tangent: tangent vector
         point: point to rotate around
     """
-    # read in the volumes
-    reader_im = reader_im.Execute()
-    reader_seg = reader_seg.Execute()
+    # read in the volumes if reader
+    if isinstance(reader_im, sitk.ImageFileReader):
+        reader_im = reader_im.Execute()
+        reader_seg = reader_seg.Execute()
 
     # rotate the volumes
     new_img, y, z, rot_matrix = rotate_volume_tangent(reader_im, tangent, point,
@@ -527,6 +527,16 @@ def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
         create_plane_from_vectors(point, z, y, outdir=outdir, name='planex')
 
     return new_img, new_seg, origin_im, y, z, rot_matrix
+
+
+def get_angles(num_angles):
+    """
+    Function to get the angles
+
+    Evenly split 90 degrees into num_angles
+    """
+    angles = np.linspace(0, np.pi/2, num_angles)
+    return angles
 
 
 def create_plane_from_vectors(origin, vec1, vec2, resolution=(10, 10),
@@ -683,7 +693,7 @@ def extract_subvolumes(reader_im, reader_seg, index_extract, size_extract,
     return stats, new_img, new_seg, O
 
 
-def resample_vol(removed_seg, resample_size):
+def resample_vol(removed_seg, resample_size): #TODO
     """
     Function to resample the volume
 
@@ -692,7 +702,6 @@ def resample_vol(removed_seg, resample_size):
     from modules.pre_process import resample_spacing
     removed_seg1 = resample_spacing(removed_seg, template_size=resample_size, order=1)[0]
     # if min(size_extract)<resample_size[0]:
-    import pdb; pdb.set_trace()
     removed_seg = clean_boundaries(sitk.GetArrayFromImage(removed_seg))
     return removed_seg
 
@@ -893,7 +902,7 @@ def get_outlet_stats(stats, img, seg, upsample=False):
     return stats_all, planes_img, planes_seg, pos_example
 
 
-def get_cross_sectional_planes(stats, img, seg, upsample=True):
+def get_cross_sectional_planes(stats, img, seg, upsample=None):
     """
     Function to get cross sectional planes
 
@@ -923,9 +932,9 @@ def get_cross_sectional_planes(stats, img, seg, upsample=True):
         planes_img.append(plane_img)
         planes_seg.append(plane_seg)
 
-    if upsample:
-        planes_img = upsample_planes(planes_img, size=200, seg=False)
-        planes_seg = upsample_planes(planes_seg, size=200, seg=True)
+    if upsample is not None:
+        planes_img = upsample_planes(planes_img, size=upsample, seg=False)
+        planes_seg = upsample_planes(planes_seg, size=upsample, seg=True)
 
     names = ['z', 'y', 'x']
     stats_all = []
@@ -969,7 +978,6 @@ def upsample_planes(planes, size=480, seg=False):
         # size_hor = int(input_size[0]/min_size*size)
         # size_vert = int(input_size[1]/min_size*size)
         # upsample
-        # import pdb; pdb.set_trace()
         # change to int16
         plane = plane.astype(np.int16)
         plane = cv2.resize(plane, (size_hor, size_vert), interpolation=interp)
@@ -995,19 +1003,6 @@ def write_2d_planes(planes, stats_out, image_out_dir,
 
     for i in range(len(planes)):
         plane = planes[i]
-        # # make sure channel is first
-        # if len(plane.shape) == 3:
-        #     if min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[1]:
-        #         plane = np.moveaxis(plane, -1, 0)
-        #     elif min(plane.shape) != plane.shape[0] and min(plane.shape) != plane.shape[2]:
-        #         plane = np.moveaxis(plane, -2, 0)
-        # shift to positive
-        # plane = plane - np.amin(plane)
-        # # make rane 0-255
-        # plane = plane/max([np.amax(plane),1])*255
-        # # make unsigned int
-        # plane = plane.astype(np.uint8)
-
         plane = cv2.convertScaleAbs(plane, alpha=(255.0/np.amax(plane)))
         # print(f"Shape of plane: {plane.shape}")
         fn_name = image_out_dir + stats_out[i]['NAME']+'.jpg'
@@ -1019,7 +1014,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                   rot_point=None, rot_matrix=None,
                   outdir=None, planes_img=None, planes_seg=None,
                   upsample=False, visualize=False,
-                  write_rotated_centerline=False):
+                  write_rotated_centerline=False, img_size=None):
     """
     Function to get the projected trajectory
     of the centerline
@@ -1044,8 +1039,19 @@ def get_proj_traj(stats, img, global_centerline, trajs,
     one_img_all_centerlines = True
 
     keep_only_if_intersect = False
+    keep_only_half = True
 
     split_dirs = True
+
+    # (stats_out, planes_img, planes_seg
+    #  ) = get_cross_sectional_planes(
+    #     stats, new_img, removed_seg,
+    #     upsample=global_config['RESAMPLE_CROSS_IMG'])
+    # # write cross sectional planes
+    # write_2d_planes(planes_img, stats_out,
+    #                 image_out_dir, add='_cross_rot')
+    # write_2d_planes(planes_seg, stats_out,
+    #                 seg_out_dir, add='_cross_rot')
 
     planes_loop = ['z', 'y']#, 'x']
 
@@ -1066,6 +1072,9 @@ def get_proj_traj(stats, img, global_centerline, trajs,
 
     # get bounds of image
     bounds = get_bounds(img)
+    # define bounds of smaller image, half the size
+    bounds_half = np.array([[0.3, 0.3, 0.3], [0.7, 0.7, 0.7]])
+
     # keep only the points that are in the image
     c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
     # update cent_id
@@ -1085,26 +1094,19 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 continue
             ids = cent_id[ip]
             locs = c_loc[ids]
-            
-            if keep_only_if_intersect:
-                # Check if the line intersects the plane
-                if plane == 'z':
-                    plane_normal = z_vec
-                elif plane == 'y':
-                    plane_normal = y_vec
-                elif plane == 'x':
-                    plane_normal = tangent
-
-                if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
-                        # or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
-                        # or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
-                        ):
-                    # import pdb; pdb.set_trace()
-                    continue
             trackId = ip
             for i, plane in enumerate(planes_loop):
                 sceneId = stats['NAME'] + '_' + plane
                 metaId = num_trajs
+                if keep_only_half:
+                    if plane == 'z':
+                        # keep only points with z in the middle
+                        locs = locs[np.logical_and(locs[:,2] > bounds_half[0,2], locs[:,2] < bounds_half[1,2])]
+                    elif plane == 'y':
+                        locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
+                    elif plane == 'x':
+                        locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
+
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
                 # set to length of 20
                 locs_proj = downsample(locs_proj, number_points=20)
@@ -1124,7 +1126,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                                      ip, outdir, split_dirs=split_dirs)
                     visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
                                      ip, outdir, split_dirs=split_dirs, seg=True)
-                locs_proj = shift_invert(locs_proj)
+                locs_proj = shift_invert(locs_proj, img_size)
                 print(f"***Length of locs_proj is {len(locs_proj)}")
                 for j in range(len(locs_proj)):
                     time = int(j/len(locs_proj)*228)
@@ -1143,12 +1145,17 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 if not cent_id[ip]:
                     continue
                 ids = cent_id[ip]
-                # remove ids that have already been plotted
-                # ids = [i for i in ids if i not in ids_done]
-                # ids_done.append(ids)
-
                 locs = c_loc[ids]
-                
+
+                if keep_only_half:
+                    if plane == 'z':
+                        # keep only points with z in the middle
+                        locs = locs[np.logical_and(locs[:,2] > bounds_half[0,2], locs[:,2] < bounds_half[1,2])]
+                    elif plane == 'y':
+                        locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
+                    elif plane == 'x':
+                        locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
+
                 if keep_only_if_intersect:
                     # Check if the line intersects the plane
                     if plane == 'z':
@@ -1157,12 +1164,11 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                         plane_normal = y_vec
                     elif plane == 'x':
                         plane_normal = tangent
-                    
+
                     if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
                             # or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
                             # or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
                             ):
-                        # import pdb; pdb.set_trace()
                         continue
                 num_cent_plotted += 1
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
@@ -1170,7 +1176,8 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 locs_proj = downsample(locs_proj, number_points=20)
                 locs_proj_accumulated.append(locs_proj)
 
-                locs_proj = shift_invert(locs_proj)
+                locs_proj = shift_invert(locs_proj, img_size)
+
                 print(f"***Length of locs_proj is {len(locs_proj)}")
                 for j in range(len(locs_proj)):
                     # time is % of centerline, max 228, integers
@@ -1220,14 +1227,15 @@ def interpolate(locs, number_points):
     return locs
 
 
-def shift_invert(locs_proj):
+def shift_invert(locs_proj, img_size=None):
     """
     Function to shift the points in y-dir by 0.5
     and invert the y-dir values
     """
     locs_proj_shifted = locs_proj.copy()
-    locs_proj_shifted[:, 1] = 1 - locs_proj_shifted[:, 1]
-    # locs_proj[:, 1] = locs_proj[:, 1] - 0.5
+    # locs_proj_shifted[:, 1] = 1 - locs_proj_shifted[:, 1]
+    if img_size:
+        locs_proj_shifted = locs_proj_shifted * img_size
     return locs_proj_shifted
 
 
@@ -1247,7 +1255,6 @@ def line_intersects_plane(line_points, plane_point, plane_normal):
     line_points = np.array(line_points)
     plane_point = np.array(plane_point)
     plane_normal = np.array(plane_normal)
-    # import pdb; pdb.set_trace()
     # Normalize the plane normal for safety
     plane_normal = plane_normal / np.linalg.norm(plane_normal)
     
@@ -1325,7 +1332,7 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
     # Get image dimensions
     img_height, img_width = planes_color.shape[:2]
 
-    for loc in locs_proj:
+    for num, loc in enumerate(locs_proj):
         # Scale to image size
         x = int(loc[0] * img_width)
         y = int(loc[1] * img_height)
@@ -1333,8 +1340,12 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
         x = min(max(x, 0), img_width - 1)
         y = min(max(y, 0), img_height - 1)
 
-        # Draw a red dot at the location
-        cv2.circle(planes_color, (x, y), 2, (0, 0, 255), -1)
+        # For first 8 points, draw a blue dot
+        if len(locs_proj) > 8 and num < 8:
+            cv2.circle(planes_color, (x, y), 2, (255, 0, 0), -1)
+        else:
+            # Draw a red dot at the location
+            cv2.circle(planes_color, (x, y), 2, (0, 0, 255), -1)
 
     # Save the output image
     if not split_dirs:

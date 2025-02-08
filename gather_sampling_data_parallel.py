@@ -326,7 +326,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             if global_config['WRITE_CROSS_SECTIONAL']:
                                 (stats_out, planes_img, planes_seg
                                  ) = get_cross_sectional_planes(
-                                     stats, new_img, removed_seg)
+                                     stats, new_img, removed_seg,
+                                     upsample=global_config['RESAMPLE_CROSS_IMG'])
                                 # write cross sectional planes
                                 write_2d_planes(planes_img, stats_out,
                                                 image_out_dir, add='_cross_rot')
@@ -347,7 +348,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     outdir=out_dir,
                                     planes_img=planes_img,
                                     planes_seg=planes_seg,
-                                    visualize=True)
+                                    visualize=True,
+                                    img_size=global_config['RESAMPLE_CROSS_IMG'])
 
                         except Exception as e:
                             print(e)
@@ -406,6 +408,9 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                modality, global_config)
         write_pkl_outlet_stats(csv_outlet_stats, csv_outlet_stats_val,
                                modality, global_config)
+
+    # TODO: if trajectories, add to df file
+
     # write to done.txt the name of the case
     with open(out_dir+"done.txt", "a") as f:
         f.write(case_dict['NAME']+'\n')
