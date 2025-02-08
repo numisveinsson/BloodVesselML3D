@@ -410,6 +410,21 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                modality, global_config)
 
     # TODO: if trajectories, add to df file
+    if global_config['WRITE_TRAJECTORIES']:
+        print(f"Number of trajectories for {case_dict['NAME']}: {num_trajs}")
+        column_names = ['frame', 'trackId', 'x', 'y', 'sceneId', 'metaId']
+        # check if files exist
+        if os.path.exists(out_dir+"trajectories.pkl"):
+            df = pd.read_pickle(out_dir+"trajectories.pkl")
+            df = df.append(pd.DataFrame(traj_list, columns=column_names))
+            df.to_pickle(out_dir+"trajectories.pkl")
+        else:
+            df = pd.DataFrame(traj_list, columns=column_names)
+            df.to_pickle(out_dir+"trajectories.pkl")
+
+        # test read in
+        df = pd.read_pickle(out_dir+"trajectories.pkl")
+        print(df[df['metaId'] == 0])
 
     # write to done.txt the name of the case
     with open(out_dir+"done.txt", "a") as f:
@@ -549,15 +564,15 @@ if __name__ == '__main__':
                 case_fn, csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, traj_list, num_trajs = results
                 traj_list_all.extend(traj_list)
                 num_trajs += num_trajs
-            # write as pandas dataframe
-            column_names = ['frame', 'trackId', 'x', 'y', 'sceneId', 'metaId']
-            df = pd.DataFrame(traj_list_all, columns=column_names)
-            # write as pickle
-            df.to_pickle(out_dir+"trajectories.pkl")
+            # # write as pandas dataframe
+            # column_names = ['frame', 'trackId', 'x', 'y', 'sceneId', 'metaId']
+            # df = pd.DataFrame(traj_list_all, columns=column_names)
+            # # write as pickle
+            # df.to_pickle(out_dir+"trajectories.pkl")
 
-            # test read in
-            df = pd.read_pickle(out_dir+"trajectories.pkl")
-            print(df[df['metaId'] == 0])
+            # # test read in
+            # df = pd.read_pickle(out_dir+"trajectories.pkl")
+            # print(df[df['metaId'] == 0])
 
         # Collect results
         # for result in results:

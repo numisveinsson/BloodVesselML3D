@@ -174,12 +174,11 @@ def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False):
 
     # Get the angle between the tangent and the x-axis
     angle = np.arccos(np.dot(direction[0:3], tangent)/np.linalg.norm(direction[0:3])/np.linalg.norm(tangent))
-    # print(f"Angle: {angle*360/2/np.pi} between {direction[0:3]} and {tangent}")
+    print(f"Angle: {angle*360/2/np.pi} between {direction[0:3]} and {tangent}")
 
-    # If the angle is greater than 90 degrees, then the axis of rotation is the opposite direction
-    # if angle > np.pi/2:
-    #     angle = np.pi - angle
-    #     tangent = -tangent
+    # If the angle is less than 1 degree, return the image
+    if angle < np.pi/180:
+        return sitk_img
 
     # Get the axis of rotation
     axis = np.cross(direction[0:3], tangent)
