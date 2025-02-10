@@ -1108,6 +1108,8 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                         locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
 
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                if locs_proj.size == 0:
+                    continue
                 # set to length of 20
                 locs_proj = downsample(locs_proj, number_points=20)
                 if keep_only_if_intersect:
@@ -1139,6 +1141,9 @@ def get_proj_traj(stats, img, global_centerline, trajs,
         for i, plane in enumerate(planes_loop):
             locs_proj_accumulated = []
             sceneId = stats['NAME'] + '_' + plane
+            # do pdb if sceneId is Diseased_6_42_y
+            if sceneId == 'Diseased_6_42_0_z':
+                import pdb; pdb.set_trace()
             num_cent_plotted = 0
             # ids_done = []
             for ip in range(num_cent):
@@ -1155,7 +1160,9 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                         locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
                     elif plane == 'x':
                         locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
-
+                    # if empty, continue
+                    if locs.size == 0:
+                        continue
                 if keep_only_if_intersect:
                     # Check if the line intersects the plane
                     if plane == 'z':
@@ -1172,6 +1179,9 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                         continue
                 num_cent_plotted += 1
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                # if locs_proj is empty, continue
+                if locs_proj.size == 0:
+                    continue
                 # set to length of 20
                 locs_proj = downsample(locs_proj, number_points=20)
                 locs_proj_accumulated.append(locs_proj)
@@ -1305,9 +1315,9 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
     os.makedirs(image_out_dir, exist_ok=True)
 
     # Create the output directory for grayscale images
-    image_out_dir_gray = os.path.join(outdir, 'gray')
+    image_out_dir_gray = os.path.join(outdir, 'train')
     if seg:
-        image_out_dir_gray = os.path.join(outdir, 'gray_seg')
+        image_out_dir_gray = os.path.join(outdir, 'train_seg')
     os.makedirs(image_out_dir_gray, exist_ok=True)
 
     # Normalize and convert planes to grayscale if necessary

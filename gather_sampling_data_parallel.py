@@ -164,7 +164,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                 (centers, sizes, save_bif,
                  n_samples, vec0) = calc_samples(count, bifurc, locs, rads,
                                                  global_config)
-                print(f"Vec0 is {vec0}")
+
                 sub = 0  # In the case of multiple samples at this point
                 for sample in range(n_samples):
                     # Map each center and size to image data
@@ -353,7 +353,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
                         except Exception as e:
                             print(e)
-                            # print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
+                            print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
                             K += 1
 
                     else:
@@ -558,8 +558,8 @@ if __name__ == '__main__':
             if args.num_cores > 1:
                 for result in results:
                     case_fn, csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, traj_list, num_trajs = result
-                    traj_list_all.extend(traj_list)
-                    num_trajs += num_trajs
+                    # traj_list_all.extend(traj_list)
+                    # num_trajs += num_trajs
             else:
                 case_fn, csv_list, csv_list_val, csv_discrete_centerline, csv_discrete_centerline_val, csv_outlet_stats, csv_outlet_stats_val, traj_list, num_trajs = results
                 traj_list_all.extend(traj_list)
