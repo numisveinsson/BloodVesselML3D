@@ -32,7 +32,7 @@ source activate /global/scratch/users/numi/environments/seqseg2
 cd /global/scratch/users/numi/BloodVesselML3D/
 
 python3  gather_sampling_data_parallel.py \
-    -outdir /global/scratch/users/numi/ASOCA/local_extraction_more/ \
+    -outdir /global/scratch/users/numi/PARSE_dataset/local_extraction_more/ \
     -config_name global_more_samples_savio \
     -num_cores 50 \
     

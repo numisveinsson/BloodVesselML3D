@@ -31,8 +31,8 @@
 source activate /global/scratch/users/numi/environments/seqseg2
 
 python3  dataset_dirs/create_nnunet.py \
-    -indir /global/scratch/users/numi/CAS_dataset/CAS2023_trainingdataset/local_extraction_more/ \
+    -indir /global/scratch/users/numi/CAS_dataset/CAS2023_trainingdataset/local_extraction_more2/ \
     -outdir /global/scratch/users/numi/nnUnet_data/nnUnet_raw/ \
-    -dataset_number 41 \
-    -name SEQCEREBCAS \
+    -dataset_number 46 \
+    -name SEQCEREBCASMORE \
     -modality mr \

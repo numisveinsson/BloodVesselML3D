@@ -1813,8 +1813,11 @@ def print_csv_stats(out_dir, global_config, modality):
         GT_MEAN = []
         GT_STD = []
         for row in reader:
-            GT_MEAN.append(float(row['GT_MEAN']))
-            GT_STD.append(float(row['GT_STD']))
+            try:
+                GT_MEAN.append(float(row['GT_MEAN']))
+                GT_STD.append(float(row['GT_STD']))
+            except:
+                print(row)
         print("GT_MEAN: " + str(np.mean(GT_MEAN)))
         print("GT_STD: " + str(np.mean(GT_STD)))
     # Calculate avg IM mean and std
@@ -1823,8 +1826,11 @@ def print_csv_stats(out_dir, global_config, modality):
         IM_MEAN = []
         IM_STD = []
         for row in reader:
-            IM_MEAN.append(float(row['IM_MEAN']))
-            IM_STD.append(float(row['IM_STD']))
+            try:
+                IM_MEAN.append(float(row['IM_MEAN']))
+                IM_STD.append(float(row['IM_STD']))
+            except:
+                print(row)
         print("IM_MEAN: " + str(np.mean(IM_MEAN)))
         print("IM_STD: " + str(np.mean(IM_STD)))
     # Calculate avg radius and number of voxels
@@ -1833,8 +1839,11 @@ def print_csv_stats(out_dir, global_config, modality):
         RADIUS = []
         NUM_VOX = []
         for row in reader:
-            RADIUS.append(float(row['RADIUS']))
-            NUM_VOX.append(float(row['NUM_VOX']))
+            try:
+                RADIUS.append(float(row['RADIUS']))
+                NUM_VOX.append(float(row['NUM_VOX']))
+            except:
+                print(row)
         print("RADIUS: " + str(np.mean(RADIUS)))
         print("NUM_VOX: " + str(np.mean(NUM_VOX)))
         print("DIM: " + str(np.mean(NUM_VOX)**(1/3)))
