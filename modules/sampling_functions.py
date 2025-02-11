@@ -1141,9 +1141,6 @@ def get_proj_traj(stats, img, global_centerline, trajs,
         for i, plane in enumerate(planes_loop):
             locs_proj_accumulated = []
             sceneId = stats['NAME'] + '_' + plane
-            # do pdb if sceneId is Diseased_6_42_y
-            if sceneId == 'Diseased_6_42_0_z':
-                import pdb; pdb.set_trace()
             num_cent_plotted = 0
             # ids_done = []
             for ip in range(num_cent):
@@ -1252,12 +1249,11 @@ def shift_invert(locs_proj, img_size=None):
 def line_intersects_plane(line_points, plane_point, plane_normal):
     """
     Checks if a line intersects a plane.
-    
     Parameters:
         line_points (np.ndarray): Nx3 array of ordered points forming the line.
         plane_point (np.ndarray): A point on the plane (1x3).
         plane_normal (np.ndarray): The normal vector to the plane (1x3).
-        
+
     Returns:
         bool: True if the line intersects the plane, False otherwise.
     """
@@ -1267,28 +1263,28 @@ def line_intersects_plane(line_points, plane_point, plane_normal):
     plane_normal = np.array(plane_normal)
     # Normalize the plane normal for safety
     plane_normal = plane_normal / np.linalg.norm(plane_normal)
-    
+
     # Loop through consecutive points in the line
     for i in range(len(line_points) - 1):
         # Points defining the line segment
         p1 = line_points[i]
         p2 = line_points[i + 1]
-        
+
         # Direction vector of the line segment
         line_dir = p2 - p1
-        
+
         # Check if the line segment is parallel to the plane
         denom = np.dot(plane_normal, line_dir)
         if np.isclose(denom, 0):
             continue  # Skip parallel segments
-        
+
         # Compute the parameter t for intersection
         t = np.dot(plane_normal, plane_point - p1) / denom
-        
+
         # Check if the intersection point lies within the segment
         if 0 <= t <= 1:
             return True  # Intersection found
-    
+
     # No intersection
     return False
 

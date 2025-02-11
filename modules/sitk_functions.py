@@ -179,6 +179,9 @@ def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False, verbose=F
     # If the angle is less than 1 degree, return the image
     if angle < np.pi/180:
         return sitk_img
+    # or if the angle is between 179 and 181 degrees, return the image
+    elif angle > np.pi*179/180 and angle < np.pi*181/180:
+        return sitk_img
 
     # Get the axis of rotation
     axis = np.cross(direction[0:3], tangent)
