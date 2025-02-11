@@ -1129,7 +1129,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                     visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
                                      ip, outdir, split_dirs=split_dirs, seg=True)
                 locs_proj = shift_invert(locs_proj, img_size)
-                print(f"***Length of locs_proj is {len(locs_proj)}")
+                assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
                 for j in range(len(locs_proj)):
                     time = int(j/len(locs_proj)*228)
                     traj = [time, trackId, locs_proj[j][0], locs_proj[j][1], sceneId, metaId]
@@ -1177,7 +1177,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 num_cent_plotted += 1
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
                 # if locs_proj is empty, continue
-                if locs_proj.size == 0:
+                if locs_proj.size < 2:
                     continue
                 # set to length of 20
                 locs_proj = downsample(locs_proj, number_points=20)
@@ -1185,7 +1185,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
 
                 locs_proj = shift_invert(locs_proj, img_size)
 
-                print(f"***Length of locs_proj is {len(locs_proj)}")
+                assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
                 for j in range(len(locs_proj)):
                     # time is % of centerline, max 228, integers
                     time = int(j/len(locs_proj)*228)
@@ -1215,7 +1215,6 @@ def downsample(locs, number_points=20):
     elif len(locs) > number_points:
         locs = interpolate(locs, number_points)
 
-    print(f"**Length of locs is {len(locs)}")
     assert len(locs) == number_points, f"Length of locs is {len(locs)}"
 
     return locs

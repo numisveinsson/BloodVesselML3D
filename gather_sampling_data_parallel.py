@@ -52,8 +52,12 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
             return (case_fn, [], [], [], [], [], [])
 
     if global_config['WRITE_TRAJECTORIES']:
+        if os.path.exists(out_dir+"trajectories.pkl"):
+            df = pd.read_pickle(out_dir+"trajectories.pkl")
+            num_trajs = df['metaId'].max() + 1
+        else:
+            num_trajs = 0
         traj_list = []
-        num_trajs = 0
 
     N, M, K, O, skipped = 0, 0, 0, 0, 0
     csv_list, csv_list_val = [], []
@@ -355,7 +359,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             print(e)
                             print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
                             K += 1
-
+                            import pdb; pdb.set_trace()
                     else:
                         print(".", end=" ")
                         # print(" No save - cap inside")
