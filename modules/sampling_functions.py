@@ -1177,7 +1177,7 @@ def get_proj_traj(stats, img, global_centerline, trajs,
                 num_cent_plotted += 1
                 locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
                 # if locs_proj is empty, continue
-                if locs_proj.size < 2:
+                if locs_proj.shape[0] < 4:
                     continue
                 # set to length of 20
                 locs_proj = downsample(locs_proj, number_points=20)
@@ -1210,10 +1210,7 @@ def downsample(locs, number_points=20):
 
     We use interpolation to get the correct number of points
     """
-    if len(locs) < number_points:
-        locs = interpolate(locs, number_points)
-    elif len(locs) > number_points:
-        locs = interpolate(locs, number_points)
+    locs = interpolate(locs, number_points)
 
     assert len(locs) == number_points, f"Length of locs is {len(locs)}"
 
