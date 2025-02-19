@@ -504,9 +504,9 @@ def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
 
     # rotate the volumes
     new_img, y, z, rot_matrix = rotate_volume_tangent(reader_im, tangent, point,
-                                          return_vecs=True)
+                                          return_vecs=True, angle=angle)
     new_seg, y, z, rot_matrix = rotate_volume_tangent(reader_seg, tangent, point,
-                                          return_vecs=True)
+                                          return_vecs=True, angle=angle)
     origin_im = np.array(list(new_img.GetOrigin()))
     if visualize and outdir:
         # write the rotated volumes and non-rotated volumes
@@ -1010,11 +1010,11 @@ def write_2d_planes(planes, stats_out, image_out_dir,
 
 
 def get_proj_traj(stats, img, seg, global_centerline, trajs,
-                  num_trajs, tangent=None, y_vec=None, z_vec=None,
+                  num_trajs, tangent,
                   rot_point=None, rot_matrix=None,
-                  outdir=None,
-                  upsample=False, visualize=False,
-                  write_rotated_centerline=False, img_size=None):
+                  outdir=None, upsample=False, visualize=False,
+                  write_rotated_centerline=False, img_size=None,
+                  angle=None):
     """
     Function to get the projected trajectory
     of the centerline
@@ -1027,9 +1027,6 @@ def get_proj_traj(stats, img, seg, global_centerline, trajs,
         img: sitk image
         global_centerline: vtk polydata of centerline
         trajs: list of lists of trajectories
-        tangent: tangent vector
-        y_vec: y-axis vector
-        z_vec: z-axis vector
         outdir: output directory
 
     returns:
@@ -1043,6 +1040,10 @@ def get_proj_traj(stats, img, seg, global_centerline, trajs,
 
     split_dirs = True
 
+    (img, seg, origin_im, y_vec, z_vec, rot_matrix
+     ) = rotate_volumes(img, seg, tangent, rot_point,
+                        outdir=outdir, angle=angle)
+
     (stats, planes_img, planes_seg
      ) = get_cross_sectional_planes(
         stats, img, seg,
@@ -1053,22 +1054,17 @@ def get_proj_traj(stats, img, seg, global_centerline, trajs,
     write_2d_planes(planes_seg, stats,
                     outdir, add='_cross_rot_seg')
 
-    planes_loop = ['z', 'y']#, 'x']
+    planes_loop = ['z', 'y']  # , 'x']
 
-    # if tangent is None:
     tangent = np.array([1, 0, 0])
-    # if y_vec is None:
     y_vec = np.array([0, 1, 0])
-    # if z_vec is None:
     z_vec = np.array([0, 0, 1])
-    if rot_point is None:
-        rot_point = np.array([0, 0, 0])
-    if rot_matrix is None:
-        rot_matrix = np.eye(3)
 
     print(f"tangent: {tangent}")
 
     _, c_loc, _, cent_id, _, num_cent = sort_centerline(global_centerline)
+    # perform affine transformation (if necessary)
+    c_loc_aff = np.dot(c_loc - rot_point, rot_matrix) + rot_point
 
     # get bounds of image
     bounds = get_bounds(img)
@@ -1079,8 +1075,7 @@ def get_proj_traj(stats, img, seg, global_centerline, trajs,
     c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
     # update cent_id
     cent_id = keep_indices(cent_id, c_loc_indes)
-    # perform affine transformation (if necessary)
-    c_loc_aff = np.dot(c_loc - rot_point, rot_matrix) + rot_point
+
     # write the centerline to file
     if outdir and write_rotated_centerline:
         locs_pd = points2polydata(c_loc_aff)

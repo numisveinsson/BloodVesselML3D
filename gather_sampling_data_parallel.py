@@ -151,9 +151,9 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
                 time_now = time.time()
                 # check if we need to rotate the volume
+                tangent = get_tangent(locs, count)
                 if global_config['ROTATE_VOLUMES']:
                     print("Rotating volume")
-                    tangent = get_tangent(locs, count)
                     (reader_im, reader_seg,
                      origin_im, y_vec, z_vec,
                      rot_matrix) = rotate_volumes(
@@ -162,7 +162,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                 else:
                     reader_im, reader_seg = reader_im0, reader_seg0
                     origin_im = origin_im0
-                    tangent, y_vec, z_vec, rot_matrix = None, None, None, None
+                    y_vec, z_vec, rot_matrix = None, None, None
 
                 # Calculate centers and sizes of samples for this point
                 (centers, sizes, save_bif,
@@ -345,8 +345,6 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     traj_list,
                                     num_trajs,
                                     tangent=tangent,
-                                    y_vec=y_vec,
-                                    z_vec=z_vec,
                                     rot_point=locs[count],
                                     rot_matrix=rot_matrix,
                                     outdir=out_dir,
