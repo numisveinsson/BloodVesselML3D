@@ -340,7 +340,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             if global_config['WRITE_TRAJECTORIES']:
                                 (traj_list,
                                  num_trajs) = get_proj_traj(
-                                    stats, new_img,
+                                    stats, new_img, removed_seg,
                                     global_centerline,
                                     traj_list,
                                     num_trajs,
@@ -350,8 +350,6 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     rot_point=locs[count],
                                     rot_matrix=rot_matrix,
                                     outdir=out_dir,
-                                    planes_img=planes_img,
-                                    planes_seg=planes_seg,
                                     visualize=True,
                                     img_size=global_config['RESAMPLE_CROSS_IMG'])
 

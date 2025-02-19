@@ -1009,10 +1009,10 @@ def write_2d_planes(planes, stats_out, image_out_dir,
         cv2.imwrite(fn_name, plane)
 
 
-def get_proj_traj(stats, img, global_centerline, trajs,
+def get_proj_traj(stats, img, seg, global_centerline, trajs,
                   num_trajs, tangent=None, y_vec=None, z_vec=None,
                   rot_point=None, rot_matrix=None,
-                  outdir=None, planes_img=None, planes_seg=None,
+                  outdir=None,
                   upsample=False, visualize=False,
                   write_rotated_centerline=False, img_size=None):
     """
@@ -1043,15 +1043,15 @@ def get_proj_traj(stats, img, global_centerline, trajs,
 
     split_dirs = True
 
-    # (stats_out, planes_img, planes_seg
-    #  ) = get_cross_sectional_planes(
-    #     stats, new_img, removed_seg,
-    #     upsample=global_config['RESAMPLE_CROSS_IMG'])
-    # # write cross sectional planes
-    # write_2d_planes(planes_img, stats_out,
-    #                 image_out_dir, add='_cross_rot')
-    # write_2d_planes(planes_seg, stats_out,
-    #                 seg_out_dir, add='_cross_rot')
+    (stats, planes_img, planes_seg
+     ) = get_cross_sectional_planes(
+        stats, img, seg,
+        upsample=img_size)
+    # write cross sectional planes
+    write_2d_planes(planes_img, stats,
+                    outdir, add='_cross_rot')
+    write_2d_planes(planes_seg, stats,
+                    outdir, add='_cross_rot_seg')
 
     planes_loop = ['z', 'y']#, 'x']
 

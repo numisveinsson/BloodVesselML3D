@@ -178,10 +178,16 @@ def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False, verbose=F
 
     # If the angle is less than 1 degree, return the image
     if angle < np.pi/180:
-        return sitk_img
+        if return_vecs:
+            return sitk_img, direction[3:6], direction[6:9], np.eye(3)
+        else:
+            return sitk_img
     # or if the angle is between 179 and 181 degrees, return the image
     elif angle > np.pi*179/180 and angle < np.pi*181/180:
-        return sitk_img
+        if return_vecs:
+            return sitk_img, direction[3:6], direction[6:9], np.eye(3)
+        else:
+            return sitk_img
 
     # Get the axis of rotation
     axis = np.cross(direction[0:3], tangent)
@@ -237,6 +243,76 @@ def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False, verbose=F
         print(f"Original z: {z_og_np}, Rotated z: {z}")
         # compare the rotated vectors to the tangent
         print(f"Tangent: {tangent}, Rotated x: {x}")
+
+    if return_vecs:
+        return sitk_img, y, z, rot_matrix_np
+
+    return sitk_img
+
+
+def rotate_volume_x_plane(sitk_img, point, angle, return_vecs=False, verbose=False):
+    """
+    Function to rotate a volume so that the tangent is aligned with the x-axis
+    args:
+        sitk_img: sitk image volume
+        point: point to rotate around, np array
+        angle: angle to rotate around x-axis
+    """
+    # sitk needs point to be a tuple of floats
+    point = tuple([float(i) for i in point])
+
+    # Get the direction of the image
+    direction = sitk_img.GetDirection()
+
+    # Create the rotation matrix
+    rotation = sitk.VersorTransform([1, 0, 0], angle)
+
+    # Create the affine transformation
+    affine = sitk.AffineTransform(3)
+    affine.SetCenter(point)
+    affine.SetMatrix(rotation.GetMatrix())
+
+    # Apply the transformation
+    # If segmentation, use nearest neighbor interpolation
+    # check how many unique values there are in the image
+    # if there are only 2, then it is a segmentation
+    if len(np.unique(sitk.GetArrayFromImage(sitk_img))) == 2:
+        sitk_img = sitk.Resample(sitk_img, sitk_img, affine,
+                                 sitk.sitkNearestNeighbor, 0.0,
+                                 sitk_img.GetPixelID())
+    else:
+        sitk_img = sitk.Resample(sitk_img, sitk_img, affine, sitk.sitkLinear,
+                                 0.0, sitk_img.GetPixelID())
+
+    # return the transformed y and z vectors
+    rot_matrix_np = np.array(rotation.GetMatrix()).reshape(3,3)
+    x_og_np = np.array(direction[0:3])
+    y_og_np = np.array(direction[3:6])
+    z_og_np = np.array(direction[6:9])
+    x = np.dot(rot_matrix_np, x_og_np)
+    y = np.dot(rot_matrix_np, y_og_np)
+    z = np.dot(rot_matrix_np, z_og_np)
+
+    # Check rotation matrix
+    # R = rot_matrix_np
+    # is_orthogonal = np.allclose(np.dot(R.T, R), np.eye(3))
+    # is_right_handed = np.isclose(np.linalg.det(R), 1)
+    # print(f"Orthogonal: {is_orthogonal}, Right-Handed: {is_right_handed}")
+
+    # original_basis = np.eye(3)  # [1,0,0], [0,1,0], [0,0,1]
+    # new_basis = np.dot(R, original_basis.T).T  # Transform basis vectors
+    # print("New Basis Vectors:", new_basis)
+
+    # # Project a simple point, e.g., [1, 1, 1]
+    # point = np.array([1, 1, 1])
+    # projected_point = np.dot(point, new_basis.T)
+    # print("Projected Point in New Basis:", projected_point)
+
+    # compare the rotated vectors to the original vectors
+    if verbose:
+        print(f"Original x: {x_og_np}, Rotated x: {x}")
+        print(f"Original y: {y_og_np}, Rotated y: {y}")
+        print(f"Original z: {z_og_np}, Rotated z: {z}")
 
     if return_vecs:
         return sitk_img, y, z, rot_matrix_np
