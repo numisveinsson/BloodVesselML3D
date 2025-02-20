@@ -1045,7 +1045,6 @@ def get_proj_traj(stats,
     (img_x, seg_x, origin_im, y_vec, z_vec, rot_matrix_x
      ) = rotate_volumes(img, seg, tangent, rot_point,
                         outdir=outdir)
-    import pdb; pdb.set_trace()
     # get angles, evenly distributed from 0-90 degrees
     angles = get_angles(n_slices)
 
@@ -1090,7 +1089,7 @@ def get_proj_traj(stats,
         # get bounds of image
         bounds = get_bounds(img)
         # define bounds of smaller image, half the size
-        bounds_half = np.array([[0.3, 0.3, 0.3], [0.7, 0.7, 0.7]])
+        bounds_half = np.array([[0.35, 0.35, 0.35], [0.65, 0.65, 0.65]])
 
         # keep only the points that are in the image
         c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
