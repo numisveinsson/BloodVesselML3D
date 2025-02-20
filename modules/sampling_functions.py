@@ -1011,7 +1011,8 @@ def get_proj_traj(stats,
                   visualize=False,
                   write_rotated_centerline=True,
                   img_size=400,
-                  n_slices=10):
+                  n_slices=2,
+                  return_rot_matrices=False):
     """
     Function to get the projected trajectory
     of the centerline
@@ -1036,6 +1037,9 @@ def get_proj_traj(stats,
     keep_only_half = True
 
     split_dirs = True
+
+    if return_rot_matrices:
+        rot_matrices = {}
 
     # rotate so x-axis aligns with tangent
     (img_x, seg_x, origin_im, y_vec, z_vec, rot_matrix_x
