@@ -529,16 +529,6 @@ def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
     return new_img, new_seg, origin_im, y, z, rot_matrix
 
 
-def get_angles(num_angles):
-    """
-    Function to get the angles
-
-    Evenly split 90 degrees into num_angles
-    """
-    angles = np.linspace(0, np.pi/2, num_angles)
-    return angles
-
-
 def create_plane_from_vectors(origin, vec1, vec2, resolution=(10, 10),
                               size=(10, 10),
                               outdir=None, name='plane'):
