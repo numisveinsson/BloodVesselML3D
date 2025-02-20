@@ -10,7 +10,7 @@ from .vtk_functions import (
     )
 from .sitk_functions import (
     extract_volume, rotate_volume_tangent, remove_other_vessels,
-    connected_comp_info)
+    connected_comp_info, rotate_volume_x_plane)
 from vtk.util.numpy_support import vtk_to_numpy as v2n
 
 import time
@@ -488,7 +488,7 @@ def calc_samples(count, bifurc, locs, rads, global_config):
 
 
 def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
-                   outdir=None, angle=None):
+                   outdir=None):
     """
     Function to rotate the volumes
     Inputs are:
@@ -504,9 +504,9 @@ def rotate_volumes(reader_im, reader_seg, tangent, point, visualize=False,
 
     # rotate the volumes
     new_img, y, z, rot_matrix = rotate_volume_tangent(reader_im, tangent, point,
-                                          return_vecs=True, angle=angle)
+                                          return_vecs=True)
     new_seg, y, z, rot_matrix = rotate_volume_tangent(reader_seg, tangent, point,
-                                          return_vecs=True, angle=angle)
+                                          return_vecs=True)
     origin_im = np.array(list(new_img.GetOrigin()))
     if visualize and outdir:
         # write the rotated volumes and non-rotated volumes
@@ -1009,12 +1009,19 @@ def write_2d_planes(planes, stats_out, image_out_dir,
         cv2.imwrite(fn_name, plane)
 
 
-def get_proj_traj(stats, img, seg, global_centerline, trajs,
-                  num_trajs, tangent,
-                  rot_point=None, rot_matrix=None,
-                  outdir=None, upsample=False, visualize=False,
-                  write_rotated_centerline=False, img_size=None,
-                  angle=None):
+def get_proj_traj(stats,
+                  img,
+                  seg,
+                  global_centerline,
+                  trajs,
+                  num_trajs,
+                  tangent,
+                  rot_point,
+                  outdir=None,
+                  visualize=False,
+                  write_rotated_centerline=False,
+                  img_size=400,
+                  n_slices=2):
     """
     Function to get the projected trajectory
     of the centerline
@@ -1040,163 +1047,194 @@ def get_proj_traj(stats, img, seg, global_centerline, trajs,
 
     split_dirs = True
 
-    (img, seg, origin_im, y_vec, z_vec, rot_matrix
+    # rotate so x-axis aligns with tangent
+    (img, seg, origin_im, y_vec, z_vec, rot_matrix_x
      ) = rotate_volumes(img, seg, tangent, rot_point,
-                        outdir=outdir, angle=angle)
+                        outdir=outdir)
 
-    (stats, planes_img, planes_seg
-     ) = get_cross_sectional_planes(
-        stats, img, seg,
-        upsample=img_size)
-    # write cross sectional planes
-    write_2d_planes(planes_img, stats,
-                    outdir, add='_cross_rot')
-    write_2d_planes(planes_seg, stats,
-                    outdir, add='_cross_rot_seg')
+    # get angles, evenly distributed from 0-90 degrees
+    angles = get_angles(n_slices)
 
-    planes_loop = ['z', 'y']  # , 'x']
+    for angle in angles:
 
-    tangent = np.array([1, 0, 0])
-    y_vec = np.array([0, 1, 0])
-    z_vec = np.array([0, 0, 1])
+        if angle != 0:
+            # rotate along x-axis by angle
+            img, y, z, rot_matrix_np_angle = rotate_volume_x_plane(img, rot_point,
+                                                                    angle, return_vecs=True)
+            seg, y, z, rot_matrix_np_angle = rotate_volume_x_plane(seg, rot_point,
+                                                                    angle, return_vecs=True)
+            # multiply the rotation matrices
+            rot_matrix = np.dot(rot_matrix_np_angle, rot_matrix_x)
+        else:
+            rot_matrix = rot_matrix_x
 
-    print(f"tangent: {tangent}")
+        (stats, planes_img, planes_seg
+         ) = get_cross_sectional_planes(
+            stats, img, seg,
+            upsample=img_size)
+        # write cross sectional planes
+        write_2d_planes(planes_img, stats,
+                        outdir, add='_cross_rot')
+        write_2d_planes(planes_seg, stats,
+                        outdir, add='_cross_rot_seg')
 
-    _, c_loc, _, cent_id, _, num_cent = sort_centerline(global_centerline)
-    # perform affine transformation (if necessary)
-    c_loc_aff = np.dot(c_loc - rot_point, rot_matrix) + rot_point
+        planes_loop = ['z', 'y']  # , 'x']
 
-    # get bounds of image
-    bounds = get_bounds(img)
-    # define bounds of smaller image, half the size
-    bounds_half = np.array([[0.3, 0.3, 0.3], [0.7, 0.7, 0.7]])
+        tangent = np.array([1, 0, 0])
+        y_vec = np.array([0, 1, 0])
+        z_vec = np.array([0, 0, 1])
 
-    # keep only the points that are in the image
-    c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
-    # update cent_id
-    cent_id = keep_indices(cent_id, c_loc_indes)
+        print(f"tangent: {tangent}")
 
-    # write the centerline to file
-    if outdir and write_rotated_centerline:
-        locs_pd = points2polydata(c_loc_aff)
-        write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_centerline.vtp', locs_pd)
-    # transform to reference frame
-    c_loc = transform_to_ref(c_loc_aff, bounds)
+        _, c_loc, _, cent_id, _, num_cent = sort_centerline(global_centerline)
+        # perform affine transformation (if necessary)
+        c_loc_aff = np.dot(c_loc - rot_point, rot_matrix) + rot_point
 
-    if one_img_per_centerline:
-        for ip in range(num_cent):
-            if not cent_id[ip]:
-                continue
-            ids = cent_id[ip]
-            locs = c_loc[ids]
-            trackId = ip
-            for i, plane in enumerate(planes_loop):
-                sceneId = stats['NAME'] + '_' + plane
-                metaId = num_trajs
-                if keep_only_half:
-                    if plane == 'z':
-                        # keep only points with z in the middle
-                        locs = locs[np.logical_and(locs[:,2] > bounds_half[0,2], locs[:,2] < bounds_half[1,2])]
-                    elif plane == 'y':
-                        locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
-                    elif plane == 'x':
-                        locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
+        # get bounds of image
+        bounds = get_bounds(img)
+        # define bounds of smaller image, half the size
+        bounds_half = np.array([[0.3, 0.3, 0.3], [0.7, 0.7, 0.7]])
 
-                locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
-                if locs_proj.size == 0:
-                    continue
-                # set to length of 20
-                locs_proj = downsample(locs_proj, number_points=20)
-                if keep_only_if_intersect:
-                    # Check if the line intersects the plane
-                    if plane == 'z':
-                        plane_normal = z_vec
-                    elif plane == 'y':
-                        plane_normal = y_vec
-                    elif plane == 'x':
-                        plane_normal = tangent
-                    if not line_intersects_plane(locs, [0.5, 0.5], plane_normal):
-                        continue
-                if visualize:
-                    # visualize the projected points
-                    visualize_points(locs_proj, plane, planes_img[i], stats['NAME'],
-                                     ip, outdir, split_dirs=split_dirs)
-                    visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
-                                     ip, outdir, split_dirs=split_dirs, seg=True)
-                locs_proj = shift_invert(locs_proj, img_size)
-                assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
-                for j in range(len(locs_proj)):
-                    time = int(j/len(locs_proj)*228)
-                    traj = [time, trackId, locs_proj[j][0], locs_proj[j][1], sceneId, metaId]
-                    trajs.append(traj)
-                num_trajs += 1
+        # keep only the points that are in the image
+        c_loc_indes = np.all(c_loc >= bounds[0], axis=1) & np.all(c_loc <= bounds[1], axis=1)
+        # update cent_id
+        cent_id = keep_indices(cent_id, c_loc_indes)
 
-    # One image for all centerlines 
-    elif one_img_all_centerlines:
-        for i, plane in enumerate(planes_loop):
-            locs_proj_accumulated = []
-            sceneId = stats['NAME'] + '_' + plane
-            num_cent_plotted = 0
-            # ids_done = []
+        # write the centerline to file
+        if outdir and write_rotated_centerline:
+            locs_pd = points2polydata(c_loc_aff)
+            write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_centerline.vtp', locs_pd)
+        # transform to reference frame
+        c_loc = transform_to_ref(c_loc_aff, bounds)
+
+        if one_img_per_centerline:
             for ip in range(num_cent):
                 if not cent_id[ip]:
                     continue
                 ids = cent_id[ip]
                 locs = c_loc[ids]
+                trackId = ip
+                for i, plane in enumerate(planes_loop):
+                    sceneId = stats['NAME'] + '_' + plane
+                    metaId = num_trajs
+                    if keep_only_half:
+                        if plane == 'z':
+                            # keep only points with z in the middle
+                            locs = locs[np.logical_and(locs[:,2] > bounds_half[0,2], locs[:,2] < bounds_half[1,2])]
+                        elif plane == 'y':
+                            locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
+                        elif plane == 'x':
+                            locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
 
-                if keep_only_half:
-                    if plane == 'z':
-                        # keep only points with z in the middle
-                        locs = locs[np.logical_and(locs[:,2] > bounds_half[0,2], locs[:,2] < bounds_half[1,2])]
-                    elif plane == 'y':
-                        locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
-                    elif plane == 'x':
-                        locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
-                    # if empty, continue
-                    if locs.size == 0:
+                    locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                    if locs_proj.size == 0:
                         continue
-                if keep_only_if_intersect:
-                    # Check if the line intersects the plane
-                    if plane == 'z':
-                        plane_normal = z_vec
-                    elif plane == 'y':
-                        plane_normal = y_vec
-                    elif plane == 'x':
-                        plane_normal = tangent
+                    # set to length of 20
+                    locs_proj = downsample(locs_proj, number_points=20)
+                    if keep_only_if_intersect:
+                        # Check if the line intersects the plane
+                        if plane == 'z':
+                            plane_normal = z_vec
+                        elif plane == 'y':
+                            plane_normal = y_vec
+                        elif plane == 'x':
+                            plane_normal = tangent
+                        if not line_intersects_plane(locs, [0.5, 0.5], plane_normal):
+                            continue
+                    if visualize:
+                        # visualize the projected points
+                        visualize_points(locs_proj, plane, planes_img[i], stats['NAME'],
+                                        ip, outdir, split_dirs=split_dirs)
+                        visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
+                                        ip, outdir, split_dirs=split_dirs, seg=True)
+                    locs_proj = shift_invert(locs_proj, img_size)
+                    assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
+                    for j in range(len(locs_proj)):
+                        time = int(j/len(locs_proj)*228)
+                        traj = [time, trackId, locs_proj[j][0], locs_proj[j][1], sceneId, metaId]
+                        trajs.append(traj)
+                    num_trajs += 1
 
-                    if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
-                            # or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
-                            # or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
-                            ):
+        # One image for all centerlines 
+        elif one_img_all_centerlines:
+            for i, plane in enumerate(planes_loop):
+                locs_proj_accumulated = []
+                sceneId = stats['NAME'] + '_' + plane
+                num_cent_plotted = 0
+                # ids_done = []
+                for ip in range(num_cent):
+                    if not cent_id[ip]:
                         continue
-                num_cent_plotted += 1
-                locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
-                # if locs_proj is empty, continue
-                if locs_proj.shape[0] < 4:
-                    continue
-                # set to length of 20
-                locs_proj = downsample(locs_proj, number_points=20)
-                locs_proj_accumulated.append(locs_proj)
+                    ids = cent_id[ip]
+                    locs = c_loc[ids]
 
-                locs_proj = shift_invert(locs_proj, img_size)
+                    if keep_only_half:
+                        if plane == 'z':
+                            # keep only points with z in the middle
+                            locs = locs[np.logical_and(locs[:,2] > bounds_half[0,2], locs[:,2] < bounds_half[1,2])]
+                        elif plane == 'y':
+                            locs = locs[np.logical_and(locs[:,1] > bounds_half[0,1], locs[:,1] < bounds_half[1,1])]
+                        elif plane == 'x':
+                            locs = locs[np.logical_and(locs[:,0] > bounds_half[0,0], locs[:,0] < bounds_half[1,0])]
+                        # if empty, continue
+                        if locs.size == 0:
+                            continue
+                    if keep_only_if_intersect:
+                        # Check if the line intersects the plane
+                        if plane == 'z':
+                            plane_normal = z_vec
+                        elif plane == 'y':
+                            plane_normal = y_vec
+                        elif plane == 'x':
+                            plane_normal = tangent
 
-                assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
-                for j in range(len(locs_proj)):
-                    # time is % of centerline, max 228, integers
-                    time = int(j/len(locs_proj)*228)
-                    traj = [time, ip, locs_proj[j][0], locs_proj[j][1], sceneId, num_trajs]
-                    trajs.append(traj)
-                num_trajs += 1
-            if visualize:
-                # visualize the projected points
-                if locs_proj_accumulated:
-                    locs_proj_accumulated = np.concatenate(locs_proj_accumulated, axis=0)
-                visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME'],
-                                 num_cent_plotted, outdir, split_dirs=split_dirs)
-                visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME'],
-                                 num_cent_plotted, outdir, split_dirs=split_dirs, seg=True)
+                        if not (line_intersects_plane(locs, [0.5, 0.5, 0.5], plane_normal)
+                                # or line_intersects_plane(locs, [0.45, 0.45, 0.45], plane_normal)
+                                # or line_intersects_plane(locs, [0.55, 0.55, 0.55], plane_normal)
+                                ):
+                            continue
+                    num_cent_plotted += 1
+                    locs_proj = project_points(locs, plane, tangent, y_vec, z_vec)
+                    # if locs_proj is empty, continue
+                    if locs_proj.shape[0] < 4:
+                        continue
+                    # set to length of 20
+                    locs_proj = downsample(locs_proj, number_points=20)
+                    locs_proj_accumulated.append(locs_proj)
+
+                    locs_proj = shift_invert(locs_proj, img_size)
+
+                    assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
+                    for j in range(len(locs_proj)):
+                        # time is % of centerline, max 228, integers
+                        time = int(j/len(locs_proj)*228)
+                        traj = [time, ip, locs_proj[j][0], locs_proj[j][1], sceneId, num_trajs]
+                        trajs.append(traj)
+                    num_trajs += 1
+                if visualize:
+                    # visualize the projected points
+                    if locs_proj_accumulated:
+                        locs_proj_accumulated = np.concatenate(locs_proj_accumulated, axis=0)
+                    visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME'],
+                                    num_cent_plotted, outdir, split_dirs=split_dirs)
+                    visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME'],
+                                    num_cent_plotted, outdir, split_dirs=split_dirs, seg=True)
 
     return trajs, num_trajs
+
+
+def get_angles(n_slices):
+    """
+    Function to get the angles
+
+    Evenly split 90 degrees into n_slices/2
+
+    return [0] if n_slices=2
+    return [0,pi/2] if n_slices=4
+    etc
+    """
+    angles = np.linspace(0, np.pi/2, int(n_slices/2))
+    return angles
 
 
 def downsample(locs, number_points=20):

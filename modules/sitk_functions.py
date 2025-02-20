@@ -159,7 +159,7 @@ def extract_volume(reader_im, index_extract, size_extract):
 
 
 def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False,
-                          verbose=False, angle=None):
+                          verbose=False):
     """
     Function to rotate a volume so that the tangent is aligned with the x-axis
     args:
@@ -244,13 +244,6 @@ def rotate_volume_tangent(sitk_img, tangent, point, return_vecs=False,
         print(f"Original z: {z_og_np}, Rotated z: {z}")
         # compare the rotated vectors to the tangent
         print(f"Tangent: {tangent}, Rotated x: {x}")
-
-    if angle is not None:
-        # rotate along x-axis by angle
-        sitk_img, y, z, rot_matrix_np_angle = rotate_volume_x_plane(sitk_img, point,
-                                                              angle, return_vecs=True, verbose=verbose)
-        # multiply the rotation matrices
-        rot_matrix_np = np.dot(rot_matrix_np_angle, rot_matrix_np)
 
     if return_vecs:
         return sitk_img, y, z, rot_matrix_np

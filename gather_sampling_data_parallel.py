@@ -340,20 +340,22 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             if global_config['WRITE_TRAJECTORIES']:
                                 (traj_list,
                                  num_trajs) = get_proj_traj(
-                                    stats, new_img, removed_seg,
+                                    stats,
+                                    new_img,
+                                    removed_seg,
                                     global_centerline,
                                     traj_list,
                                     num_trajs,
                                     tangent=tangent,
                                     rot_point=locs[count],
-                                    rot_matrix=rot_matrix,
                                     outdir=out_dir,
                                     visualize=True,
                                     img_size=global_config['RESAMPLE_CROSS_IMG'])
 
                         except Exception as e:
                             print(e)
-                            print("\n*****************************ERROR: did not save files for " +case_dict['NAME']+'_'+str(N-n_old)+'_'+str(sub))
+                            print("\n*****************************ERROR:\n")
+                            print(" did not save files for " + case_dict['NAME'] + '_' + str(N-n_old)+'_'+str(sub))
                             K += 1
                             import pdb; pdb.set_trace()
                     else:
