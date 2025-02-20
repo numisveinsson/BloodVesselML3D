@@ -1009,9 +1009,9 @@ def get_proj_traj(stats,
                   rot_point,
                   outdir=None,
                   visualize=False,
-                  write_rotated_centerline=False,
+                  write_rotated_centerline=True,
                   img_size=400,
-                  n_slices=2):
+                  n_slices=10):
     """
     Function to get the projected trajectory
     of the centerline
@@ -1038,35 +1038,38 @@ def get_proj_traj(stats,
     split_dirs = True
 
     # rotate so x-axis aligns with tangent
-    (img, seg, origin_im, y_vec, z_vec, rot_matrix_x
+    (img_x, seg_x, origin_im, y_vec, z_vec, rot_matrix_x
      ) = rotate_volumes(img, seg, tangent, rot_point,
                         outdir=outdir)
-
+    import pdb; pdb.set_trace()
     # get angles, evenly distributed from 0-90 degrees
     angles = get_angles(n_slices)
 
-    for angle in angles:
+    for angle_number, angle in enumerate(angles):
+        print(f"Angle: {angle}")
 
         if angle != 0:
             # rotate along x-axis by angle
-            img, y, z, rot_matrix_np_angle = rotate_volume_x_plane(img, rot_point,
-                                                                    angle, return_vecs=True)
-            seg, y, z, rot_matrix_np_angle = rotate_volume_x_plane(seg, rot_point,
-                                                                    angle, return_vecs=True)
-            # multiply the rotation matrices
-            rot_matrix = np.dot(rot_matrix_np_angle, rot_matrix_x)
+            img, y, z, rot_matrix_np_angle = rotate_volume_x_plane(img_x, rot_point,
+                                                                   angle, return_vecs=True)
+            seg, y, z, rot_matrix_np_angle = rotate_volume_x_plane(seg_x, rot_point,
+                                                                   angle, return_vecs=True)
+            # multiply the rotation matrices so rot_matrix_x happens first
+            rot_matrix = np.matmul(rot_matrix_x, rot_matrix_np_angle)
         else:
+            img = img_x
+            seg = seg_x
             rot_matrix = rot_matrix_x
 
-        (stats, planes_img, planes_seg
+        (stats_out, planes_img, planes_seg
          ) = get_cross_sectional_planes(
             stats, img, seg,
             upsample=img_size)
         # write cross sectional planes
-        write_2d_planes(planes_img, stats,
-                        outdir, add='_cross_rot')
-        write_2d_planes(planes_seg, stats,
-                        outdir, add='_cross_rot_seg')
+        # write_2d_planes(planes_img, stats_out,
+        #                 outdir, add='_cross_rot')
+        # write_2d_planes(planes_seg, stats_out,
+        #                 outdir, add='_cross_rot_seg')
 
         planes_loop = ['z', 'y']  # , 'x']
 
@@ -1092,8 +1095,13 @@ def get_proj_traj(stats,
 
         # write the centerline to file
         if outdir and write_rotated_centerline:
+            # centerline points
             locs_pd = points2polydata(c_loc_aff)
-            write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_centerline.vtp', locs_pd)
+            write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_centerline.vtp', locs_pd)
+            # images
+            sitk.WriteImage(img, outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_image.mha')
+            sitk.WriteImage(seg, outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_seg.mha')
+
         # transform to reference frame
         c_loc = transform_to_ref(c_loc_aff, bounds)
 
@@ -1133,10 +1141,10 @@ def get_proj_traj(stats,
                             continue
                     if visualize:
                         # visualize the projected points
-                        visualize_points(locs_proj, plane, planes_img[i], stats['NAME'],
-                                        ip, outdir, split_dirs=split_dirs)
-                        visualize_points(locs_proj, plane, planes_seg[i], stats['NAME'],
-                                        ip, outdir, split_dirs=split_dirs, seg=True)
+                        visualize_points(locs_proj, plane, planes_img[i], stats['NAME']+'_'+str(angle_number),
+                                         ip, outdir, split_dirs=split_dirs)
+                        visualize_points(locs_proj, plane, planes_seg[i], stats['NAME']+'_'+str(angle_number),
+                                         ip, outdir, split_dirs=split_dirs, seg=True)
                     locs_proj = shift_invert(locs_proj, img_size)
                     assert len(locs_proj) == 20, f"Length of locs_proj is {len(locs_proj)}"
                     for j in range(len(locs_proj)):
@@ -1205,9 +1213,9 @@ def get_proj_traj(stats,
                     # visualize the projected points
                     if locs_proj_accumulated:
                         locs_proj_accumulated = np.concatenate(locs_proj_accumulated, axis=0)
-                    visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME'],
+                    visualize_points(locs_proj_accumulated, plane, planes_img[i], stats['NAME']+'_'+str(angle_number),
                                     num_cent_plotted, outdir, split_dirs=split_dirs)
-                    visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME'],
+                    visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME']+'_'+str(angle_number),
                                     num_cent_plotted, outdir, split_dirs=split_dirs, seg=True)
 
     return trajs, num_trajs
