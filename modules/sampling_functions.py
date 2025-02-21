@@ -1011,7 +1011,7 @@ def get_proj_traj(stats,
                   visualize=False,
                   write_rotated_centerline=True,
                   img_size=400,
-                  n_slices=2,
+                  n_slices=10,
                   return_rot_matrices=False):
     """
     Function to get the projected trajectory
@@ -1101,7 +1101,8 @@ def get_proj_traj(stats,
         if outdir and write_rotated_centerline:
             # centerline points
             locs_pd = points2polydata(c_loc_aff)
-            write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_centerline.vtp', locs_pd)
+            write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_'
+                      + str(angle_number) + '_centerline.vtp', locs_pd)
             # images
             sitk.WriteImage(img, outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_image.mha')
             sitk.WriteImage(seg, outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_seg.mha')
@@ -1117,7 +1118,11 @@ def get_proj_traj(stats,
                 locs = c_loc[ids]
                 trackId = ip
                 for i, plane in enumerate(planes_loop):
-                    sceneId = stats['NAME'] + '_' + plane
+                    sceneId = stats['NAME'] + '_' + str(angle_number) + '_' + plane
+
+                    if return_rot_matrices:
+                        rot_matrices[sceneId] = rot_matrix
+
                     metaId = num_trajs
                     if keep_only_half:
                         if plane == 'z':
@@ -1161,9 +1166,12 @@ def get_proj_traj(stats,
         elif one_img_all_centerlines:
             for i, plane in enumerate(planes_loop):
                 locs_proj_accumulated = []
-                sceneId = stats['NAME'] + '_' + plane
+                sceneId = stats['NAME'] + '_' + str(angle_number) + '_' + plane
                 num_cent_plotted = 0
-                # ids_done = []
+
+                if return_rot_matrices:
+                    rot_matrices[sceneId] = rot_matrix
+
                 for ip in range(num_cent):
                     if not cent_id[ip]:
                         continue
@@ -1222,7 +1230,10 @@ def get_proj_traj(stats,
                     visualize_points(locs_proj_accumulated, plane, planes_seg[i], stats['NAME']+'_'+str(angle_number),
                                     num_cent_plotted, outdir, split_dirs=split_dirs, seg=True)
 
-    return trajs, num_trajs
+    if return_rot_matrices:
+        return trajs, num_trajs, rot_matrices
+    else:
+        return trajs, num_trajs
 
 
 def get_angles(n_slices):
