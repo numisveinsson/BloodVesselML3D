@@ -350,7 +350,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     rot_point=locs[count],
                                     outdir=out_dir,
                                     visualize=True,
-                                    img_size=global_config['RESAMPLE_CROSS_IMG'])
+                                    img_size=global_config['RESAMPLE_CROSS_IMG'],
+                                    n_slices=global_config['N_SLICES'],)
 
                         except Exception as e:
                             print(e)

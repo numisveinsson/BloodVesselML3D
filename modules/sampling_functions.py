@@ -985,7 +985,7 @@ def write_2d_planes(planes, stats_out, image_out_dir,
     """
     import cv2
     # add to dir name end
-    image_out_dir = image_out_dir[:-1] + add + '/'
+    image_out_dir = image_out_dir[:-1] + '/' + add + '/'
 
     # make dir if it doesnt exist
     if not os.path.exists(image_out_dir):
@@ -1009,7 +1009,7 @@ def get_proj_traj(stats,
                   rot_point,
                   outdir=None,
                   visualize=False,
-                  write_rotated_centerline=True,
+                  write_rotated_centerline=False,
                   img_size=400,
                   n_slices=10,
                   return_rot_matrices=False):
@@ -1069,10 +1069,10 @@ def get_proj_traj(stats,
             stats, img, seg,
             upsample=img_size)
         # write cross sectional planes
-        # write_2d_planes(planes_img, stats_out,
-        #                 outdir, add='_cross_rot')
-        # write_2d_planes(planes_seg, stats_out,
-        #                 outdir, add='_cross_rot_seg')
+        write_2d_planes(planes_img[:-1], stats_out,
+                        outdir, add='_cross_rot')
+        write_2d_planes(planes_seg[:-1], stats_out,
+                        outdir, add='_cross_rot_seg')
 
         planes_loop = ['z', 'y']  # , 'x']
 
@@ -1379,6 +1379,9 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
     # Get image dimensions
     img_height, img_width = planes_color.shape[:2]
 
+    n_past = 8
+    n_total = 20
+    counter = 0
     for num, loc in enumerate(locs_proj):
         # Scale to image size
         x = int(loc[0] * img_width)
@@ -1387,9 +1390,12 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
         x = min(max(x, 0), img_width - 1)
         y = min(max(y, 0), img_height - 1)
 
-        # For first 8 points, draw a blue dot
-        if len(locs_proj) > 8 and num < 8:
+        # For every n_total points, make first 8 blue
+        if num % n_total == 0:
+            counter = 0
+        if counter < n_past:
             cv2.circle(planes_color, (x, y), 2, (255, 0, 0), -1)
+            counter += 1
         else:
             # Draw a red dot at the location
             cv2.circle(planes_color, (x, y), 2, (0, 0, 255), -1)
