@@ -1045,6 +1045,7 @@ def get_proj_traj(stats,
     (img_x, seg_x, origin_im, y_vec, z_vec, rot_matrix_x
      ) = rotate_volumes(img, seg, tangent, rot_point,
                         outdir=outdir)
+    import pdb; pdb.set_trace()
     # get angles, evenly distributed from 0-90 degrees
     angles = get_angles(n_slices)
 
