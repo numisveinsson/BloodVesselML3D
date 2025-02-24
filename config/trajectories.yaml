@@ -1,15 +1,15 @@
 
-DATA_DIR: '/Users/numisveins/Documents/datasets/vascular_data_3d/'
+DATA_DIR: '/Users/numisveins/Documents/datasets/ASOCA_dataset/'
 
 # '/global/scratch/users/numi/vascular_data_3d/'
 # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
 # DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data
 
-DATASET_NAME: 'vmr' #'vmr' # or other 'other'
+DATASET_NAME: 'other' #'vmr' # or other 'other'
 
 TESTING: False
 MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
-IMG_EXT: '.mha'
+IMG_EXT: '.nrrd'
 
 BINARIZE: False
 ANATOMY: ['Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
