@@ -179,6 +179,7 @@ def sort_centerline(centerline, sub_divide=1, debug=False):
     """
     Function to sort the centerline data
     """
+    check_duplicates = False
     # if sub_divide > 1:
     #     if debug:
     #         print(f"Subdividing centerline by {sub_divide}")
@@ -238,18 +239,21 @@ def sort_centerline(centerline, sub_divide=1, debug=False):
     # print("\nCenterline has been sorted\n")
 
     # check if there are duplicate points
-    if np.unique(c_loc, axis=0).shape[0] != c_loc.shape[0]:
-        # remove duplicate points
-        print("\nCenterline has duplicate points, removing them\n")
-        _, unique_ids = np.unique(c_loc, axis=0, return_index=True)
-        # same for cent_ids, but keep same order
-        cent_ids_new = []
-        for i in range(len(cent_ids)):
-            cent_ids_new.append([])
-            for j in range(len(cent_ids[i])):
-                if cent_ids[i][j] in unique_ids:
-                    cent_ids_new[i].append(cent_ids[i][j])
-        cent_ids = cent_ids_new
+    if check_duplicates:
+        if np.unique(c_loc, axis=0).shape[0] != c_loc.shape[0]:
+            # remove duplicate points
+            print("\nCenterline has duplicate points, removing them\n")
+            _, unique_ids = np.unique(c_loc, axis=0, return_index=True)
+            # same for cent_ids, but keep same order
+            cent_ids_new = []
+            for i in range(len(cent_ids)):
+                cent_ids_new.append([])
+                for j in range(len(cent_ids[i])):
+                    if cent_ids[i][j] in unique_ids:
+                        cent_ids_new[i].append(cent_ids[i][j])
+            cent_ids = cent_ids_new
+    else:
+        print("\nWarning: Centerline has not been checked for duplicate points\n")
 
     num_cent = len(cent_ids)
     # print(f"Num branches {num_cent}, Num points: {num_points}")
@@ -1045,7 +1049,7 @@ def get_proj_traj(stats,
     (img_x, seg_x, origin_im, y_vec, z_vec, rot_matrix_x
      ) = rotate_volumes(img, seg, tangent, rot_point,
                         outdir=outdir)
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     # get angles, evenly distributed from 0-90 degrees
     angles = get_angles(n_slices)
 
@@ -1234,6 +1238,59 @@ def get_proj_traj(stats,
         return trajs, num_trajs, rot_matrices
     else:
         return trajs, num_trajs
+
+
+def get_deproj_traj(data, rot_matrices, img, rot_point, outdir=None, img_size=400):
+    """
+    Function to deproject the trajectory
+
+    :param pred_data: dict of dicts; first key is the sceneId,
+        second keys are 'last_observed', 'gt_future', 'pred_future', 'gt_goal', 'pred_goal'
+    :param rot_matrices: dict of rotation matrices
+    :return: past_3d, gt_future_3d, pred_future_3d
+    """
+    
+    past_3d, gt_future_3d, pred_future_3d = [], [], []
+
+    bounds = get_bounds(img)
+
+    for sceneId, traj in data.items():
+        rot_matrix = rot_matrices[sceneId]
+        # invert the rotation matrix
+        rot_matrix = rot_matrix.T
+        if 'y' in sceneId:
+            plane = 'y'
+        elif 'z' in sceneId:
+            plane = 'z'
+        # import ipdb; ipdb.set_trace()
+        locs_proj = np.array(traj['pred_future'])[:,0,:]  # N_trajx12x2 array
+        locs_proj = locs_proj.reshape(-1, 2)
+        locs_proj = shift_invert(locs_proj, img_size=(1/img_size))
+        locs = deproject_points(locs_proj, plane)
+        locs = transform_from_ref(locs, bounds)
+        locs = np.dot(locs - rot_point, rot_matrix) + rot_point
+        pred_future_3d.append(locs)
+
+        locs_proj = np.array(traj['gt_future'])[0,:]  # N_trajx12x2 array
+        locs_proj = shift_invert(locs_proj, img_size=(1/img_size))
+        locs = deproject_points(locs_proj, plane)
+        locs = transform_from_ref(locs, bounds)
+        locs = np.dot(locs - rot_point, rot_matrix) + rot_point
+        gt_future_3d.append(locs)
+
+        locs_proj = np.array(traj['last_observed'])  # 8x2 array
+        locs_proj = shift_invert(locs_proj, img_size=(1/img_size))
+        locs = deproject_points(locs_proj, plane)
+        locs = transform_from_ref(locs, bounds)
+        locs = np.dot(locs - rot_point, rot_matrix) + rot_point
+        past_3d.append(locs)
+
+    # convert to numpy arrays
+    past_3d = np.array(past_3d)
+    gt_future_3d = np.array(gt_future_3d)
+    pred_future_3d = np.array(pred_future_3d)
+
+    return past_3d, gt_future_3d, pred_future_3d
 
 
 def get_angles(n_slices):
@@ -1452,6 +1509,42 @@ def project_points(locs, plane, x_vec, y_vec, z_vec):
     locs_proj = locs_proj[(locs_proj >= 0).all(axis=1) & (locs_proj <= 1).all(axis=1)]
 
     return locs_proj
+
+
+def deproject_points(locs_proj, plane):
+    """
+    Function to deproject points from a plane.
+
+    Parameters:
+        locs_proj (np.ndarray): Array of projected locations (Nx2).
+        plane (str): Plane to project from ('x', 'y', or 'z').
+
+    Returns:
+        np.ndarray: List of deprojected locations (Nx3).
+    """
+    # Initialize the deprojection basis
+    if plane == 'x':
+        basis = np.array([[0, 1, 0], [0, 0, 1]])
+    elif plane == 'y':
+        basis = np.array([[1, 0, 0], [0, 0, 1]])
+    elif plane == 'z':
+        basis = np.array([[1, 0, 0], [0, 1, 0]])
+    else:
+        raise ValueError("Plane must be one of 'x', 'y', or 'z'.")
+
+    # Deproject each point from the specified plane
+    locs = np.dot(locs_proj, basis)
+
+    # Add 0.5 to either x, y, or z depending on the plane
+    if plane == 'x':
+        locs[:, 0] += 0.5
+    elif plane == 'y':
+        locs[:, 1] += 0.5
+    elif plane == 'z':
+        locs[:, 2] += 0.5
+
+    return locs
+
 
 
 def keep_indices(cent_id, c_loc_indes):
