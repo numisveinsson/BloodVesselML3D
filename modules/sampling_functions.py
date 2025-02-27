@@ -217,11 +217,11 @@ def sort_centerline(centerline, sub_divide=1, debug=False):
         cent_ids = get_point_ids_post_proc(centerline)
         bifurc_id = cent_data['BifurcationIdTmp']
     except Exception as e:
-        print(e)
+        # print(e)
         # centerline hasnt been processed
         cent_ids = get_point_ids_no_post_proc(centerline)
         bifurc_id = np.zeros(num_points)
-        print("\nCenterline has not been processed, no known bifurcations\n")
+        print("Warning: Centerline has not been processed, no known bifurcations")
 
     # print(f"Number of branches: {len(cent_ids)}")
     # # remove identical centerlines
@@ -253,7 +253,7 @@ def sort_centerline(centerline, sub_divide=1, debug=False):
                         cent_ids_new[i].append(cent_ids[i][j])
             cent_ids = cent_ids_new
     else:
-        print("\nWarning: Centerline has not been checked for duplicate points\n")
+        print("Warning: Centerline has not been checked for duplicate points")
 
     num_cent = len(cent_ids)
     # print(f"Num branches {num_cent}, Num points: {num_points}")
@@ -1054,7 +1054,7 @@ def get_proj_traj(stats,
     angles = get_angles(n_slices)
 
     for angle_number, angle in enumerate(angles):
-        print(f"Angle: {angle}")
+        # print(f"Angle: {angle}")
 
         if angle != 0:
             # rotate along x-axis by angle
@@ -1085,7 +1085,7 @@ def get_proj_traj(stats,
         y_vec = np.array([0, 1, 0])
         z_vec = np.array([0, 0, 1])
 
-        print(f"tangent: {tangent}")
+        # print(f"tangent: {tangent}")
 
         _, c_loc, _, cent_id, _, num_cent = sort_centerline(global_centerline)
         # perform affine transformation (if necessary)
@@ -1452,11 +1452,14 @@ def visualize_points(locs_proj, plane, planes, name, nr, outdir,
         if num % n_total == 0:
             counter = 0
         if counter < n_past:
-            cv2.circle(planes_color, (x, y), 2, (255, 0, 0), -1)
+            cv2.circle(planes_color, (x, y), 5, (255, 0, 0), -1)
             counter += 1
+        # if last point (n_total-1), make it pink star
+        elif num % n_total == n_total-1:
+            cv2.drawMarker(planes_color, (x, y), (255, 0, 255), markerType=cv2.MARKER_STAR, markerSize=20)
         else:
             # Draw a red dot at the location
-            cv2.circle(planes_color, (x, y), 2, (0, 0, 255), -1)
+            cv2.circle(planes_color, (x, y), 5, (0, 0, 255), -1)
 
     # Save the output image
     if not split_dirs:
