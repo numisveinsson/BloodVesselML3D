@@ -7,12 +7,12 @@ DATA_DIR: '/Users/numisveins/Documents/datasets/ASOCA_dataset/'
 
 DATASET_NAME: 'other' #'vmr' # or other 'other'
 
-TESTING: False
+TESTING: True
 MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
 IMG_EXT: '.nrrd'
 
 BINARIZE: False
-ANATOMY: ['Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
+ANATOMY: ['Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
 OUTLET_CLASSES: [0,1,2,3,4,5,6,7,8,9,10]
 VALIDATION_PROP: 0.0 #0.15
 SCALED: False
@@ -44,13 +44,13 @@ WRITE_CROSS_SECTIONAL: False
 NUM_CROSS_SECTIONS: 2  # multiples of 2
 RESAMPLE_CROSS_IMG: 400
 WRITE_TRAJECTORIES: True
-N_SLICES: 10
+N_SLICES: 4
 
 WRITE_VTK: False
 WRITE_VTK_THROWOUT: False
 
 MOVE_DIST: 1 # 1.5 how far to move along centerline between sampling, in terms of radius
-SIZE_RADIUS: 4 # how big a volume to sample, x radius at each location
+SIZE_RADIUS: 3 # how big a volume to sample, x radius at each location
 RADIUS_ADD: 1 # how much to add to radius values (to correct bias) done before scale
 RADIUS_SCALE: 1 # how much to add to radius values (to correct bias)
 
