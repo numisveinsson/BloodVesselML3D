@@ -56,7 +56,7 @@ if __name__=='__main__':
                    img_sitk.GetSpacing()[1] * new_res[1],
                    img_sitk.GetSpacing()[2] * new_res[2]]
         print(f"Image {img} new resolution: {new_res}")
-        img_sitk = resample(img_sitk, resolution = new_res, order=1, dim=3)
+        img_sitk = resample(img_sitk, resolution = new_res, order=2, dim=3)
 
         print(f"Image {img} resampled shape: {img_sitk.GetSize()}")
         print(f"Image {img} resampled spacing: {img_sitk.GetSpacing()}")
