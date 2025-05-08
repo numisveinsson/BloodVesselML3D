@@ -1824,7 +1824,7 @@ def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N,
     sitk.WriteImage(new_img, image_out_dir + case_name + '_' + str(N-n_old) + '_' + str(sub)+'.nii.gz')
     max_seg_value = sitk.GetArrayFromImage(removed_seg).max()
     if max_seg_value != 1 and binarize:
-        removed_seg /= float(max_seg_value*1.0)
+        removed_seg = removed_seg / float(max_seg_value*1.0)
         print(f"Max seg value after scaling: {sitk.GetArrayFromImage(removed_seg).max()}")
 
     # make image unsigned int, removed_seg is sitk image

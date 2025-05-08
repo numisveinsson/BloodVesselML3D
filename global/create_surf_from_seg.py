@@ -387,7 +387,7 @@ def convertPolyDataToImageData(poly, ref_im):
 if __name__ == '__main__':
 
     if_smooth = False
-    if_keep_largest = True
+    if_keep_largest = False
 
     if_spacing_file = False
     spacing_file = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/meta.csv'
@@ -397,10 +397,10 @@ if __name__ == '__main__':
     dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
     dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
     dir_segmentations = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/truths/'
-    dir_segmentations = '/Users/numisveins/Documents/datasets/PARSE_dataset/truths/'
-    img_ext = '.nii.gz'
+    dir_segmentations = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/gt_cardiac_segs/'
+    img_ext = '.mha'
     # Which folder to write surfaces to
-    out_dir = dir_segmentations + 'surfaces_largest/'
+    out_dir = dir_segmentations + 'surfaces/'
     try:
         os.mkdir(out_dir)
     except Exception as e:

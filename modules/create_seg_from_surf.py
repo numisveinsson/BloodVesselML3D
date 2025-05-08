@@ -360,21 +360,22 @@ if __name__ == '__main__':
     # dir_imgs = '/Users/numisveinsson/Documents_numi/vmr_data_new/images/'
     img_ext = '.mha'
     # direct = '/Users/numisveins/Documents/vascular_data_3d/'
-    dir_surfaces = '/Users/numisveins/Documents/data_combo_paper/ct_data/meshes/'
-    dir_imgs = '/Users/numisveins/Documents/data_combo_paper/ct_data/images_vti/new_format_mha/'
+    dir_surfaces = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/meshes/'
+    dir_imgs = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/images_vti/new_format_mha/'
     # Which folder to write segs to
-    out_dir = '/Users/numisveins/Downloads/'
+    out_dir = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/meshes/transformed_to_seg/'
 
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
     imgs = [img for img in imgs if img.endswith(img_ext)]
-    import pdb; pdb.set_trace()
+    # import pdb; pdb.set_trace()
     for img in imgs:
         surf_vtp = vf.read_geo(dir_surfaces+img.replace(img_ext, '.vtp')).GetOutput()
         img_sitk = sitk.ReadImage(dir_imgs+img)
         img_vtk = exportSitk2VTK(img_sitk)[0]
         # img_vtk = vf.read_img(dir_imgs+img).GetOutput()
-        seg = convertPolyDataToImageDataMulti(surf_vtp, img_vtk)
+        # seg = convertPolyDataToImageData(surf_vtp, img_vtk)
+        seg = convertPolyDataToImageData(surf_vtp, img_vtk)
         vf.write_img(out_dir+img.replace(img_ext, '.vti'), seg)
         vf.change_vti_vtk(out_dir+img.replace(img_ext, '.vti'))
         print("Done case: ", img)

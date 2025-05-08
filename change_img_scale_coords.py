@@ -44,20 +44,24 @@ if __name__ == '__main__':
     Do this by scaling the image spacing
     but keeping everything else the same
 
+    flip_axis = [True, False, False] flips the image in the x axis
+    flip_axis = [False, True, False] flips the image in the y axis
+    flip_axis = [False, False, True] flips the image in the z axis
+
     """
 
-    input_format = '.nrrd'
-    output_format = '.nrrd'
+    input_format = '.nii.gz'
+    output_format = '.mha'
 
-    flip = False
+    flip = True
     permute = False
-    scale = 0.1
+    scale = 1
 
-    scale_origin = 0.1  # or None
+    scale_origin = 1  # or None
 
-    flip_axis = [False, True, False]
+    flip_axis = [True, True, False]
 
-    data_folder = '/Users/numisveins/Documents/vascular_data_3d/mmwhs_mr_train_manual_gt/images/new_format/'
+    data_folder = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
     out_folder = data_folder+'new_format/'
 
     imgs = os.listdir(data_folder)

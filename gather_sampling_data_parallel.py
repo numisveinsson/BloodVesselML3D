@@ -358,7 +358,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             print("\n*****************************ERROR:\n")
                             print(" did not save files for " + case_dict['NAME'] + '_' + str(N-n_old)+'_'+str(sub))
                             K += 1
-                            import pdb; pdb.set_trace()
+                            # import pdb; pdb.set_trace()
                     else:
                         print(".", end=" ")
                         # print(" No save - cap inside")
