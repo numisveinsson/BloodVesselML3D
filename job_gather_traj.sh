@@ -18,7 +18,7 @@
 #SBATCH --ntasks=1
 #
 # Processors per task:
-#SBATCH --cpus-per-task=20
+#SBATCH --cpus-per-task=1
 #
 # Wall clock limit:
 #SBATCH --time=24:00:00
@@ -32,8 +32,11 @@ source activate /global/scratch/users/numi/environments/seqseg2
 cd /global/scratch/users/numi/BloodVesselML3D/
 
 python3  gather_sampling_data_parallel.py \
-    -outdir /global/scratch/users/numi/vascular_data_3d/extraction_output/local_extraction_gala/ \
-    -config_name global_more_samples_savio_gala \
-    -num_cores 20 \
+    -outdir /global/scratch/users/numi/ASOCA/trajectories_train/ \
+    -config_name trajectories_savio \
+    -num_cores 1 \
     
 # -perc_dataset 0.15 \
+# -outdir /global/scratch/users/numi/vascular_data_3d/trajectories_aortas_train/ \
+
+# -outdir /global/scratch/users/numi/ASOCA/trajectories/ \
