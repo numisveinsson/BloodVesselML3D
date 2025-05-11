@@ -39,15 +39,15 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.nii.gz'
+    input_format = '.vti'
     output_format = '.mha'
     label = False  # false if raw image
     surface = False  # true if we want to save the surface vtp file
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/datasets/Task08_HepaticVessel/labelsTr/'
-    out_folder = data_folder+'new_format/'
+    data_folder = '/global/scratch/users/stanleychmwong/datasets/coronary_datasets/vmr_coronary_dataset/truths/'
+    out_folder = '/global/scratch/users/stanleychmwong/datasets/coronary_datasets/vmr_coronary_dataset/truths_mha/'
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]

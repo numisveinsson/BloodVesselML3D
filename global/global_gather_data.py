@@ -63,7 +63,7 @@ if __name__ == '__main__':
         cases = create_dataset(global_config, modality)
 
         # sort
-        cases = 
+        #cases = 
 
         # shuffle cases
         # set random seed

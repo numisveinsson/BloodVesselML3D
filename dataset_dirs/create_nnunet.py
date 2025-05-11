@@ -109,7 +109,7 @@ if __name__ == "__main__":
     new_dir_dataset_name = 'Dataset0'+dataset_number+'_'+name+modality.upper()
     append = name.lower() + modality.lower()
 
-    also_test = False
+    also_test = True
 
     out_data_dir = os.path.join(directory_out, new_dir_dataset_name)
 
@@ -155,6 +155,7 @@ if __name__ == "__main__":
                 new_name = new_name.replace('_0000', '')
             print(f'Copying {img} to {new_name}')
             if img != new_name:
+                #import pdb; pdb.set_trace()
                 # copy with new name
                 shutil.copy(os.path.join(directory, fn, img), os.path.join(out_data_dir, fns_out[fns_in.index(fn)], new_name))
 

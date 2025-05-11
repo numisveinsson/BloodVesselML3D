@@ -1,6 +1,6 @@
 #!/bin/bash
 # Job name:
-#SBATCH --job-name=global_gather_data
+#SBATCH --job-name=change_coords
 #
 # Account:
 #SBATCH --account=fc_biome
@@ -18,10 +18,10 @@
 #SBATCH --ntasks=1
 #
 # Processors per task:
-#SBATCH --cpus-per-task=1
+#SBATCH --cpus-per-task=4
 #
 # Wall clock limit:
-#SBATCH --time=5:00:00
+#SBATCH --time=2:00:00
 #
 #SBATCH --mail-type=END,FAIL
 #SBATCH --mail-user=stanleychmwong@berkeley.edu
@@ -32,8 +32,6 @@ module load python/3.11.6-gcc-11.4.0
 module load ml/pytorch/2.3.1-py3.11.7
 cd /global/scratch/users/stanleychmwong/BloodVesselML3D/
 
-python3 global/global_gather_data.py \
-    -outdir /global/scratch/users/stanleychmwong/datasets/aorta_datasets/aortaseg24_dataset_updated_units/global_model/training/ \
-    -config_name global_more_samples_savio_aortas \
+python3  change_img_scale_coords.py
     
 # -perc_dataset 0.15 \

@@ -57,8 +57,8 @@ if __name__ == '__main__':
 
     flip_axis = [False, True, False]
 
-    data_folder = '/Users/numisveins/Documents/vascular_data_3d/mmwhs_mr_train_manual_gt/images/new_format/'
-    out_folder = data_folder+'new_format/'
+    data_folder = '/global/scratch/users/stanleychmwong/datasets/aorta_datasets/mic23_aorta_dataset/truths/'
+    out_folder = '/global/scratch/users/stanleychmwong/datasets/aorta_datasets/mic23_aorta_dataset_updated_units/truths/'
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]

@@ -270,7 +270,7 @@ def sort_centerline_ids(cent_ids, point_to_cells, centerline_poly, debug=False):
     Returns:
         cent_ids: list of lists of point ids
     """
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     # sort the centerline ids
     # by connectivity of the points
     cent_ids_sorted = []
@@ -692,7 +692,7 @@ def resample_vol(removed_seg, resample_size):
     from modules.pre_process import resample_spacing
     removed_seg1 = resample_spacing(removed_seg, template_size=resample_size, order=1)[0]
     # if min(size_extract)<resample_size[0]:
-    import pdb; pdb.set_trace()
+    #import pdb; pdb.set_trace()
     removed_seg = clean_boundaries(sitk.GetArrayFromImage(removed_seg))
     return removed_seg
 
@@ -1591,11 +1591,13 @@ def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir,
 
 def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N,
               n_old, sub, binarize=True):
+    #import pdb
+    #pdb.set_trace()
     print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
     sitk.WriteImage(new_img, image_out_dir + case_name + '_' + str(N-n_old) + '_' + str(sub)+'.nii.gz')
     max_seg_value = sitk.GetArrayFromImage(removed_seg).max()
     if max_seg_value != 1 and binarize:
-        removed_seg /= float(max_seg_value*1.0)
+        removed_seg = removed_seg / float(max_seg_value*1.0)
         print(f"Max seg value after scaling: {sitk.GetArrayFromImage(removed_seg).max()}")
 
     # make image unsigned int, removed_seg is sitk image
