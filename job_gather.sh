@@ -33,7 +33,7 @@ module load ml/pytorch/2.3.1-py3.11.7
 cd /global/scratch/users/stanleychmwong/BloodVesselML3D/
 
 python3  gather_sampling_data_parallel.py \
-    -outdir /global/scratch/users/stanleychmwong/datasets/aorta_datasets/mic23_aorta_dataset_updated_units/local_model_wrong_radii/training/ \
+    -outdir /global/scratch/users/stanleychmwong/datasets/aorta_datasets/vmr_aorta_ct_dataset/local_model/training/ \
     -config_name global_more_samples_savio_vmr \
     -num_cores 12\
     
