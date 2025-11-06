@@ -380,7 +380,14 @@ if __name__ == '__main__':
     imgs = [img for img in imgs if img.endswith(img_ext)]
     # import pdb; pdb.set_trace()
     for img in imgs:
-        surf_vtp = vf.read_geo(dir_surfaces+img.replace(img_ext, '.vtp')).GetOutput()
+        surf_path = dir_surfaces + img.replace(img_ext, '.vtp')
+        
+        # Check if surface file exists
+        if not os.path.exists(surf_path):
+            print(f"Skipping case {img}: Surface file {surf_path} does not exist")
+            continue
+            
+        surf_vtp = vf.read_geo(surf_path).GetOutput()
         img_sitk = sitk.ReadImage(dir_imgs+img)
         img_vtk = exportSitk2VTK(img_sitk)[0]
         # img_vtk = vf.read_img(dir_imgs+img).GetOutput()
