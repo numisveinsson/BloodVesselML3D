@@ -22,10 +22,10 @@ def resample(sitkIm, resolution = (0.5, 0.5, 0.5),order=1,dim=3):
     resample.SetOutputOrigin(image.GetOrigin())
     resample.SetOutputSpacing(resolution)
 
-    orig_size = np.array(image.GetSize(), dtype=np.int)
+    orig_size = np.array(image.GetSize(), dtype=np.int64)
     orig_spacing = np.array(image.GetSpacing())
     new_size = orig_size*(orig_spacing/np.array(resolution))
-    new_size = np.ceil(new_size).astype(np.int) #  Image dimensions are in integers
+    new_size = np.ceil(new_size).astype(np.int64) #  Image dimensions are in integers
     new_size = [int(s) for s in new_size]
     resample.SetSize(new_size)
     newimage = resample.Execute(image)
@@ -96,10 +96,10 @@ def resample_spacing(sitkIm, resolution=0.5, dim=3, template_size=(256, 256, 256
     else:
       image = sitkIm
     orig_direction = image.GetDirection()
-    orig_size = np.array(image.GetSize(), dtype=np.int)
+    orig_size = np.array(image.GetSize(), dtype=np.int64)
     orig_spacing = np.array(image.GetSpacing())
     new_size = orig_size*(orig_spacing/np.array(resolution))
-    new_size = np.ceil(new_size).astype(np.int) #  Image dimensions are in integers
+    new_size = np.ceil(new_size).astype(np.int64) #  Image dimensions are in integers
     new_size = [int(s) for s in new_size]
     new_size = np.abs(np.matmul(np.reshape(orig_direction, (3,3)), np.array(new_size)))
     ref_img = reference_image_build(resolution, new_size, template_size, dim)
@@ -382,10 +382,10 @@ def down_sample_to_size(image, new_size_d, order=1):
     resolution = 0.5
     template_size=(int(new_size_d[0]), int(new_size_d[1]), int(new_size_d[2]))
     orig_direction = image.GetDirection()
-    orig_size = np.array(image.GetSize(), dtype=np.int)
+    orig_size = np.array(image.GetSize(), dtype=np.int64)
     orig_spacing = np.array(image.GetSpacing())
     new_size = orig_size*(orig_spacing/np.array(resolution))
-    new_size = np.ceil(new_size).astype(np.int) #  Image dimensions are in integers
+    new_size = np.ceil(new_size).astype(np.int64) #  Image dimensions are in integers
     new_size = [int(s) for s in new_size]
     new_size = np.abs(np.matmul(np.reshape(orig_direction, (3,3)), np.array(new_size)))
 
