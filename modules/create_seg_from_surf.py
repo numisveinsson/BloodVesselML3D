@@ -93,9 +93,9 @@ def surface_to_image(mesh, image):
     if type(image) == vtk.vtkImageData:
         indices = ((mesh_coords - image.GetOrigin())/image.GetSpacing()).astype(int)
 
-        py_im = np.zeros(image.GetDimensions())
+        py_im = np.zeros(image.GetDimensions(), dtype=np.int32)
         for i in indices:
-            py_im[i[0], i[1], i[2]] = 1.
+            py_im[i[0], i[1], i[2]] = 1
 
         new_image = vtk.vtkImageData()
         new_image.DeepCopy(image)
@@ -105,9 +105,10 @@ def surface_to_image(mesh, image):
         mesh_coords = np.append(mesh_coords, np.ones((len(mesh_coords),1)),axis=1)
         matrix = np.linalg.inv(matrix)
         indices = np.matmul(matrix, mesh_coords.transpose()).transpose().astype(int)
-        py_im = sitk.GetArrayFromImage(image).transpose(2,1,0)
+        py_im = sitk.GetArrayFromImage(image).transpose(2,1,0).astype(np.int32)
+        py_im.fill(0)  # Initialize with zeros
         for i in indices:
-            py_im[i[0], i[1], i[2]] = 1000.
+            py_im[i[0], i[1], i[2]] = 1
         new_image = sitk.GetImageFromArray(py_im.transpose(2,1,0))
         new_image.SetOrigin(image.GetOrigin())
         new_image.SetSpacing(image.GetSpacing())
@@ -116,12 +117,12 @@ def surface_to_image(mesh, image):
 
 
 def convert_seg_to_surfs(seg, new_spacing=[1., 1., 1.], target_node_num=2048, bound=False):
-    py_seg = sitk.GetArrayFromImage(seg)
+    py_seg = sitk.GetArrayFromImage(seg).astype(np.int32)
     py_seg = eraseBoundary(py_seg, 1, 0)
     labels = np.unique(py_seg)
     for i, l in enumerate(labels):
         py_seg[py_seg==l] = i
-    seg2 = sitk.GetImageFromArray(py_seg)
+    seg2 = sitk.GetImageFromArray(py_seg.astype(np.int32))
     seg2.CopyInformation(seg)
 
     seg_vtk,_ = exportSitk2VTK(seg2)
@@ -164,6 +165,11 @@ def exportSitk2VTK(sitkIm, spacing=None):
     if not spacing:
         spacing = sitkIm.GetSpacing()
     img = sitk.GetArrayFromImage(sitkIm).transpose(2,1,0)
+    # Ensure segmentation data is integer type
+    if img.dtype == np.float64 or img.dtype == np.float32:
+        # Only convert if it looks like segmentation data (contains only integer values)
+        if np.allclose(img, img.astype(np.int32)):
+            img = img.astype(np.int32)
     vtkArray = exportPython2VTK(img)
     imageData = vtk.vtkImageData()
     imageData.SetDimensions(sitkIm.GetSize())
@@ -335,7 +341,7 @@ def convertPolyDataToImageData(poly, ref_im):
         output: resulted vtkImageData
     """
 
-    ref_im.GetPointData().SetScalars(numpy_to_vtk(np.zeros(vtk_to_numpy(ref_im.GetPointData().GetScalars()).shape)))
+    ref_im.GetPointData().SetScalars(numpy_to_vtk(np.zeros(vtk_to_numpy(ref_im.GetPointData().GetScalars()).shape, dtype=np.int32)))
     ply2im = vtk.vtkPolyDataToImageStencil()
     ply2im.SetTolerance(0.05)
     ply2im.SetInputData(poly)
@@ -350,6 +356,10 @@ def convertPolyDataToImageData(poly, ref_im):
     stencil.Update()
     output = stencil.GetOutput()
 
+    # Convert output to integer type
+    output_array = vtk_to_numpy(output.GetPointData().GetScalars()).astype(np.int32)
+    output.GetPointData().SetScalars(numpy_to_vtk(output_array))
+
     return output
 
 
@@ -360,10 +370,10 @@ if __name__ == '__main__':
     # dir_imgs = '/Users/numisveinsson/Documents_numi/vmr_data_new/images/'
     img_ext = '.mha'
     # direct = '/Users/numisveins/Documents/vascular_data_3d/'
-    dir_surfaces = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/meshes/'
-    dir_imgs = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/images_vti/new_format_mha/'
+    dir_surfaces = '/Users/nsveinsson/Documents/datasets/vmr/surfaces/'
+    dir_imgs = '/Users/nsveinsson/Documents/datasets/vmr/images/resampled/'
     # Which folder to write segs to
-    out_dir = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/meshes/transformed_to_seg/'
+    out_dir = '/Users/nsveinsson/Documents/datasets/vmr/truths_03_spacing/'
 
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
