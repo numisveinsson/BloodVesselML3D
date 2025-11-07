@@ -371,9 +371,9 @@ if __name__ == '__main__':
     img_ext = '.mha'
     # direct = '/Users/numisveins/Documents/vascular_data_3d/'
     dir_surfaces = '/Users/nsveinsson/Documents/datasets/vmr/surfaces/'
-    dir_imgs = '/Users/nsveinsson/Documents/datasets/vmr/images/resampled/'
+    dir_imgs = '/Users/nsveinsson/Documents/datasets/vmr/images/resampled_gala_training/'
     # Which folder to write segs to
-    out_dir = '/Users/nsveinsson/Documents/datasets/vmr/truths_03_spacing/'
+    out_dir = '/Users/nsveinsson/Documents/datasets/vmr/truths_03_spacing_gala/'
 
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
@@ -381,6 +381,12 @@ if __name__ == '__main__':
     # import pdb; pdb.set_trace()
     for img in imgs:
         surf_path = dir_surfaces + img.replace(img_ext, '.vtp')
+        output_path = out_dir + img.replace(img_ext, '.vti')
+        
+        # Check if output file already exists
+        if os.path.exists(output_path):
+            print(f"Skipping case {img}: Output file {output_path} already exists")
+            continue
         
         # Check if surface file exists
         if not os.path.exists(surf_path):
@@ -393,6 +399,6 @@ if __name__ == '__main__':
         # img_vtk = vf.read_img(dir_imgs+img).GetOutput()
         # seg = convertPolyDataToImageData(surf_vtp, img_vtk)
         seg = convertPolyDataToImageData(surf_vtp, img_vtk)
-        vf.write_img(out_dir+img.replace(img_ext, '.vti'), seg)
-        vf.change_vti_vtk(out_dir+img.replace(img_ext, '.vti'))
+        vf.write_img(output_path, seg)
+        # vf.change_vti_vtk(output_path)
         print("Done case: ", img)
