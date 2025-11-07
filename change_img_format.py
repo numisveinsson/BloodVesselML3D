@@ -20,17 +20,21 @@ def change_mha_vti(file_dir, label=False):
     return img
 
 
-def change_vti_sitk(file_dir):
+def change_vti_sitk(file_dir, label=False):
     """
     Change the format of a file from .vti to .mha
     SITK does not support .vti format, so we need to use the vtk functions
     Args:
         file_dir: str, path to the file
+        label: bool, whether this is a label segmentation (will cast to UInt8)
     Returns:
         None
     """
     img = vf.read_img(file_dir)
     img = vf.exportVTK2Sitk(img)
+    
+    if label:
+        img = sitk.Cast(img, sitk.sitkUInt8)
 
     return img
 
@@ -39,15 +43,15 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.nii.gz'  # '.dcm' or '.nii.gz' or '.vti'
+    input_format = '.vti'  # '.dcm' or '.nii.gz' or '.vti'
     output_format = '.mha'
     label = True  # false if raw image
     surface = False  # true if we want to save the surface vtp file
 
-    rem_str = 'aortandafemo_mr_'  # 'coroasocact_0'
+    rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/numisveins/Documents/data_papers/data_seqseg_paper/dataset_size_study/benchmark/mr/output_3d_vmraortasmr075/'
-    out_folder = data_folder+'new_format/'
+    data_folder = '/Users/nsveinsson/Documents/datasets/vmr/truths_03_spacing_gala/'
+    out_folder = data_folder+'new_format_lowprec/'
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]
@@ -86,7 +90,7 @@ if __name__ == '__main__':
                     img = sitk.Cast(img, sitk.sitkUInt8)
             elif input_format == '.vti':
                 if output_format == '.mha' or output_format == '.nii.gz':
-                    img = change_vti_sitk(data_folder+fn)
+                    img = change_vti_sitk(data_folder+fn, label)
                 else:
                     img = vf.read_img(data_folder+fn).GetOutput()
             elif output_format == '.vti':
