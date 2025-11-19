@@ -43,15 +43,19 @@ if __name__ == '__main__':
 
     # import pdb; pdb.set_trace()
 
-    input_format = '.vti'  # '.dcm' or '.nii.gz' or '.vti'
+    input_format = '.nii.gz'  # '.dcm' or '.nii.gz' or '.vti'
     output_format = '.mha'
     label = True  # false if raw image
     surface = False  # true if we want to save the surface vtp file
+    
+    # Only treat files as labels if they contain this string in the filename
+    # Set to None or empty string to use the global 'label' setting for all files
+    label_if_string = ''  # e.g., 'seg', 'mask', 'label', 'gt'
 
     rem_str = ''  # 'coroasocact_0'
 
-    data_folder = '/Users/nsveinsson/Documents/datasets/vmr/truths_03_spacing_gala/'
-    out_folder = data_folder+'new_format_lowprec/'
+    data_folder = '//Users/nsveinsson/Documents/repositories/Automatic_Tracing_Data/train_version_5_aortas_centerline/ct_train_masks/'
+    out_folder = data_folder+'mha_format/'
 
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]
@@ -84,18 +88,25 @@ if __name__ == '__main__':
                 continue
             else:
                 print(f"Converting file {fn} to new format {output_format}")
+            
+            # Determine if this file should be treated as a label
+            is_label = label  # Default to global setting
+            if label_if_string:
+                is_label = label_if_string in fn
+                print(f"  File contains '{label_if_string}': {is_label} -> treating as {'label' if is_label else 'image'}")
+            
             if input_format != '.vti' and output_format != '.vti':
                 img = sitk.ReadImage(data_folder+fn)
-                if label:
+                if is_label:
                     img = sitk.Cast(img, sitk.sitkUInt8)
             elif input_format == '.vti':
                 if output_format == '.mha' or output_format == '.nii.gz':
-                    img = change_vti_sitk(data_folder+fn, label)
+                    img = change_vti_sitk(data_folder+fn, is_label)
                 else:
                     img = vf.read_img(data_folder+fn).GetOutput()
             elif output_format == '.vti':
                 if input_format == '.mha' or input_format == '.nii.gz':
-                    img = change_mha_vti(data_folder+fn, label)
+                    img = change_mha_vti(data_folder+fn, is_label)
             else:
                 print('Invalid input/output format')
                 break
@@ -114,7 +125,7 @@ if __name__ == '__main__':
             else:
                 vf.write_img(out_folder+img_name+output_format, img)
 
-            if surface:
+            if surface and is_label:  # Only create surfaces for label files
                 img_vtk = vf.exportSitk2VTK(img)[0]
                 poly = vf.vtk_marching_cube(img_vtk, 0, 1)
                 vf.write_geo(out_folder+img_name+'.vtp', poly)

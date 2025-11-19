@@ -10,13 +10,39 @@ import SimpleITK as sitk
 if __name__=='__main__':
 
     testing_samples = [
-        # '0139_1001',
-        # '0141_1001',
-        # '0144_1001',
-        # '0146_1001',
-        # '0150_0001',
-        # '0151_0001',
-    ]
+        '0183_1002_aorta',
+        '0189_0001_aorta',
+        '0184_0001_aorta',
+        '0187_0002_aorta',
+        '0108_0001_aorta',
+        'O128301_2008_aorta',
+        '0188_0001_aorta',
+        'O227241_2006_aorta',
+        'O0171SC_aorta',
+        'O11908_aorta',
+        'O344211000_2006_aorta',
+        'O20719_2006_aorta',
+        'O6397SC_aorta',
+        'O150323_2009_aorta',
+        'O351095_2016_aorta',
+        'O51001_2009_aorta',
+        'O8963SC_aorta',
+        'O145207_aorta',
+        '0176_0000',
+        '0174_0000',
+        '0157_0000',
+        '0091_0001',
+        '0175_0000',
+        '0138_1001',
+        '0149_1001',
+        '0142_1001',
+        '0148_1001',
+        '0145_1001',
+        '0156_0001',
+        '0147_1001',
+        '0129_0000',
+        '0003_0001',
+        ]
 
     # Resampling configuration - choose either 'size' or 'spacing'
     resample_mode = 'spacing'  # 'size' or 'spacing'
@@ -33,7 +59,7 @@ if __name__=='__main__':
     input_format = '.mha'  # '.mha' or '.vti'
 
     data_folder = '/Users/nsveinsson/Documents/datasets/vmr/images/'
-    out_folder = data_folder + 'resampled/'
+    out_folder = data_folder + 'resampled_gala_training/'
     if not os.path.exists(out_folder):
         os.mkdir(out_folder)
 

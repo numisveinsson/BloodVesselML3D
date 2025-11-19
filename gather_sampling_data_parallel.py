@@ -210,6 +210,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                      rads[count], size_r, N,
                                      name, O,
                                      remove_others=global_config['REMOVE_OTHER'],
+                                     # BINARIZE: Convert segmentation to binary (0,1) vs preserve multi-labels
                                      binarize=global_config['BINARIZE'],
                                      rotate=global_config['ROTATE_VOLUMES'],
                                      orig_im=reader_im0, orig_seg=reader_seg0,
@@ -267,11 +268,13 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                             new_img,
                                             template_size=global_config['RESAMPLE_SIZE'],
                                             order=1)[0]
+                                        # BINARIZE: Normalize seg values to [0,1] and enforce binary constraint
                                         write_img(new_img_re, removed_seg_re,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],
                                                   N, n_old, sub, global_config['BINARIZE'])
                                     else:
+                                        # BINARIZE: Normalize seg values to [0,1] and enforce binary constraint
                                         write_img(new_img, removed_seg,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],

@@ -391,6 +391,10 @@ if __name__ == '__main__':
 
     if_spacing_file = False
     spacing_file = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/meta.csv'
+    
+    # Filter option: only process images containing this string
+    # Set to None or empty string to process all images
+    filter_string = 'label'  # None e.g., 'aorta', '001', 'case_'
 
     # Let's create surfaces from segmentations
     dir_segmentations = '/Users/numisveins/Documents/aortaseg24/process_binary/binary_segs/'
@@ -398,7 +402,8 @@ if __name__ == '__main__':
     dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
     dir_segmentations = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/truths/'
     dir_segmentations = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/gt_cardiac_segs/'
-    img_ext = '.mha'
+    dir_segmentations = '/Users/nsveinsson/Downloads/1-200/'
+    img_ext = '.nii.gz'
     # Which folder to write surfaces to
     out_dir = dir_segmentations + 'surfaces/'
     try:
@@ -409,7 +414,20 @@ if __name__ == '__main__':
     # all segmentations we have, create surfaces for each
     imgs = os.listdir(dir_segmentations)
     imgs = [img for img in imgs if img.endswith(img_ext)]
+    
+    # Filter images by string if specified
+    if filter_string:
+        original_count = len(imgs)
+        imgs = [img for img in imgs if filter_string in img]
+        print(f"Filtered from {original_count} to {len(imgs)} images containing '{filter_string}'")
+    else:
+        print(f"Processing all {len(imgs)} images")
+    
     imgs.sort()
+    
+    if len(imgs) == 0:
+        print("No images to process!")
+        exit()
 
     if if_spacing_file:
         import pandas as pd

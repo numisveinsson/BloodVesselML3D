@@ -37,9 +37,14 @@ def process_folder(input_folder, output_folder, scale_factor):
             scale_polydata(input_file, output_file, scale_factor)
             print(f"Scaled {file_name} and saved to {output_file}")
 
-# Example usage:
-input_folder = '/Users/numisveins/Documents/datasets/test_demo'
-output_folder = '/Users/numisveins/Documents/datasets/test_demo/out'
-scale_factor = 10.0  # Change this value to whatever scaling factor you need
 
-process_folder(input_folder, output_folder, scale_factor)
+if __name__ == "__main__":
+
+    # Example usage:
+    input_folder = '/Users/nsveinsson/Documents/datasets/CAS_coronary_dataset/1-200/centerlines_fmm_only_successful/'
+    output_folder = '/Users/nsveinsson/Documents/datasets/CAS_coronary_dataset/1-200/centerlines_fmm_only_successful_scaled/'
+    scale_factor = 0.1  # Change this value to whatever scaling factor you need
+
+    if not os.path.exists(output_folder):
+        os.mkdir(output_folder)
+    process_folder(input_folder, output_folder, scale_factor)
