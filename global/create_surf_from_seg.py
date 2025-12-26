@@ -4,8 +4,12 @@ import vtk
 from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy, get_vtk_array_type
 import sys
 import os
-# add the path to the modules ../modules/
-sys.path.append(os.path.join(os.path.dirname(sys.path[0]), 'modules'))
+
+# Add modules directory to path
+modules_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'modules')
+if modules_path not in sys.path:
+    sys.path.insert(0, modules_path)
+
 import vtk_functions as vf
 
 
@@ -390,22 +394,19 @@ if __name__ == '__main__':
     if_keep_largest = False
 
     if_spacing_file = False
-    spacing_file = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/meta.csv'
+    spacing_file = '/Users/nsveinsson/Documents/datasets/CAS_cerebral_dataset/CAS2023_trainingdataset/meta.csv'
     
     # Filter option: only process images containing this string
     # Set to None or empty string to process all images
-    filter_string = 'label'  # None e.g., 'aorta', '001', 'case_'
+    filter_string = ''  # None e.g., 'aorta', '001', 'case_'
 
     # Let's create surfaces from segmentations
-    dir_segmentations = '/Users/numisveins/Documents/aortaseg24/process_binary/binary_segs/'
-    dir_segmentations = '/Users/numisveins/Downloads/segmentation/new_format/'
-    dir_segmentations = '/Users/numisveins/Documents/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
-    dir_segmentations = '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/truths/'
-    dir_segmentations = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/gt_cardiac_segs/'
-    dir_segmentations = '/Users/nsveinsson/Downloads/1-200/'
-    img_ext = '.nii.gz'
+    dir_segmentations = '/Users/nsveinsson/Documents/datasets/vmr/truths/'
+
+    img_ext = '.mha'
+    img_ext_out = '.mha'
     # Which folder to write surfaces to
-    out_dir = dir_segmentations + 'surfaces/'
+    out_dir = dir_segmentations.replace('truths', 'surfaces_mc/')
     try:
         os.mkdir(out_dir)
     except Exception as e:
@@ -446,6 +447,8 @@ if __name__ == '__main__':
         if if_spacing_file:
             # set the spacing
             seg.SetSpacing(spacing_values[imgs.index(img)])
+            sitk.WriteImage(seg, out_dir+img.replace(img_ext, img_ext_out))
+
         print(f"Image size: {seg.GetSize()}")
         print(f"Image spacing: {seg.GetSpacing()}")
         # Create surfaces

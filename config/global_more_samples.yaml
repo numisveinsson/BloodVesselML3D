@@ -1,5 +1,5 @@
 
-DATA_DIR: '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdataset/'
+DATA_DIR: '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/'
 
 # '/global/scratch/users/numi/vascular_data_3d/'
 # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
@@ -8,8 +8,8 @@ DATA_DIR: '/Users/numisveins/Documents/datasets/CAS_dataset/CAS2023_trainingdata
 DATASET_NAME: 'other' #'vmr' # or other 'other'
 
 TESTING: False
-MODALITY: ['MR'] # can also be 'MR' 'CT' or ['CT','MR'] if both
-IMG_EXT: '.mha'
+MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
+IMG_EXT: '.nrrd'
 
 BINARIZE: False
 # if vmr, then anatomy matters
@@ -42,6 +42,10 @@ WRITE_OUTLET_IMG: False
 UPSAMPLE_OUTLET_IMG: False
 
 WRITE_CROSS_SECTIONAL: False
+NUM_CROSS_SECTIONS: 2  # multiples of 2
+RESAMPLE_CROSS_IMG: 400
+WRITE_TRAJECTORIES: False
+N_SLICES: 20
 
 WRITE_VTK: True
 WRITE_VTK_THROWOUT: False

@@ -753,8 +753,8 @@ def extract_centerline(img, centerline):
     stats = {}
     vtkimage = exportSitk2VTK(img)
     cent_local = bound_polydata_by_image(vtkimage[0], centerline, 0)
-    # cent_local = get_largest_connected_polydata(cent_local)
-    print("Skipping keeping largest connected centerline")
+    cent_local = get_largest_connected_polydata(cent_local)
+    print("  Keeping largest connected centerline")
     point_to_cells, non_connected = connectivity_points(cent_local)
     return stats, cent_local
 
@@ -1862,7 +1862,8 @@ def write_csv(csv_list, csv_list_val, modality, global_config):
                    "BLOOD_MEAN",    "BLOOD_STD",    "BLOOD_MAX", "BLOOD_MIN",    "GT_MEAN", 
                    "GT_STD",        "GT_MAX",       "GT_MIN",   "LARGEST_MEAN", "LARGEST_STD",
                    "LARGEST_MAX",   "LARGEST_MIN",  "RADIUS",   "TANGENTX",     "TANGENTY", 
-                   "TANGENTZ",      "BIFURCATION",  "NUM_VOX",  "OUTLETS",      "NUM_OUTLETS"]
+                   "TANGENTZ",      "BIFURCATION",  "NUM_VOX",  "OUTLETS",      "NUM_OUTLETS",
+                   "OUTLET_AREAS"]
     with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=csv_columns)
         # write header if file is empty

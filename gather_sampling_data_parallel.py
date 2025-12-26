@@ -58,6 +58,9 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
         else:
             num_trajs = 0
         traj_list = []
+    else:
+        traj_list = None
+        num_trajs = 0
 
     N, M, K, O, skipped = 0, 0, 0, 0, 0
     csv_list, csv_list_val = [], []
@@ -384,7 +387,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                 # print(" " + str(sub) + " variations")
                 N += 1
 
-                if N*n_samples - skipped > global_config['MAX_SAMPLES']:
+                if N*n_samples - skipped > int(float(global_config['MAX_SAMPLES'])):
                     print("Max samples reached")
                     on_cent = False
                     break
@@ -394,7 +397,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
         # keep track of ids that have already been operated on   
         ids_total.extend(ids)
 
-        if N*n_samples - skipped > global_config['MAX_SAMPLES']:
+        if N*n_samples - skipped > int(float(global_config['MAX_SAMPLES'])):
             print("Max samples reached")
             break
 

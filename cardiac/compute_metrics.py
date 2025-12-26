@@ -55,9 +55,9 @@ def hausdorf_95(pred, truth):
 
 
 if __name__ == '__main__':
-    dir_gt = "/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/gt_cardiac_segs/"
-    dir_pred = "/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/meshes/transformed_to_seg_vti/new_format/"
-    dir_out = "/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/hausdorff_distances/"
+    dir_gt = "/Users/nsveinsson/Documents/data_papers/data_combo_paper/ct_data/gt_cardiac_segs/original/other_new_format/"
+    dir_pred = "/Users/nsveinsson/Documents/data_papers/data_combo_paper/ct_data/meshes/transformed_to_seg_vti/new_format/"
+    dir_out = "/Users/nsveinsson/Documents/data_papers/data_combo_paper/ct_data/hausdorff_distances/"
 
     extension = ".mha"
     gt_files = glob.glob(os.path.join(dir_gt, "*" + extension))
@@ -67,12 +67,15 @@ if __name__ == '__main__':
     gt_files = sorted(gt_files)
     pred_files = sorted(pred_files)
     # remove last two
-    gt_files = gt_files[:-2]
-    pred_files = pred_files[:-2]
+    # gt_files = gt_files[-2:]
+    # pred_files = pred_files[-2:]
     # assert all(os.path.isfile(f) for f in pred_files)
     hausdorff_distances = []
+    results_data = []
+    
     for gt_file, pred_file in zip(gt_files, pred_files):
-        print("Processing : ", os.path.basename(gt_file))
+        filename = os.path.basename(gt_file)
+        print("Processing : ", filename)
         gt_mesh = sitk.ReadImage(gt_file)
         pred_mesh = sitk.ReadImage(pred_file)
 
@@ -95,18 +98,21 @@ if __name__ == '__main__':
             # Compute Hausdorff distance
             hausdorff_distance = hausdorf_95(pred_mask, gt_mask)
 
-            print(f"Gt class: {gt_class}, Pred class: {pred_class}, Hausdorff distance: {hausdorff_distance}")
+            print(f"Gt class: {gt_class}, Pred class: {pred_class}, Hausdorff distance: {hausdorff_distance:.3f}")
 
             hausdorff_distances.append(hausdorff_distance)
+            results_data.append({
+                'filename': filename,
+                'gt_class': gt_class,
+                'pred_class': pred_class,
+                'hausdorff_distance': round(hausdorff_distance, 3)
+            })
 
-    # # Print the distances
-    # for i, filename in enumerate(filenames):
-    #     print(f"{filename}: {hausdorff_distances[i]}")
+    # Create output directory if it doesn't exist
+    os.makedirs(dir_out, exist_ok=True)
 
-    # # Create output directory if it doesn't exist
-    # os.makedirs(dir_out, exist_ok=True)
-
-    # # Save the distances to a CSV file
-    # data = pd.DataFrame(hausdorff_distances, index=filenames)
-    # output_file_path = os.path.join(dir_out, "hausdorff_distance.csv")
-    # data.to_csv(output_file_path)
+    # Save the distances to a CSV file
+    data = pd.DataFrame(results_data)
+    output_file_path = os.path.join(dir_out, "hausdorff_distances.csv")
+    data.to_csv(output_file_path, index=False)
+    print(f"\nResults saved to {output_file_path}")

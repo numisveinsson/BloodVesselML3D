@@ -96,8 +96,14 @@ class VMR_dataset:
         try:
             self.df = get_vmr_dataset_names()
         except Exception as e:
-            print(f'Cound not get VMR dataset names from google sheet: {e}')
-            self.df = None
+            print(f'Could not get VMR dataset names from google sheet: {e}')
+            print('Attempting to read from local CSV file...')
+            try:
+                self.df = get_vmr_dataset_names_local()
+                print('Successfully loaded VMR dataset names from local CSV')
+            except Exception as e2:
+                print(f'Could not read local CSV file: {e2}')
+                self.df = None
         # get the cases of specified modality and anatomy
         if modality is not None:
             self.df = get_vmr_names_modality(self.df, modality)
@@ -216,10 +222,15 @@ def get_vmr_dataset_names():
 
 def get_vmr_dataset_names_local():
     """
-    Returns a pandas dataframe of the VMR dataset names
+    Returns a pandas dataframe of the VMR dataset names from local file
     """
-    file_path = 'Data/VMR_dataset_names.csv'
-    return pd.read_csv(file_path)
+    import os
+    # Get the directory where this script is located
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    file_path = os.path.join(script_dir, 'VMR_dataset_names.csv')
+    df = pd.read_csv(file_path)
+    df = df[df['Legacy Name'].notna()]
+    return df
 
 def get_vmr_names_modality(df, modality):
     """

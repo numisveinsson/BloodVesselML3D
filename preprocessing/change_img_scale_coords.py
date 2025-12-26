@@ -4,7 +4,7 @@ import math
 from datetime import datetime
 
 
-def change_img_scale(img_path, scale, scale_origin=None, direction_matrix=None, verbose=False):
+def change_img_scale(img_path, scale, scale_origin=None, direction_matrix=None, change_lps_to_ras=False, verbose=False, if_spacing_file=False, spacing_value=None):
     """
     Change the scale of the image in the path
 
@@ -13,9 +13,13 @@ def change_img_scale(img_path, scale, scale_origin=None, direction_matrix=None, 
 
     :param img_path: path to the image
     :param scale: new scale
+    :param change_lps_to_ras: whether to change image from LPS to RAS coordinate system
     :return: sitk image
     """
     img = sitk.ReadImage(img_path)
+
+    if if_spacing_file:
+        img.SetSpacing(spacing_value)
 
     if verbose:
         try:
@@ -48,6 +52,20 @@ def change_img_scale(img_path, scale, scale_origin=None, direction_matrix=None, 
         if verbose:
             print(f"[VERBOSE] Setting direction matrix to: {direction_matrix}")
         img.SetDirection(tuple(direction_matrix))
+
+    if change_lps_to_ras:
+        if verbose:
+            print(f"[VERBOSE] Changing image from LPS to RAS coordinate system")
+        # Flip the first two axes (X and Y)
+        direction = list(img.GetDirection())
+        direction = [-direction[0], -direction[1], direction[2],
+                     -direction[3], -direction[4], direction[5],
+                     -direction[6], -direction[7], direction[8]]
+        img.SetDirection(tuple(direction))
+
+        origin = list(img.GetOrigin())
+        origin = [-origin[0], -origin[1], origin[2]]
+        img.SetOrigin(tuple(origin))
 
     if verbose:
         try:
@@ -85,12 +103,22 @@ if __name__ == '__main__':
 
     """
 
-    input_format = '.img.nii.gz'
-    output_format = '_img.nii.gz'
+    input_format = '.mha'
+    output_format = '.mha'
+
+    data_folder = '/Users/nsveinsson/Documents/datasets/CAS_cerebral_dataset/CAS2023_trainingdataset/mm/truths/'
+    out_folder = data_folder.replace('mm','cm')
+
+    if_spacing_file = False
+    spacing_file = '/Users/nsveinsson/Documents/datasets/CAS_cerebral_dataset/CAS2023_trainingdataset/mm/meta.csv'
+
+    list_names = []  # if empty, process all files in the folder
 
     flip = False
     permute = False
     scale = 0.1
+
+    change_lps_to_ras = False
 
     scale_origin = 0.1 # or None
 
@@ -104,13 +132,20 @@ if __name__ == '__main__':
 
     flip_axis = [True, True, False]
 
-    data_folder = '/Users/numisveins/Documents/data_papers/data_combo_paper/ct_data/Ground truth cardiac segmentations/'
-    data_folder = '/Users/nsveinsson/Documents/datasets/CAS_coronary_dataset/1-200/'
-    out_folder = data_folder+'changed_scale_direction/'
-
     imgs = os.listdir(data_folder)
     imgs = [f for f in imgs if f.endswith(input_format)]
     imgs = sorted(imgs)
+
+    if if_spacing_file:
+        import pandas as pd
+        spacing_df = pd.read_csv(spacing_file)
+        # only keep 'spacing', they are sorted
+        spacing_values = spacing_df['spacing'].values
+        # read as tuples
+        spacing_values = [tuple(map(float, x[1:-1].split(','))) for x in spacing_values]
+
+    if list_names:
+        imgs = [f for f in imgs if any(name in f for name in list_names)]
 
     try:
         os.mkdir(out_folder)
@@ -144,7 +179,12 @@ if __name__ == '__main__':
         img_path = os.path.join(data_folder, img)
         out_path = os.path.join(out_folder, img.replace(input_format,
                                                         output_format))
-        img = change_img_scale(img_path, scale, scale_origin, direction_matrix, verbose=verbose)
+        if if_spacing_file:
+            spacing_value = spacing_values[imgs.index(img)]
+        else:
+            spacing_value = None
+
+        img = change_img_scale(img_path, scale, scale_origin, direction_matrix, change_lps_to_ras=change_lps_to_ras, verbose=verbose, if_spacing_file=if_spacing_file, spacing_value=spacing_value)
 
         if flip:
             if verbose:
@@ -155,7 +195,7 @@ if __name__ == '__main__':
             if verbose:
                 print(f'[VERBOSE] Permuting axes for image {img_path}')
             img = sitk.PermuteAxes(img, [0, 1, 2])
-
+                
         sitk.WriteImage(img, out_path)
         msg = (
             f"{datetime.now().isoformat()} | Saved {img} -> {out_path} | "

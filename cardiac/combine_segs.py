@@ -4,9 +4,13 @@ import numpy as np
 import os
 import sys
 from os.path import dirname, join, abspath
-import modules.vtk_functions as vf
 
-sys.path.insert(0, abspath(join(dirname(__file__), '..')))
+# Add modules directory to path
+modules_path = join(dirname(dirname(abspath(__file__))), 'modules')
+if modules_path not in sys.path:
+    sys.path.insert(0, modules_path)
+
+import vtk_functions as vf
 
 
 def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None):

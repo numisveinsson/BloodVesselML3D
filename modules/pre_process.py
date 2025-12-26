@@ -16,6 +16,8 @@ def resample(sitkIm, resolution = (0.5, 0.5, 0.5),order=1,dim=3):
     resample = sitk.ResampleImageFilter()
     if order==1:
       resample.SetInterpolator(sitk.sitkLinear)
+    elif order==2:
+      resample.SetInterpolator(sitk.sitkBSpline)
     else:
       resample.SetInterpolator(sitk.sitkNearestNeighbor)
     resample.SetOutputDirection(image.GetDirection())

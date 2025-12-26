@@ -2,8 +2,15 @@ import numpy as np
 import SimpleITK as sitk
 import vtk
 from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy, get_vtk_array_type
-import vtk_functions as vf
+import sys
 import os
+
+# Add modules directory to path
+modules_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'modules')
+if modules_path not in sys.path:
+    sys.path.insert(0, modules_path)
+
+import vtk_functions as vf
 
 
 def create_seg_from_surface(surface, image):
@@ -366,39 +373,77 @@ def convertPolyDataToImageData(poly, ref_im):
 if __name__ == '__main__':
 
     # Let's create GT segmentations from surfaces
-    # dir_surfaces = '/Users/numisveinsson/Documents_numi/vmr_data_new/surfaces/'
-    # dir_imgs = '/Users/numisveinsson/Documents_numi/vmr_data_new/images/'
     img_ext = '.mha'
-    # direct = '/Users/numisveins/Documents/vascular_data_3d/'
-    dir_surfaces = '/Users/nsveinsson/Documents/datasets/vmr/surfaces/'
-    dir_imgs = '/Users/nsveinsson/Documents/datasets/vmr/images/resampled_gala_training/'
+    output_ext = '.mha'  # Output format: '.vti', '.mha', '.nii.gz', etc.
+    dir_surfaces = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/surfaces/'
+    dir_imgs = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/images/'
     # Which folder to write segs to
-    out_dir = '/Users/nsveinsson/Documents/datasets/vmr/truths_03_spacing_gala/'
+    out_dir = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/truths/'
+
+    # create output directory if it does not exist
+    if not os.path.exists(out_dir):
+        os.mkdir(out_dir)
 
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
     imgs = [img for img in imgs if img.endswith(img_ext)]
     # import pdb; pdb.set_trace()
     for img in imgs:
-        surf_path = dir_surfaces + img.replace(img_ext, '.vtp')
-        output_path = out_dir + img.replace(img_ext, '.vti')
+        # Check for both .vtp and .stl surface files
+        surf_path_vtp = dir_surfaces + img.replace(img_ext, '.vtp')
+        surf_path_stl = dir_surfaces + img.replace(img_ext, '.stl')
         
+        # Determine which surface file exists
+        if os.path.exists(surf_path_vtp):
+            surf_path = surf_path_vtp
+        elif os.path.exists(surf_path_stl):
+            surf_path = surf_path_stl
+        else:
+            print(f"Skipping case {img}: No surface file (.vtp or .stl) found")
+            continue
+        
+        output_path = out_dir + img.replace(img_ext, output_ext)
+
         # Check if output file already exists
         if os.path.exists(output_path):
             print(f"Skipping case {img}: Output file {output_path} already exists")
             continue
         
-        # Check if surface file exists
-        if not os.path.exists(surf_path):
-            print(f"Skipping case {img}: Surface file {surf_path} does not exist")
-            continue
-            
-        surf_vtp = vf.read_geo(surf_path).GetOutput()
+        # Read surface based on file type
+        if surf_path.endswith('.stl'):
+            reader = vtk.vtkSTLReader()
+            reader.SetFileName(surf_path)
+            reader.Update()
+            surf_vtp = reader.GetOutput()
+        else:  # .vtp file
+            surf_vtp = vf.read_geo(surf_path).GetOutput()
+        
         img_sitk = sitk.ReadImage(dir_imgs+img)
         img_vtk = exportSitk2VTK(img_sitk)[0]
         # img_vtk = vf.read_img(dir_imgs+img).GetOutput()
         # seg = convertPolyDataToImageData(surf_vtp, img_vtk)
         seg = convertPolyDataToImageData(surf_vtp, img_vtk)
-        vf.write_img(output_path, seg)
+        
+        # Write output in the specified format
+        if output_ext == '.vti':
+            vf.write_img(output_path, seg)
+        else:
+            # Convert VTK image to SITK and save
+            # Get numpy array from VTK image
+            vtk_array = vtk_to_numpy(seg.GetPointData().GetScalars())
+            dims = seg.GetDimensions()
+            vtk_array = vtk_array.reshape(dims, order='F')
+            
+            # Create SITK image from numpy array
+            seg_sitk = sitk.GetImageFromArray(vtk_array.transpose(2, 1, 0))
+            
+            # Copy metadata from original image
+            seg_sitk.SetOrigin(img_sitk.GetOrigin())
+            seg_sitk.SetSpacing(img_sitk.GetSpacing())
+            seg_sitk.SetDirection(img_sitk.GetDirection())
+            
+            seg_sitk = sitk.Cast(seg_sitk, sitk.sitkUInt8)
+            sitk.WriteImage(seg_sitk, output_path)
+        
         # vf.change_vti_vtk(output_path)
         print("Done case: ", img)
