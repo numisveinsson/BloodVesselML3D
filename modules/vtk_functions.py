@@ -585,10 +585,17 @@ def calc_caps(polyData):
     conn = connectivity_all(output)
     data = get_points_cells(conn)#.GetOutput())
 
-    try:
-        connects = v2n(conn.GetOutput().GetPointData().GetArray(2))
-    except:
-        connects = v2n(conn.GetOutput().GetPointData().GetArray(1))
+    # Get the RegionId array (created by connectivity_all with ColorRegionsOn)
+    point_data = conn.GetOutput().GetPointData()
+    connects = None
+    for i in range(point_data.GetNumberOfArrays()):
+        array_name = point_data.GetArrayName(i)
+        if 'Region' in array_name or array_name == 'RegionId':
+            connects = v2n(point_data.GetArray(i))
+            break
+    
+    if connects is None:
+        raise ValueError("Could not find RegionId array in connectivity output")
 
     caps_locs = []
     caps_areas = []
@@ -604,8 +611,9 @@ def calc_caps(polyData):
         cells = data[1][connects == i]
         area = 0
         for cell in cells:
-            p0 = locs[cell[0]]
-            p1 = locs[cell[1]]
+            # Use original data[0] array since cell indices reference it
+            p0 = data[0][cell[0]]
+            p1 = data[0][cell[1]]
             p2 = center
             area += np.linalg.norm(np.cross(p1-p0, p2-p0))/2
         caps_areas.append(area)

@@ -6,7 +6,7 @@ TESTING: False
 MODALITY: ['CT'] # can also be 'MR' 'CT' or ['CT','MR'] if both
 IMG_EXT: '.mha' #'.nii.gz' #'.mha' #'.nii.gz' #'.mha' #'.nii.gz' # Image file extension
 
-BINARIZE: False
+BINARIZE: True # Need true for VMR since 255 labels
 ANATOMY: ['Aorta', 'Abdominal Aorta'] # can be 'ALL' or ['Aorta', 'Abdominal Aorta', 'Pulmonary', 'Coronary', 'CHD', 'Cerebro']
 OUTLET_CLASSES: [0,1,2,3,4,5,6,7,8,9,10]
 VALIDATION_PROP: 0.2 #0.15
@@ -22,10 +22,10 @@ RESAMPLE_SIZE: [64, 64, 64]
 AUGMENT_VOLUMES: False
 
 WRITE_SAMPLES: True
-WRITE_IMG: True
+WRITE_IMG: False
 REMOVE_OTHER: True # Remove other unconnected vessels in gt volume, can cause problems where vessels are close
 WRITE_SURFACE: True
-WRITE_CENTERLINE: True
+WRITE_CENTERLINE: False
 WRITE_VOXEL_PYRAMID: False
 
 WRITE_DISCRETE_CENTERLINE: False
@@ -45,7 +45,7 @@ WRITE_VTK: False
 WRITE_VTK_THROWOUT: False
 
 MOVE_DIST: 2 # 1.5 how far to move along centerline between sampling, in terms of radius
-SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
+SIZE_RADIUS: 4 # how big a volume to sample, x radius at each location
 RADIUS_ADD: 0.05 # how much to add to radius values (to correct bias) done before scale
 RADIUS_SCALE: 1 # how much to add to radius values (to correct bias)
 
