@@ -1,5 +1,5 @@
 """
-Preprocessing utilities for BloodVesselML3D.
+Preprocessing utilities for vascular-segment-sampler.
 
 This module contains scripts for:
 - Image format conversion and resampling

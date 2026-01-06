@@ -1,5 +1,5 @@
 """
-Centralized logging configuration for the BloodVesselML3D repository.
+Centralized logging configuration for the vascular-segment-sampler repository.
 """
 import logging
 import sys

@@ -31,7 +31,7 @@ module load gcc
 module load cuda/10.0
 module load cudnn/7.5
 source activate /global/scratch/users/numi/environments/seqseg2
-cd /global/scratch/users/numi/BloodVesselML3D/
+cd /global/scratch/users/numi/vascular-segment-sampler/
 
 python3  global/global_data.py \
     -outdir /global/scratch/users/numi/aortaseg24/extraction_output/global_aortaseg24_label/ \

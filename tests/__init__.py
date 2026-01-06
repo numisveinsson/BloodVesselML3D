@@ -1,5 +1,5 @@
 """
-Test scripts for BloodVesselML3D.
+Test scripts for vascular-segment-sampler.
 
 This module contains various test scripts for:
 - Testing SITK functionality

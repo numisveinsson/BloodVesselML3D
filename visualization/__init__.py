@@ -1,5 +1,5 @@
 """
-Visualization utilities for BloodVesselML3D.
+Visualization utilities for vascular-segment-sampler.
 
 This module contains scripts for:
 - Viewing and inspecting 3D data

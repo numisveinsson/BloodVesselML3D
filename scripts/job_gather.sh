@@ -29,7 +29,7 @@
 ## Command(s) to run (example):
 
 source activate /global/scratch/users/numi/environments/seqseg2
-cd /global/scratch/users/numi/BloodVesselML3D/
+cd /global/scratch/users/numi/vascular-segment-sampler/
 
 python3  gather_sampling_data_parallel.py \
     -outdir /global/scratch/users/numi/vascular_data_3d/extraction_output/local_extraction_gala/ \

@@ -1,4 +1,4 @@
-# Blood Vessel Modeling Data Pre and Post Processing
+# Vascular Segment Sampler
 
 This repository contains code to process data used to train machine learning methods for geometric modeling of blood vessels using medical image data. The data used is:
     1. Medical image scans
@@ -31,20 +31,20 @@ Install the required dependencies using conda:
 
 ```bash
 conda env create -f environment.yml
-conda activate bloodvesselml3d
+conda activate vascular-segment-sampler
 ```
 
 Or create the environment with a custom name:
 
 ```bash
-conda env create -f environment.yml -n bloodvesselml3d
-conda activate bloodvesselml3d
+conda env create -f environment.yml -n vascular-segment-sampler
+conda activate vascular-segment-sampler
 ```
 
 ## Project Structure
 
 ```
-BloodVesselML3D/
+vascular-segment-sampler/
 ├── config/              # Configuration YAML files
 ├── modules/             # Shared utility modules
 │   ├── vtk_functions.py # VTK-related functions
