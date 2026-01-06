@@ -133,8 +133,7 @@ Examples:
   # Resample to target size:
   python change_img_resample.py --input_dir /path/to/images --target_size 512 512 512
   
-  # Using environment variables:
-  export INPUT_DIR=/path/to/images
+  # Using default directory:
   python change_img_resample.py --target_spacing 1.0 1.0 1.0
         """
     )
@@ -142,12 +141,12 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing input images. '
-                            'Defaults to INPUT_DIR env var or ./data/images/')
+                            'Defaults to ./data/images/')
     parser.add_argument('--output_dir', '--output-dir',
                        type=str,
                        default=None,
                        help='Directory to write resampled images. '
-                            'Defaults to OUTPUT_DIR env var or inferred from input_dir')
+                            'Defaults to inferred from input_dir')
     parser.add_argument('--input_format', '--input-format',
                        type=str,
                        default='.mha',
@@ -187,18 +186,14 @@ Examples:
     if not args.target_size and not args.target_spacing:
         parser.error("Either --target_size or --target_spacing must be provided")
     
-    # Priority: command-line arg > environment variable > default
-    data_folder = (args.input_dir or 
-                  os.getenv('INPUT_DIR') or 
-                  './data/images/')
-    out_folder = (args.output_dir or 
-                 os.getenv('OUTPUT_DIR') or 
-                 data_folder.replace('images', 'images_resampled'))
+    # Use command-line arguments (required or default)
+    data_folder = args.input_dir or './data/images/'
+    out_folder = args.output_dir or data_folder.replace('images', 'images_resampled')
     
     # Validate directories
     if not os.path.exists(data_folder):
         raise ValueError(f"Input directory not found: {data_folder}. "
-                        f"Provide --input_dir argument or set INPUT_DIR environment variable.")
+                        f"Provide --input_dir argument.")
     
     # Process batch
     resample_images_batch(

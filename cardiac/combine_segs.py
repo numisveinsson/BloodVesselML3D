@@ -449,8 +449,7 @@ if __name__ == "__main__":
 Examples:
   python combine_segs.py --meshes_dir /path/to/meshes --images_dir /path/to/images --vascular_dir /path/to/vascular
   
-  # Using environment variables as fallback:
-  export CARDIAC_MESHES_DIR=/path/to/meshes
+  # Using default directory:
   python combine_segs.py
         """
     )
@@ -458,17 +457,17 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing cardiac mesh polydata files (.vtp). '
-                            'Defaults to CARDIAC_MESHES_DIR env var or ./data/meshes/')
+                            'Defaults to ./data/meshes/')
     parser.add_argument('--images_dir', '--images-dir',
                        type=str,
                        default=None,
                        help='Directory containing image files (.vti). '
-                            'Defaults to CARDIAC_IMAGES_DIR env var or inferred from meshes_dir')
+                            'Defaults to inferred from meshes_dir')
     parser.add_argument('--vascular_dir', '--vascular-dir',
                        type=str,
                        default=None,
                        help='Directory containing vascular segmentation files (.vti). '
-                            'Defaults to VASCULAR_SEGS_DIR env var or inferred from meshes_dir')
+                            'Defaults to inferred from meshes_dir')
     parser.add_argument('--write_all', '--write-all',
                        action='store_true',
                        default=True,
@@ -492,25 +491,20 @@ Examples:
     no_valve = args.no_valve
 
     # Directory of cardiac meshes polydata
-    # Priority: command-line arg > environment variable > default
-    directory = (args.meshes_dir or 
-                 os.getenv('CARDIAC_MESHES_DIR') or 
-                 os.getenv('DATA_DIR', './data/meshes/'))
+    directory = args.meshes_dir or './data/meshes/'
     if not os.path.exists(directory):
         raise ValueError(f"Meshes directory not found: {directory}. "
-                        f"Provide --meshes_dir argument or set CARDIAC_MESHES_DIR environment variable.")
+                        f"Provide --meshes_dir argument.")
     meshes = os.listdir(directory)
     meshes = [f for f in meshes if f.endswith('.vtp')]
     # sort meshes
     meshes = sorted(meshes)
 
     # Directory of images
-    img_dir = (args.images_dir or 
-               os.getenv('CARDIAC_IMAGES_DIR') or
-               os.path.join(os.path.dirname(directory), 'images_vti/'))
+    img_dir = args.images_dir or os.path.join(os.path.dirname(directory), 'images_vti/')
     if not os.path.exists(img_dir):
         raise ValueError(f"Images directory not found: {img_dir}. "
-                        f"Provide --images_dir argument or set CARDIAC_IMAGES_DIR environment variable.")
+                        f"Provide --images_dir argument.")
     img_ext = '.vti'
     imgs = os.listdir(img_dir)
     imgs = [f for f in imgs if f.endswith(img_ext)]
@@ -520,12 +514,10 @@ Examples:
     imgs = sorted(imgs)
 
     # Directory of vascular segmentations
-    vascular_dir = (args.vascular_dir or 
-                   os.getenv('VASCULAR_SEGS_DIR') or
-                   os.path.join(os.path.dirname(directory), 'vascular_segs/vascular_segs_vti/'))
+    vascular_dir = args.vascular_dir or os.path.join(os.path.dirname(directory), 'vascular_segs/vascular_segs_vti/')
     if not os.path.exists(vascular_dir):
         raise ValueError(f"Vascular segmentations directory not found: {vascular_dir}. "
-                        f"Provide --vascular_dir argument or set VASCULAR_SEGS_DIR environment variable.")
+                        f"Provide --vascular_dir argument.")
     vascular_ext = '.vti'
     vascular_imgs = os.listdir(vascular_dir)
     vascular_imgs = [f for f in vascular_imgs if f.endswith(vascular_ext)]

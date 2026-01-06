@@ -141,12 +141,12 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing input image files. '
-                            'Defaults to INPUT_DIR env var or ./data/images/')
+                            'Defaults to ./data/images/')
     parser.add_argument('--output_dir', '--output-dir',
                        type=str,
                        default=None,
                        help='Directory to write output files. '
-                            'Defaults to OUTPUT_DIR env var or inferred from input_dir')
+                            'Defaults to inferred from input_dir')
     parser.add_argument('--input_format', '--input-format',
                        type=str,
                        default='.nrrd',
@@ -181,18 +181,14 @@ Examples:
     label_if_string = args.label_if_string
     rem_str = args.rem_str
 
-    # Priority: command-line arg > environment variable > default
-    data_folder = (args.input_dir or 
-                  os.getenv('INPUT_DIR') or 
-                  './data/images/')
-    out_folder = (args.output_dir or 
-                 os.getenv('OUTPUT_DIR') or 
-                 data_folder.replace('images', 'images_' + output_format.replace('.', '')))
+    # Use command-line arguments (required or default)
+    data_folder = args.input_dir or './data/images/'
+    out_folder = args.output_dir or data_folder.replace('images', 'images_' + output_format.replace('.', ''))
     
     # Validate directories
     if not os.path.exists(data_folder):
         raise ValueError(f"Input directory not found: {data_folder}. "
-                        f"Provide --input_dir argument or set INPUT_DIR environment variable.")
+                        f"Provide --input_dir argument.")
     
     # Initialize logger
     from modules.logger import get_logger

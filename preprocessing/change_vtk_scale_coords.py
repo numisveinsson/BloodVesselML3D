@@ -67,8 +67,7 @@ if __name__ == "__main__":
 Examples:
   python change_vtk_scale_coords.py --input_dir /path/to/surfaces --output_dir /path/to/output --scale_factor 0.1
   
-  # Using environment variables:
-  export INPUT_DIR=/path/to/surfaces
+  # Using default directory:
   python change_vtk_scale_coords.py --scale_factor 0.1
         """
     )
@@ -76,12 +75,12 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing input surface files (.vtp or .stl). '
-                            'Defaults to INPUT_DIR env var or ./data/surfaces/')
+                            'Defaults to ./data/surfaces/')
     parser.add_argument('--output_dir', '--output-dir',
                        type=str,
                        default=None,
                        help='Directory to write scaled surface files. '
-                            'Defaults to OUTPUT_DIR env var or inferred from input_dir')
+                            'Defaults to inferred from input_dir')
     parser.add_argument('--scale_factor', '--scale-factor',
                        type=float,
                        required=True,
@@ -89,19 +88,15 @@ Examples:
     
     args = parser.parse_args()
     
-    # Priority: command-line arg > environment variable > default
-    input_folder = (args.input_dir or 
-                   os.getenv('INPUT_DIR') or 
-                   './data/surfaces/')
-    output_folder = (args.output_dir or 
-                    os.getenv('OUTPUT_DIR') or 
-                    input_folder.rstrip('/') + '_scaled/')
+    # Use command-line arguments (required or default)
+    input_folder = args.input_dir or './data/surfaces/'
+    output_folder = args.output_dir or input_folder.rstrip('/') + '_scaled/'
     scale_factor = args.scale_factor
 
     # Validate directories
     if not os.path.exists(input_folder):
         raise ValueError(f"Input directory not found: {input_folder}. "
-                        f"Provide --input_dir argument or set INPUT_DIR environment variable.")
+                        f"Provide --input_dir argument.")
 
     # Create output directory
     if not os.path.exists(output_folder):

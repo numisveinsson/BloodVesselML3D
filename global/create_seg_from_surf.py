@@ -89,9 +89,7 @@ if __name__ == '__main__':
 Examples:
   python create_seg_from_surf.py --surfaces_dir /path/to/surfaces --images_dir /path/to/images --output_dir /path/to/output
   
-  # Using environment variables as fallback:
-  export SURFACES_DIR=/path/to/surfaces
-  export IMAGES_DIR=/path/to/images
+  # Using default directories:
   python create_seg_from_surf.py
         """
     )
@@ -99,17 +97,17 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing surface mesh files (.vtp or .stl). '
-                            'Defaults to SURFACES_DIR env var or DATA_DIR/surfaces/')
+                            'Defaults to ./data/surfaces/')
     parser.add_argument('--images_dir', '--images-dir',
                        type=str,
                        default=None,
                        help='Directory containing image files. '
-                            'Defaults to IMAGES_DIR env var or DATA_DIR/images/')
+                            'Defaults to ./data/images/')
     parser.add_argument('--output_dir', '--output-dir',
                        type=str,
                        default=None,
                        help='Directory to write output segmentation files. '
-                            'Defaults to OUTPUT_DIR env var or DATA_DIR/truths/')
+                            'Defaults to ./data/truths/')
     parser.add_argument('--img_ext', '--img-ext',
                        type=str,
                        default='.mha',
@@ -125,25 +123,18 @@ Examples:
     img_ext = args.img_ext
     output_ext = args.output_ext
     
-    # Priority: command-line arg > environment variable > default
-    base_dir = os.getenv('DATA_DIR', os.getenv('ASOCA_DATA_DIR', './data/'))
-    dir_surfaces = (args.surfaces_dir or 
-                   os.getenv('SURFACES_DIR') or 
-                   os.path.join(base_dir, 'surfaces/'))
-    dir_imgs = (args.images_dir or 
-               os.getenv('IMAGES_DIR') or 
-               os.path.join(base_dir, 'images/'))
-    out_dir = (args.output_dir or 
-              os.getenv('OUTPUT_DIR') or 
-              os.path.join(base_dir, 'truths/'))
+    # Use command-line arguments (required or default)
+    dir_surfaces = args.surfaces_dir or './data/surfaces/'
+    dir_imgs = args.images_dir or './data/images/'
+    out_dir = args.output_dir or './data/truths/'
     
     # Validate directories exist
     if not os.path.exists(dir_surfaces):
         raise ValueError(f"Surfaces directory not found: {dir_surfaces}. "
-                        f"Provide --surfaces_dir argument or set SURFACES_DIR environment variable.")
+                        f"Provide --surfaces_dir argument.")
     if not os.path.exists(dir_imgs):
         raise ValueError(f"Images directory not found: {dir_imgs}. "
-                        f"Provide --images_dir argument or set IMAGES_DIR environment variable.")
+                        f"Provide --images_dir argument.")
 
     # Initialize logger
     from modules.logger import get_logger

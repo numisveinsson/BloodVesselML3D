@@ -113,12 +113,12 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing input images. '
-                            'Defaults to INPUT_DIR env var or ./data/')
+                            'Defaults to ./data/')
     parser.add_argument('--output_dir', '--output-dir',
                        type=str,
                        default=None,
                        help='Directory to write output images. '
-                            'Defaults to OUTPUT_DIR env var or inferred from input_dir')
+                            'Defaults to inferred from input_dir')
     parser.add_argument('--input_format', '--input-format',
                        type=str,
                        default='.mha',
@@ -138,8 +138,7 @@ Examples:
     parser.add_argument('--spacing_file', '--spacing-file',
                        type=str,
                        default=None,
-                       help='CSV file containing spacing values. '
-                            'Defaults to SPACING_FILE env var')
+                       help='CSV file containing spacing values')
     parser.add_argument('--direction_matrix', '--direction-matrix',
                        type=float,
                        nargs=9,
@@ -179,8 +178,7 @@ Examples:
     scale = args.scale
     scale_origin = args.scale_origin
     if_spacing_file = args.spacing_file is not None
-    spacing_file = (args.spacing_file or 
-                   os.getenv('SPACING_FILE', ''))
+    spacing_file = args.spacing_file
     list_names = args.filter_names or []
     flip = args.flip
     permute = args.permute
@@ -189,18 +187,14 @@ Examples:
     verbose = args.verbose
     flip_axis = args.flip_axis
 
-    # Priority: command-line arg > environment variable > default
-    data_folder = (args.input_dir or 
-                  os.getenv('INPUT_DIR') or 
-                  './data/')
-    out_folder = (args.output_dir or 
-                 os.getenv('OUTPUT_DIR') or 
-                 data_folder.rstrip('/') + '_scaled/')
+    # Use command-line arguments (required or default)
+    data_folder = args.input_dir or './data/'
+    out_folder = args.output_dir or data_folder.rstrip('/') + '_scaled/'
     
     # Validate directories
     if not os.path.exists(data_folder):
         raise ValueError(f"Input directory not found: {data_folder}. "
-                        f"Provide --input_dir argument or set INPUT_DIR environment variable.")
+                        f"Provide --input_dir argument.")
     
     # Initialize logger
     from modules.logger import get_logger

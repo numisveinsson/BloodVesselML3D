@@ -80,8 +80,7 @@ if __name__ == '__main__':
 Examples:
   python create_surf_from_seg.py --segmentations_dir /path/to/segmentations --output_dir /path/to/output
   
-  # Using environment variables as fallback:
-  export SEGMENTATIONS_DIR=/path/to/segmentations
+  # Using default directory:
   python create_surf_from_seg.py
         """
     )
@@ -89,7 +88,7 @@ Examples:
                        type=str,
                        default=None,
                        help='Directory containing segmentation image files. '
-                            'Defaults to SEGMENTATIONS_DIR env var or DATA_DIR/truths/')
+                            'Defaults to ./data/truths/')
     parser.add_argument('--output_dir', '--output-dir',
                        type=str,
                        default=None,
@@ -98,8 +97,7 @@ Examples:
     parser.add_argument('--spacing_file', '--spacing-file',
                        type=str,
                        default=None,
-                       help='CSV file containing spacing values. '
-                            'Defaults to SPACING_FILE env var')
+                       help='CSV file containing spacing values')
     parser.add_argument('--filter_string', '--filter-string',
                        type=str,
                        default='',
@@ -127,24 +125,19 @@ Examples:
     if_keep_largest = args.keep_largest
 
     if_spacing_file = args.spacing_file is not None
-    spacing_file = (args.spacing_file or 
-                   os.getenv('SPACING_FILE', ''))
+    spacing_file = args.spacing_file
     if if_spacing_file and not spacing_file:
-        raise ValueError("--spacing_file argument or SPACING_FILE environment variable must be set when using spacing file")
+        raise ValueError("--spacing_file argument must be set when using spacing file")
     
     # Filter option: only process images containing this string
-    filter_string = (args.filter_string or 
-                    os.getenv('FILTER_STRING', ''))
+    filter_string = args.filter_string or ''
 
-    # Priority: command-line arg > environment variable > default
-    base_dir = os.getenv('DATA_DIR', os.getenv('VMR_DATA_DIR', './data/'))
-    dir_segmentations = (args.segmentations_dir or 
-                        os.getenv('SEGMENTATIONS_DIR') or 
-                        os.path.join(base_dir, 'truths/'))
+    # Use command-line arguments (required or default)
+    dir_segmentations = args.segmentations_dir or './data/truths/'
     
     if not os.path.exists(dir_segmentations):
         raise ValueError(f"Segmentations directory not found: {dir_segmentations}. "
-                        f"Provide --segmentations_dir argument or set SEGMENTATIONS_DIR environment variable.")
+                        f"Provide --segmentations_dir argument.")
 
     img_ext = args.img_ext
     img_ext_out = args.output_ext
