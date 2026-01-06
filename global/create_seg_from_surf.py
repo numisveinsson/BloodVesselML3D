@@ -29,7 +29,6 @@ def create_seg_from_surface(surface, image):
     points = vtk.vtkPoints()
     count = 0
     for i in range(img_size[0]):
-        print('i is ', i)
         for j in range(img_size[1]):
             for k in range(img_size[2]):
                 point = image.TransformIndexToPhysicalPoint((i,j,k))
@@ -50,20 +49,17 @@ def create_seg_from_surface(surface, image):
     enclosed_filter.Update()
 
     # Create new image to assemble
-
     for i in range(img_size[0]):
-        print('i is ', i)
         for j in range(img_size[1]):
             for k in range(img_size[2]):
                 point = image.TransformIndexToPhysicalPoint((i,j,k))
                 is_inside = enclosed_filter.IsInsideSurface(point[0], point[1], point[2])
                 if is_inside:
-                    print('Inside')
+                    # Voxel is inside surface
                     image[i, j, k] = 1
                 else:
                     image[i, j, k] = 0
 
-    import pdb; pdb.set_trace()
     return image
 
 
@@ -84,23 +80,83 @@ def create_seg_from_surface(surface, image):
 
 
 if __name__ == '__main__':
-
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Create segmentation images from surface meshes',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python create_seg_from_surf.py --surfaces_dir /path/to/surfaces --images_dir /path/to/images --output_dir /path/to/output
+  
+  # Using environment variables as fallback:
+  export SURFACES_DIR=/path/to/surfaces
+  export IMAGES_DIR=/path/to/images
+  python create_seg_from_surf.py
+        """
+    )
+    parser.add_argument('--surfaces_dir', '--surfaces-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing surface mesh files (.vtp or .stl). '
+                            'Defaults to SURFACES_DIR env var or DATA_DIR/surfaces/')
+    parser.add_argument('--images_dir', '--images-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing image files. '
+                            'Defaults to IMAGES_DIR env var or DATA_DIR/images/')
+    parser.add_argument('--output_dir', '--output-dir',
+                       type=str,
+                       default=None,
+                       help='Directory to write output segmentation files. '
+                            'Defaults to OUTPUT_DIR env var or DATA_DIR/truths/')
+    parser.add_argument('--img_ext', '--img-ext',
+                       type=str,
+                       default='.mha',
+                       help='Image file extension (default: .mha)')
+    parser.add_argument('--output_ext', '--output-ext',
+                       type=str,
+                       default='.mha',
+                       help='Output file extension (default: .mha)')
+    
+    args = parser.parse_args()
+    
     # Let's create GT segmentations from surfaces
-    img_ext = '.mha'
-    output_ext = '.mha'  # Output format: '.vti', '.mha', '.nii.gz', etc.
-    dir_surfaces = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/surfaces/'
-    dir_imgs = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/images/'
-    # Which folder to write segs to
-    out_dir = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/truths/'
+    img_ext = args.img_ext
+    output_ext = args.output_ext
+    
+    # Priority: command-line arg > environment variable > default
+    base_dir = os.getenv('DATA_DIR', os.getenv('ASOCA_DATA_DIR', './data/'))
+    dir_surfaces = (args.surfaces_dir or 
+                   os.getenv('SURFACES_DIR') or 
+                   os.path.join(base_dir, 'surfaces/'))
+    dir_imgs = (args.images_dir or 
+               os.getenv('IMAGES_DIR') or 
+               os.path.join(base_dir, 'images/'))
+    out_dir = (args.output_dir or 
+              os.getenv('OUTPUT_DIR') or 
+              os.path.join(base_dir, 'truths/'))
+    
+    # Validate directories exist
+    if not os.path.exists(dir_surfaces):
+        raise ValueError(f"Surfaces directory not found: {dir_surfaces}. "
+                        f"Provide --surfaces_dir argument or set SURFACES_DIR environment variable.")
+    if not os.path.exists(dir_imgs):
+        raise ValueError(f"Images directory not found: {dir_imgs}. "
+                        f"Provide --images_dir argument or set IMAGES_DIR environment variable.")
 
+    # Initialize logger
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    
     # create output directory if it does not exist
     if not os.path.exists(out_dir):
-        os.mkdir(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
 
     # all imgs we have, create segs for them
     imgs = os.listdir(dir_imgs)
     imgs = [img for img in imgs if img.endswith(img_ext)]
-    # import pdb; pdb.set_trace()
+    
     for img in imgs:
         # Check for both .vtp and .stl surface files
         surf_path_vtp = dir_surfaces + img.replace(img_ext, '.vtp')
@@ -112,14 +168,14 @@ if __name__ == '__main__':
         elif os.path.exists(surf_path_stl):
             surf_path = surf_path_stl
         else:
-            print(f"Skipping case {img}: No surface file (.vtp or .stl) found")
+            logger.warning(f"Skipping case {img}: No surface file (.vtp or .stl) found")
             continue
         
         output_path = out_dir + img.replace(img_ext, output_ext)
 
         # Check if output file already exists
         if os.path.exists(output_path):
-            print(f"Skipping case {img}: Output file {output_path} already exists")
+            logger.info(f"Skipping case {img}: Output file {output_path} already exists")
             continue
         
         # Read surface based on file type
@@ -159,4 +215,4 @@ if __name__ == '__main__':
             sitk.WriteImage(seg_sitk, output_path)
         
         # vf.change_vti_vtk(output_path)
-        print("Done case: ", img)
+        logger.info(f"Done case: {img}")

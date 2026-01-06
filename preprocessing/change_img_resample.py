@@ -74,8 +74,11 @@ def resample_images_batch(data_folder, out_folder, input_format='.mha',
     if testing_samples:
         imgs = [img for img in imgs if any(ts in img for ts in testing_samples)]
     
-    print(f'Found {len(imgs)} images to resample')
-    print(f'Images to resample: {imgs}')
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    
+    logger.info(f'Found {len(imgs)} images to resample')
+    logger.debug(f'Images to resample: {imgs}')
     
     processed = []
     
@@ -85,30 +88,30 @@ def resample_images_batch(data_folder, out_folder, input_format='.mha',
         
         # Skip if output already exists
         if skip_existing and os.path.exists(img_out_path):
-            print(f'Image {img} already processed, skipping...')
+            logger.info(f'Image {img} already processed, skipping...')
             continue
         
         # Read the image
         img_sitk = sitk.ReadImage(img_path)
         
-        print(f'Image {img} read')
-        print(f"Image {img} shape: {img_sitk.GetSize()}")
-        print(f"Image {img} spacing: {img_sitk.GetSpacing()}")
+        logger.debug(f'Image {img} read')
+        logger.debug(f"Image {img} shape: {img_sitk.GetSize()}")
+        logger.debug(f"Image {img} spacing: {img_sitk.GetSpacing()}")
         
         # Resample the image
         if target_size is not None:
-            print(f"Image {img} target size: {target_size}")
+            logger.debug(f"Image {img} target size: {target_size}")
             img_sitk = resample_image(img_sitk, target_size=target_size, order=order)
         else:
-            print(f"Image {img} target spacing: {target_spacing}")
+            logger.debug(f"Image {img} target spacing: {target_spacing}")
             img_sitk = resample_image(img_sitk, target_spacing=target_spacing, order=order)
         
-        print(f"Image {img} resampled shape: {img_sitk.GetSize()}")
-        print(f"Image {img} resampled spacing: {img_sitk.GetSpacing()}")
+        logger.debug(f"Image {img} resampled shape: {img_sitk.GetSize()}")
+        logger.debug(f"Image {img} resampled spacing: {img_sitk.GetSpacing()}")
         
         # Write the image
         sitk.WriteImage(img_sitk, img_out_path)
-        print(f'Image {img} resampled and saved to {img_out_path}')
+        logger.info(f'Image {img} resampled and saved to {img_out_path}')
         
         processed.append(img)
     
@@ -116,40 +119,95 @@ def resample_images_batch(data_folder, out_folder, input_format='.mha',
 
 
 if __name__=='__main__':
-
-    testing_samples = [
-        ]
-
-    # Resampling configuration - choose either 'size' or 'spacing'
-    resample_mode = 'spacing'  # 'size' or 'spacing'
+    import argparse
+    import ast
     
-    # If resample_mode is 'size', specify target size
-    target_size = [512, 512, 512]  # [512, 512, 512] or [256, 256, 256]
+    parser = argparse.ArgumentParser(
+        description='Resample images to target size or spacing',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Resample to target spacing:
+  python change_img_resample.py --input_dir /path/to/images --output_dir /path/to/output --target_spacing 0.03 0.03 0.03
+  
+  # Resample to target size:
+  python change_img_resample.py --input_dir /path/to/images --target_size 512 512 512
+  
+  # Using environment variables:
+  export INPUT_DIR=/path/to/images
+  python change_img_resample.py --target_spacing 1.0 1.0 1.0
+        """
+    )
+    parser.add_argument('--input_dir', '--input-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing input images. '
+                            'Defaults to INPUT_DIR env var or ./data/images/')
+    parser.add_argument('--output_dir', '--output-dir',
+                       type=str,
+                       default=None,
+                       help='Directory to write resampled images. '
+                            'Defaults to OUTPUT_DIR env var or inferred from input_dir')
+    parser.add_argument('--input_format', '--input-format',
+                       type=str,
+                       default='.mha',
+                       help='Input file extension (default: .mha)')
+    parser.add_argument('--target_size', '--target-size',
+                       type=int,
+                       nargs=3,
+                       metavar=('X', 'Y', 'Z'),
+                       default=None,
+                       help='Target image size [x, y, z]. Mutually exclusive with --target_spacing')
+    parser.add_argument('--target_spacing', '--target-spacing',
+                       type=float,
+                       nargs=3,
+                       metavar=('X', 'Y', 'Z'),
+                       default=None,
+                       help='Target voxel spacing [x, y, z] in mm. Mutually exclusive with --target_size')
+    parser.add_argument('--order',
+                       type=int,
+                       default=1,
+                       choices=[0, 1, 2],
+                       help='Interpolation order: 0=nearest, 1=linear, 2=bspline (default: 1)')
+    parser.add_argument('--testing_samples', '--testing-samples',
+                       type=str,
+                       nargs='+',
+                       default=None,
+                       help='Optional list of sample names to filter (process only these)')
+    parser.add_argument('--no_skip_existing', '--no-skip-existing',
+                       dest='skip_existing',
+                       action='store_false',
+                       help='Re-process files even if output already exists')
     
-    # If resample_mode is 'spacing', specify target spacing in mm
-    target_spacing = [
-                    0.03,
-                    0.03,
-                    0.03]  # [1.0, 1.0, 1.0] for 1mm isotropic spacing
+    args = parser.parse_args()
     
-    input_format = '.mha'  # '.mha' or '.vti'
-    order = 1  # interpolation order: 0=nearest, 1=linear, 2=bspline
-
-    data_folder = '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/cm/images/'
-    out_folder = data_folder.replace('images', 'images_03')
+    # Validate arguments
+    if args.target_size and args.target_spacing:
+        parser.error("--target_size and --target_spacing are mutually exclusive")
+    if not args.target_size and not args.target_spacing:
+        parser.error("Either --target_size or --target_spacing must be provided")
     
-    # Determine target based on mode
-    target_size_arg = target_size if resample_mode == 'size' else None
-    target_spacing_arg = target_spacing if resample_mode == 'spacing' else None
+    # Priority: command-line arg > environment variable > default
+    data_folder = (args.input_dir or 
+                  os.getenv('INPUT_DIR') or 
+                  './data/images/')
+    out_folder = (args.output_dir or 
+                 os.getenv('OUTPUT_DIR') or 
+                 data_folder.replace('images', 'images_resampled'))
+    
+    # Validate directories
+    if not os.path.exists(data_folder):
+        raise ValueError(f"Input directory not found: {data_folder}. "
+                        f"Provide --input_dir argument or set INPUT_DIR environment variable.")
     
     # Process batch
     resample_images_batch(
         data_folder=data_folder,
         out_folder=out_folder,
-        input_format=input_format,
-        target_size=target_size_arg,
-        target_spacing=target_spacing_arg,
-        order=order,
-        testing_samples=testing_samples if testing_samples else None,
-        skip_existing=True
+        input_format=args.input_format,
+        target_size=args.target_size,
+        target_spacing=args.target_spacing,
+        order=args.order,
+        testing_samples=args.testing_samples,
+        skip_existing=args.skip_existing
     )

@@ -71,46 +71,119 @@ def rotate_mesh(mesh, vtkLabel, center=None):
 
 
 if __name__ == '__main__':
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Create surface meshes from segmentation images',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python create_surf_from_seg.py --segmentations_dir /path/to/segmentations --output_dir /path/to/output
+  
+  # Using environment variables as fallback:
+  export SEGMENTATIONS_DIR=/path/to/segmentations
+  python create_surf_from_seg.py
+        """
+    )
+    parser.add_argument('--segmentations_dir', '--segmentations-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing segmentation image files. '
+                            'Defaults to SEGMENTATIONS_DIR env var or DATA_DIR/truths/')
+    parser.add_argument('--output_dir', '--output-dir',
+                       type=str,
+                       default=None,
+                       help='Directory to write output surface files. '
+                            'Defaults to segmentations_dir with "truths" replaced by "surfaces_mc"')
+    parser.add_argument('--spacing_file', '--spacing-file',
+                       type=str,
+                       default=None,
+                       help='CSV file containing spacing values. '
+                            'Defaults to SPACING_FILE env var')
+    parser.add_argument('--filter_string', '--filter-string',
+                       type=str,
+                       default='',
+                       help='Only process images containing this string (default: process all)')
+    parser.add_argument('--smooth',
+                       action='store_true',
+                       default=False,
+                       help='Apply smoothing to surfaces')
+    parser.add_argument('--keep_largest', '--keep-largest',
+                       action='store_true',
+                       default=False,
+                       help='Keep only the largest connected component')
+    parser.add_argument('--img_ext', '--img-ext',
+                       type=str,
+                       default='.mha',
+                       help='Input image file extension (default: .mha)')
+    parser.add_argument('--output_ext', '--output-ext',
+                       type=str,
+                       default='.vtp',
+                       help='Output surface file extension (default: .vtp)')
+    
+    args = parser.parse_args()
+    
+    if_smooth = args.smooth
+    if_keep_largest = args.keep_largest
 
-    if_smooth = False
-    if_keep_largest = False
-
-    if_spacing_file = False
-    spacing_file = '/Users/nsveinsson/Documents/datasets/CAS_cerebral_dataset/CAS2023_trainingdataset/meta.csv'
+    if_spacing_file = args.spacing_file is not None
+    spacing_file = (args.spacing_file or 
+                   os.getenv('SPACING_FILE', ''))
+    if if_spacing_file and not spacing_file:
+        raise ValueError("--spacing_file argument or SPACING_FILE environment variable must be set when using spacing file")
     
     # Filter option: only process images containing this string
-    # Set to None or empty string to process all images
-    filter_string = ''  # None e.g., 'aorta', '001', 'case_'
+    filter_string = (args.filter_string or 
+                    os.getenv('FILTER_STRING', ''))
 
-    # Let's create surfaces from segmentations
-    dir_segmentations = '/Users/nsveinsson/Documents/datasets/vmr/truths/'
+    # Priority: command-line arg > environment variable > default
+    base_dir = os.getenv('DATA_DIR', os.getenv('VMR_DATA_DIR', './data/'))
+    dir_segmentations = (args.segmentations_dir or 
+                        os.getenv('SEGMENTATIONS_DIR') or 
+                        os.path.join(base_dir, 'truths/'))
+    
+    if not os.path.exists(dir_segmentations):
+        raise ValueError(f"Segmentations directory not found: {dir_segmentations}. "
+                        f"Provide --segmentations_dir argument or set SEGMENTATIONS_DIR environment variable.")
 
-    img_ext = '.mha'
-    img_ext_out = '.mha'
+    img_ext = args.img_ext
+    img_ext_out = args.output_ext
     # Which folder to write surfaces to
-    out_dir = dir_segmentations.replace('truths', 'surfaces_mc/')
+    out_dir = (args.output_dir or 
+              dir_segmentations.replace('truths', 'surfaces_mc/'))
+    
+    # Initialize logger
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    
+    # Create output directory if it doesn't exist
     try:
-        os.mkdir(out_dir)
+        os.makedirs(out_dir, exist_ok=True)
     except Exception as e:
-        print(e)
+        logger.error(f"Failed to create output directory {out_dir}: {e}")
+        raise
 
     # all segmentations we have, create surfaces for each
     imgs = os.listdir(dir_segmentations)
     imgs = [img for img in imgs if img.endswith(img_ext)]
     
+    # Initialize logger
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    
     # Filter images by string if specified
     if filter_string:
         original_count = len(imgs)
         imgs = [img for img in imgs if filter_string in img]
-        print(f"Filtered from {original_count} to {len(imgs)} images containing '{filter_string}'")
+        logger.info(f"Filtered from {original_count} to {len(imgs)} images containing '{filter_string}'")
     else:
-        print(f"Processing all {len(imgs)} images")
+        logger.info(f"Processing all {len(imgs)} images")
     
     imgs.sort()
     
     if len(imgs) == 0:
-        print("No images to process!")
-        exit()
+        logger.error("No images to process!")
+        exit(1)
 
     if if_spacing_file:
         import pandas as pd
@@ -121,7 +194,7 @@ if __name__ == '__main__':
         spacing_values = [tuple(map(float, x[1:-1].split(','))) for x in spacing_values]
 
     for img in imgs:
-        print("Starting case: ", img)
+        logger.info(f"Starting case: {img}")
         # Load segmentation
         seg = sitk.ReadImage(dir_segmentations+img)
         origin = seg.GetOrigin()
@@ -131,8 +204,8 @@ if __name__ == '__main__':
             seg.SetSpacing(spacing_values[imgs.index(img)])
             sitk.WriteImage(seg, out_dir+img.replace(img_ext, img_ext_out))
 
-        print(f"Image size: {seg.GetSize()}")
-        print(f"Image spacing: {seg.GetSpacing()}")
+        logger.debug(f"Image size: {seg.GetSize()}")
+        logger.debug(f"Image spacing: {seg.GetSpacing()}")
         # Create surfaces
         # poly = sf.convert_seg_to_surfs(seg, new_spacing=[.5,.5,.5], target_node_num=1e5, bound=False)
         poly = vf.vtk_marching_cube_multi(vf.exportSitk2VTK(seg)[0], 0, rotate=False, center=origin)
@@ -146,5 +219,5 @@ if __name__ == '__main__':
             poly = vf.smooth_polydata(poly, iteration=50)
         # Write surfaces
         vf.write_geo(out_dir+img.replace(img_ext, '.vtp'), poly)
-        print("Finished case: ", img)
-    print("All done.")
+        logger.info(f"Finished case: {img}")
+    logger.info("All done.")

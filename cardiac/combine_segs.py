@@ -129,16 +129,17 @@ def combing_segs_aorta_area(segmentation, vascular, label=6, vascular_label=1,
     dims = segmentation.GetDimensions()
     # Flip the dimensions
     dims = (dims[2], dims[1], dims[0])
-    print(f"Dimensions of the segmentations: {dims}")
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    logger.debug(f"Dimensions of the segmentations: {dims}")
 
     seg_new = seg_new.reshape(dims)
     vas = vas.reshape(dims)
-    print(f"""Number of pixels in vas as vascular label before:
-          {np.sum(vas==vascular_label)}""")
+    logger.debug(f"Number of pixels in vas as vascular label before: {np.sum(vas==vascular_label)}")
 
     # Get the bounding box of the aorta valve
     bounds = get_bounding_box(seg_new, valve_label)
-    print(f"Bounding box of the aorta valve: {bounds}")
+    logger.debug(f"Bounding box of the aorta valve: {bounds}")
 
     # Add the N pixels to the bounds, N/2 to z
     N = 30
@@ -148,12 +149,11 @@ def combing_segs_aorta_area(segmentation, vascular, label=6, vascular_label=1,
     bounds[3] = min(dims[1]-1, bounds[3]+N)
     bounds[4] = max(0, bounds[4]-N)
     bounds[5] = min(dims[2]-1, bounds[5]+N)
-    print(f"Bounding box of the aorta valve with N pixels added: {bounds}")
+    logger.debug(f"Bounding box of the aorta valve with N pixels added: {bounds}")
 
     # remove the vascular label pixels that are inside the bounding box
     vas[bounds[0]:bounds[1], bounds[2]:bounds[3], bounds[4]:bounds[5]] = 2
-    print(f"""Number of pixels in vas as vascular label after:
-          {np.sum(vas==vascular_label)}""")
+    logger.debug(f"Number of pixels in vas as vascular label after: {np.sum(vas==vascular_label)}")
 
     # remove the vascular label pixels that are in keep_labels
     for label0 in keep_labels:
@@ -440,20 +440,77 @@ def add_cap_id(polydata):
 
 
 if __name__ == "__main__":
-
-    write_all = True
-    no_valve = True
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Combine cardiac and vascular segmentations',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python combine_segs.py --meshes_dir /path/to/meshes --images_dir /path/to/images --vascular_dir /path/to/vascular
+  
+  # Using environment variables as fallback:
+  export CARDIAC_MESHES_DIR=/path/to/meshes
+  python combine_segs.py
+        """
+    )
+    parser.add_argument('--meshes_dir', '--meshes-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing cardiac mesh polydata files (.vtp). '
+                            'Defaults to CARDIAC_MESHES_DIR env var or ./data/meshes/')
+    parser.add_argument('--images_dir', '--images-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing image files (.vti). '
+                            'Defaults to CARDIAC_IMAGES_DIR env var or inferred from meshes_dir')
+    parser.add_argument('--vascular_dir', '--vascular-dir',
+                       type=str,
+                       default=None,
+                       help='Directory containing vascular segmentation files (.vti). '
+                            'Defaults to VASCULAR_SEGS_DIR env var or inferred from meshes_dir')
+    parser.add_argument('--write_all', '--write-all',
+                       action='store_true',
+                       default=True,
+                       help='Write all output files (default: True)')
+    parser.add_argument('--no_write_all', '--no-write-all',
+                       dest='write_all',
+                       action='store_false',
+                       help='Skip writing intermediate files')
+    parser.add_argument('--no_valve', '--no-valve',
+                       action='store_true',
+                       default=True,
+                       help='Process without valve (default: True)')
+    parser.add_argument('--with_valve', '--with-valve',
+                       dest='no_valve',
+                       action='store_false',
+                       help='Process with valve')
+    
+    args = parser.parse_args()
+    
+    write_all = args.write_all
+    no_valve = args.no_valve
 
     # Directory of cardiac meshes polydata
-    directory = '/Users/numisveins/Documents/Heartflow/output_cardiac-meshes/'
-    directory = '/Users/numisveins/Documents/data_combo_paper/ct_data/meshes/'
+    # Priority: command-line arg > environment variable > default
+    directory = (args.meshes_dir or 
+                 os.getenv('CARDIAC_MESHES_DIR') or 
+                 os.getenv('DATA_DIR', './data/meshes/'))
+    if not os.path.exists(directory):
+        raise ValueError(f"Meshes directory not found: {directory}. "
+                        f"Provide --meshes_dir argument or set CARDIAC_MESHES_DIR environment variable.")
     meshes = os.listdir(directory)
     meshes = [f for f in meshes if f.endswith('.vtp')]
     # sort meshes
     meshes = sorted(meshes)
 
     # Directory of images
-    img_dir = '/Users/numisveins/Documents/data_combo_paper/ct_data/images_vti/'
+    img_dir = (args.images_dir or 
+               os.getenv('CARDIAC_IMAGES_DIR') or
+               os.path.join(os.path.dirname(directory), 'images_vti/'))
+    if not os.path.exists(img_dir):
+        raise ValueError(f"Images directory not found: {img_dir}. "
+                        f"Provide --images_dir argument or set CARDIAC_IMAGES_DIR environment variable.")
     img_ext = '.vti'
     imgs = os.listdir(img_dir)
     imgs = [f for f in imgs if f.endswith(img_ext)]
@@ -463,9 +520,12 @@ if __name__ == "__main__":
     imgs = sorted(imgs)
 
     # Directory of vascular segmentations
-    vascular_dir = """/Users/numisveins/Documents/Heartflow/
-                   output_cardiac_2000_steps/new_format/"""
-    vascular_dir = '/Users/numisveins/Documents/data_combo_paper/ct_data/vascular_segs/vascular_segs_vti/'
+    vascular_dir = (args.vascular_dir or 
+                   os.getenv('VASCULAR_SEGS_DIR') or
+                   os.path.join(os.path.dirname(directory), 'vascular_segs/vascular_segs_vti/'))
+    if not os.path.exists(vascular_dir):
+        raise ValueError(f"Vascular segmentations directory not found: {vascular_dir}. "
+                        f"Provide --vascular_dir argument or set VASCULAR_SEGS_DIR environment variable.")
     vascular_ext = '.vti'
     vascular_imgs = os.listdir(vascular_dir)
     vascular_imgs = [f for f in vascular_imgs if f.endswith(vascular_ext)]
@@ -481,9 +541,12 @@ if __name__ == "__main__":
     # segmentations and meshes
     # imgs = [f for f in imgs if f in vascular_imgs]
     meshes = [f for f in meshes if f.replace('.vtp', img_ext) in imgs]
-    print(f"Number of meshes: {len(meshes)}")
-    print(f"Number of images: {len(imgs)}")
-    print(f"Number of vascular segmentations: {len(vascular_imgs)}")
+    # Use logging instead of print
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    logger.info(f"Number of meshes: {len(meshes)}")
+    logger.info(f"Number of images: {len(imgs)}")
+    logger.info(f"Number of vascular segmentations: {len(vascular_imgs)}")
 
     vascular_imgs = [vascular_dir+f for f in vascular_imgs]
     imgs = [img_dir+f for f in imgs]
@@ -497,11 +560,11 @@ if __name__ == "__main__":
     for i in range(len(imgs)):
         # Read image
         img = vf.read_img(imgs[i]).GetOutput()
-        print(f"Processing image {imgs[i]}")
+        logger.info(f"Processing image {imgs[i]}")
 
         # Read polydata
         poly_mesh = vf.read_geo(meshes[i]).GetOutput()
-        print(f"Processing mesh {meshes[i]}")
+        logger.info(f"Processing mesh {meshes[i]}")
 
         # Save only region 6
         poly_mesh_6 = vf.thresholdPolyData(poly_mesh, 'RegionId', (6, 6), 'point')
@@ -528,7 +591,7 @@ if __name__ == "__main__":
 
         # Read vascular segmentation
         vascular = vf.read_img(vascular_imgs[i]).GetOutput()
-        print(f"Processing vascular segmentation {vascular_imgs[i]}")
+        logger.info(f"Processing vascular segmentation {vascular_imgs[i]}")
 
         # Now we need to combine the segmentations
         # We will combine the vascular label 1 with the segmentation label 6

@@ -688,11 +688,12 @@ def clean_boundaries(resampled_image_array):
     Function to see which pixels are inside mesh.
     If they are: set as 1, otherwise 0.
     Input: a binary seg array that has been resampled.
+    
+    TODO: This function is incomplete and needs implementation.
     """
-    import pdb; pdb.set_trace()
+    # TODO: Implement boundary cleaning logic
     # for pixel in resampled_image:
-
-    return new_image
+    raise NotImplementedError("clean_boundaries is not yet implemented")
 
 
 def bound_polydata_by_image(image, poly, threshold):
@@ -1289,7 +1290,6 @@ def vectors2polydata(vectors):
         vectors_vtk.InsertNextTuple(vector)
 
     # Make sure we have same number of vectors as points
-    import pdb; pdb.set_trace() 
     assert vectors_vtk.GetNumberOfTuples() == polydata.GetNumberOfPoints(), "Number of vectors should be the same as the number of points"
 
     # Set the vectors to the polydata

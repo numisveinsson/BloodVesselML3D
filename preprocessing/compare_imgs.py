@@ -1,3 +1,4 @@
+import os
 import SimpleITK as sitk
 import vtk
 
@@ -119,48 +120,98 @@ def check_coordinate_system(image):
 
 # Main function
 if __name__ == "__main__":
-    # Provide the paths to your images
-    image_path1 = '/Users/numisveins/Documents/vascular_data_3d/mmwhs_mr_train_manual_gt/sv_projects/1001/Images/1001.vti'
-    image_path2 = '/Users/numisveins/Documents/vascular_data_3d/mmwhs_mr_train_manual_gt/images/1001.nii.gz'
-    image_path3 = '/Users/numisveins/Documents/vascular_data_3d/mmwhs_mr_train_manual_gt/images/new_format/new_format/1001.mha'
-
-    # Provide the path to your .vti image
-    vti_file_path = image_path1
-
-    # Load the image data
-    image_data = load_vti_image(vti_file_path)
-
-    # Transform the image
-    image_data = transform_image(image_data)
-
-    # Write the transformed image to a new .vti file
-    writer = vtk.vtkXMLImageDataWriter()
-    writer.SetFileName('/Users/numisveins/Downloads/transformed_image.vti')
-    writer.SetInputData(image_data)
-    writer.Write()
-
-    # Get and print image properties
-    image_info = get_image_info_vtk(image_data)
-
-    for key, value in image_info.items():
-        print(f"{key}: {value}")
-
-    # Load the images
-    # image1 = load_image(image_path1)
-    image2 = load_image(image_path2)
-    image3 = load_image(image_path3)
-
-    # Compare images
-    compare_images(image2, image3)
-
-    # # Check if they are in the RAS coordinate system
-    # for i, img in enumerate([image2, image3], 1):
-    #     print(f"Image {i}: {check_coordinate_system(img)}")
-
-    # Check bounds
-    print("Origin of image 1:", image_info["Origin"])
-    print("Bounds of image 1:", image_info["Bounds"])
-    print("Origin of image 2:", get_image_info(image2)["Origin"])
-    print("Bounds of image 2:", get_image_info(image2)["Bounds"])
-    print("Origin of image 3:", get_image_info(image3)["Origin"])
-    print("Bounds of image 3:", get_image_info(image3)["Bounds"])
+    import argparse
+    
+    parser = argparse.ArgumentParser(
+        description='Compare image properties and optionally transform images',
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  # Compare two images:
+  python compare_imgs.py --image1 /path/to/image1.mha --image2 /path/to/image2.mha
+  
+  # Transform and save VTI image:
+  python compare_imgs.py --vti_file /path/to/image.vti --output_file /path/to/output.vti --transform
+  
+  # Compare multiple images:
+  python compare_imgs.py --image1 /path/to/img1.mha --image2 /path/to/img2.mha --image3 /path/to/img3.mha
+        """
+    )
+    parser.add_argument('--image1',
+                       type=str,
+                       default=None,
+                       help='Path to first image file (for comparison)')
+    parser.add_argument('--image2',
+                       type=str,
+                       default=None,
+                       help='Path to second image file (for comparison)')
+    parser.add_argument('--image3',
+                       type=str,
+                       default=None,
+                       help='Path to third image file (optional, for comparison)')
+    parser.add_argument('--vti_file', '--vti-file',
+                       type=str,
+                       default=None,
+                       help='Path to VTI file to transform')
+    parser.add_argument('--output_file', '--output-file',
+                       type=str,
+                       default=None,
+                       help='Output path for transformed VTI file')
+    parser.add_argument('--transform',
+                       action='store_true',
+                       default=False,
+                       help='Apply 90-degree rotation transform to VTI image')
+    
+    args = parser.parse_args()
+    
+    from modules.logger import get_logger
+    logger = get_logger(__name__)
+    
+    # Transform VTI if requested
+    if args.vti_file:
+        if not args.output_file:
+            parser.error("--output_file is required when using --vti_file")
+        
+        if not os.path.exists(args.vti_file):
+            raise ValueError(f"VTI file not found: {args.vti_file}")
+        
+        image_data = load_vti_image(args.vti_file)
+        
+        if args.transform:
+            image_data = transform_image(image_data)
+            logger.info("Applied rotation transform to image")
+        
+        writer = vtk.vtkXMLImageDataWriter()
+        writer.SetFileName(args.output_file)
+        writer.SetInputData(image_data)
+        writer.Write()
+        logger.info(f"Saved transformed image to {args.output_file}")
+        
+        # Get and print image properties
+        image_info = get_image_info_vtk(image_data)
+        for key, value in image_info.items():
+            logger.info(f"{key}: {value}")
+    
+    # Compare images if provided
+    images_to_compare = []
+    if args.image1:
+        images_to_compare.append(load_image(args.image1))
+        logger.info(f"Loaded image 1: {args.image1}")
+    if args.image2:
+        images_to_compare.append(load_image(args.image2))
+        logger.info(f"Loaded image 2: {args.image2}")
+    if args.image3:
+        images_to_compare.append(load_image(args.image3))
+        logger.info(f"Loaded image 3: {args.image3}")
+    
+    if len(images_to_compare) >= 2:
+        logger.info("Comparing images...")
+        compare_images(images_to_compare[0], images_to_compare[1])
+        
+        # Check bounds
+        for i, img in enumerate(images_to_compare, 1):
+            info = get_image_info(img)
+            logger.info(f"Image {i} - Origin: {info['Origin']}, Bounds: {info['Bounds']}")
+    
+    if not args.vti_file and len(images_to_compare) < 2:
+        parser.error("Either provide --vti_file with --output_file, or at least --image1 and --image2 for comparison")
