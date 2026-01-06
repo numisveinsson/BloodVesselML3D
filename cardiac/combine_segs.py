@@ -13,32 +13,7 @@ if modules_path not in sys.path:
 import vtk_functions as vf
 
 
-def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None):
-    """
-    Use the VTK marching cube to create isosrufaces
-    for all classes excluding the background
-    Args:
-        labels: vtk image containing the label map
-        bg_id: id number of background class
-        smooth: smoothing iteration
-    Returns:
-        mesh: vtk PolyData of the surface mesh
-    """
-    ids = np.unique(vtk_to_numpy(vtkLabel.GetPointData().GetScalars()))
-    ids = np.delete(ids, np.where(ids == bg_id))
-
-    # smooth the label map
-    # vtkLabel = utils.gaussianSmoothImage(vtkLabel, 2.)
-
-    contour = vtk.vtkDiscreteMarchingCubes()
-    contour.SetInputData(vtkLabel)
-    for index, i in enumerate(ids):
-        # print("Setting iso-contour value: ", i)
-        contour.SetValue(index, i)
-    contour.Update()
-    mesh = contour.GetOutput()
-
-    return mesh
+# vtk_marching_cube_multi moved to vf.vtk_marching_cube_multi
 
 
 def multiclass_convert_polydata_to_imagedata(poly, ref_im):
@@ -46,15 +21,15 @@ def multiclass_convert_polydata_to_imagedata(poly, ref_im):
     out_im_py = np.zeros(vtk_to_numpy(
                 ref_im.GetPointData().GetScalars()).shape)
     c = 0
-    poly_i = thresholdPolyData(poly, 'RegionId', (c, c), 'point')
+    poly_i = vf.thresholdPolyData(poly, 'RegionId', (c, c), 'point')
     while poly_i.GetNumberOfPoints() > 0:
-        poly_im = convertPolyDataToImageData(poly_i, ref_im)
+        poly_im = vf.convertPolyDataToImageData(poly_i, ref_im)
         poly_im_py = vtk_to_numpy(poly_im.GetPointData().GetScalars())
         mask = ((poly_im_py == 1) & (out_im_py == 0)
                 if c == 6 else poly_im_py == 1)
         out_im_py[mask] = c + 1
         c += 1
-        poly_i = thresholdPolyData(poly, 'RegionId', (c, c), 'point')
+        poly_i = vf.thresholdPolyData(poly, 'RegionId', (c, c), 'point')
     im = vtk.vtkImageData()
     im.DeepCopy(ref_im)
     im.GetPointData().SetScalars(numpy_to_vtk(out_im_py))
@@ -72,86 +47,13 @@ def get_all_connected_polydata(poly):
     return poly
 
 
-def thresholdPolyData(poly, attr, threshold, mode):
-    """
-    Get the polydata after thresholding based on the input attribute
-    Args:
-        poly: vtk PolyData to apply threshold
-        atrr: attribute of the cell array
-        threshold: (min, max)
-    Returns:
-        output: resulted vtk PolyData
-    """
-    surface_thresh = vtk.vtkThreshold()
-    surface_thresh.SetInputData(poly)
-    surface_thresh.ThresholdBetween(*threshold)
-    if mode == 'cell':
-        surface_thresh.SetInputArrayToProcess(0, 0, 0,
-                                              vtk.vtkDataObject
-                                              .FIELD_ASSOCIATION_CELLS, attr)
-    else:
-        surface_thresh.SetInputArrayToProcess(0, 0, 0,
-                                              vtk.vtkDataObject
-                                              .FIELD_ASSOCIATION_POINTS, attr)
-    surface_thresh.Update()
-    surf_filter = vtk.vtkDataSetSurfaceFilter()
-    surf_filter.SetInputData(surface_thresh.GetOutput())
-    surf_filter.Update()
-    return surf_filter.GetOutput()
+# thresholdPolyData moved to vf.thresholdPolyData
 
 
-def smooth_polydata(poly, iteration=25, boundary=False,
-                    feature=False, smoothingFactor=0.):
-    """
-    This function smooths a vtk polydata
-    Args:
-        poly: vtk polydata to smooth
-        boundary: boundary smooth bool
-    Returns:
-        smoothed: smoothed vtk polydata
-    """
-    smoother = vtk.vtkWindowedSincPolyDataFilter()
-    smoother.SetInputData(poly)
-    smoother.SetPassBand(pow(10., -4. * smoothingFactor))
-    smoother.SetBoundarySmoothing(boundary)
-    smoother.SetFeatureEdgeSmoothing(feature)
-    smoother.SetNumberOfIterations(iteration)
-    smoother.NonManifoldSmoothingOn()
-    smoother.NormalizeCoordinatesOn()
-    smoother.Update()
-
-    smoothed = smoother.GetOutput()
-
-    return smoothed
+# smooth_polydata moved to vf.smooth_polydata
 
 
-def convertPolyDataToImageData(poly, ref_im):
-    """
-    Convert the vtk polydata to imagedata
-    Args:
-        poly: vtkPolyData
-        ref_im: reference vtkImage to match the polydata with
-    Returns:
-        output: resulted vtkImageData
-    """
-
-    ref_im.GetPointData().SetScalars(numpy_to_vtk(np.zeros(
-           vtk_to_numpy(ref_im.GetPointData().GetScalars()).shape)))
-    ply2im = vtk.vtkPolyDataToImageStencil()
-    ply2im.SetTolerance(0.05)
-    ply2im.SetInputData(poly)
-    ply2im.SetOutputSpacing(ref_im.GetSpacing())
-    ply2im.SetInformationInput(ref_im)
-    ply2im.Update()
-
-    stencil = vtk.vtkImageStencil()
-    stencil.SetInputData(ref_im)
-    stencil.ReverseStencilOn()
-    stencil.SetStencilData(ply2im.GetOutput())
-    stencil.Update()
-    output = stencil.GetOutput()
-
-    return output
+# convertPolyDataToImageData moved to vf.convertPolyDataToImageData
 
 
 def combine_segs_aorta_keep(segmentation, vascular, label=6,
@@ -324,7 +226,7 @@ def fully_combine_blood_aorta(combined_seg_blood_aorta_vti,
     combined_seg_blood_aorta_vti.GetPointData().SetScalars(numpy_to_vtk(seg))
 
     # create a polydata from the combined segmentation
-    poly = vtk_marching_cube_multi(combined_seg_blood_aorta_vti, 0)
+    poly = vf.vtk_marching_cube_multi(combined_seg_blood_aorta_vti, 0)
 
     # define normals for the polydata
     poly = vtk_normals(poly)
@@ -456,7 +358,7 @@ def update_labels_based_on_polydata2(polydata1, polydata2):
     polydata1.Modified()
 
     # Smooth the polydata
-    polydata1 = smooth_polydata(polydata1, iteration=25, boundary=False,
+    polydata1 = vf.smooth_polydata(polydata1, iteration=25, boundary=False,
                                 feature=False, smoothingFactor=0.5)
 
     # Rename scalar array to 'ModelFaceID'
@@ -531,61 +433,9 @@ def add_cap_id(polydata):
     return polydata
 
 
-def bound_polydata_by_image(image, poly, threshold=10, name=""):
-    """
-    Function to cut polydata to be bounded
-    by image volume
-    """
-    bound = vtk.vtkBox()
-    image.ComputeBounds()
-    b_bound = image.GetBounds()
-
-    b_bound = define_bounding_box(b_bound, threshold, name)
-    # print("Bounding box: ", b_bound)
-    bound.SetBounds(b_bound)
-    clipper = vtk.vtkClipPolyData()
-    clipper.SetClipFunction(bound)
-    clipper.SetInputData(poly)
-    clipper.InsideOutOn()
-    clipper.Update()
-    return clipper.GetOutput()
-
-
-def define_bounding_box(bounds, threshold, name):
-    """
-    Define bounding box for the image
-    """
-    threshold = get_threshold(name)
-    # Define the bounding box
-    # b_bound = [b+threshold if (i % 2) == 0 else b-threshold
-    #            for i, b in enumerate(bounds)]
-    b_bound = [b+threshold[i] if (i % 2) == 0 else b-threshold[i]
-               for i, b in enumerate(bounds)]
-    print(f"Bounding box for {name}: {b_bound}")
-
-    return b_bound
-
-
-def get_threshold(name):
-    """
-    Get the threshold for the bounding box
-
-    Returns:
-        threshold: list, threshold for the bounding box
-                   x0, x1, y0, y1, z0, z1
-    """
-    if '0174_0000' in name:
-        threshold = [80, 30, 10, 10, 10, 5]
-    elif '0176_0000' in name:
-        threshold = [30, 30, 10, 10, 10, 10]
-    elif '0188_0001' in name:
-        threshold = [10, 10, 10, 10, 10, 10]
-    elif 'O150323_2009_aorta' in name:
-        threshold = [10, 10, 10, 10, 10, 5]
-    elif 'O344211000_2006_aorta' in name:
-        threshold = [10, 10, 10, 10, 10, 10]
-
-    return threshold
+# bound_polydata_by_image_extended moved to vf.bound_polydata_by_image_extended
+# define_bounding_box moved to vf.define_bounding_box
+# get_threshold moved to vf.get_threshold
 
 
 
@@ -654,7 +504,7 @@ if __name__ == "__main__":
         print(f"Processing mesh {meshes[i]}")
 
         # Save only region 6
-        poly_mesh_6 = thresholdPolyData(poly_mesh, 'RegionId', (6, 6), 'point')
+        poly_mesh_6 = vf.thresholdPolyData(poly_mesh, 'RegionId', (6, 6), 'point')
 
         # Save polydata
         if write_all:
@@ -669,7 +519,7 @@ if __name__ == "__main__":
                          .replace(img_ext, '_seg.vti'), segmentation)
 
         # Create a polydata from the segmentation
-        poly = vtk_marching_cube_multi(segmentation, 0)
+        poly = vf.vtk_marching_cube_multi(segmentation, 0)
 
         # Save polydata
         if write_all:
@@ -710,7 +560,7 @@ if __name__ == "__main__":
                      new_vasc)
 
         # Create a polydata from the combined segmentation
-        poly = vtk_marching_cube_multi(combined_seg, 0)
+        poly = vf.vtk_marching_cube_multi(combined_seg, 0)
 
         # Save polydata - combined model
         if write_all:
@@ -718,7 +568,7 @@ if __name__ == "__main__":
                          .replace(img_ext, '_combined_model_unsmoothed.vtp'), poly)
 
         # Smooth the polydata
-        poly = smooth_polydata(poly, iteration=25, boundary=False,
+        poly = vf.smooth_polydata(poly, iteration=25, boundary=False,
                                feature=False, smoothingFactor=0.5)
 
         # Save smoothed polydata - combined model
@@ -760,7 +610,8 @@ if __name__ == "__main__":
                      blood_aorta_valve)
 
         # Bound the polydata by the image volume
-        blood_aorta_valve = bound_polydata_by_image(img, blood_aorta_valve,
+        blood_aorta_valve = vf.bound_polydata_by_image_extended(img, blood_aorta_valve,
+                                                    threshold=10,
                                                     name=imgs[i].split('/')[-1]
                                                     )
 
@@ -772,7 +623,8 @@ if __name__ == "__main__":
         if no_valve:
             # Bound the polydata by the image volume
             (fully_combined_blood_aorta_vtp
-             ) = bound_polydata_by_image(img, fully_combined_blood_aorta_vtp,
+             ) = vf.bound_polydata_by_image_extended(img, fully_combined_blood_aorta_vtp,
+                                         threshold=10,
                                          name=imgs[i].split('/')[-1])
 
             # Save bounded polydata
@@ -781,7 +633,7 @@ if __name__ == "__main__":
                          fully_combined_blood_aorta_vtp)
 
             # Smooth the polydata
-            fully_combined_blood_aorta_vtp = smooth_polydata(
+            fully_combined_blood_aorta_vtp = vf.smooth_polydata(
                 fully_combined_blood_aorta_vtp, iteration=25, boundary=False,
                 feature=False, smoothingFactor=0.5)
 

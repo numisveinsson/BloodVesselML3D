@@ -1818,7 +1818,7 @@ def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir,
     sitk.WriteImage(new_seg, out_dir+'vtk_data/vtk_throwout_' + case_name +'/'+str(N-n_old)+ '_'+str(sub)+'.mha')
 
 
-def write_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N,
+def write_subvolume_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N,
               n_old, sub, binarize=True):
     print(f"Max seg value: {sitk.GetArrayFromImage(removed_seg).max()}")
     sitk.WriteImage(new_img, image_out_dir + case_name + '_' + str(N-n_old) + '_' + str(sub)+'.nii.gz')

@@ -401,3 +401,76 @@ def numpy_to_sitk(numpy, file_reader=None):
         Image.SetDirection(file_reader.GetDirection())
 
     return Image
+
+
+def eraseBoundary(labels, pixels, bg_id):
+    """
+    Erase anything on the boundary by a specified number of pixels
+    Args:
+        labels: python nd array
+        pixels: number of pixel width to erase
+        bg_id: id number of background class
+    Returns:
+        labels: edited label maps
+    """
+    x, y, z = labels.shape
+    labels[:pixels, :, :] = bg_id
+    labels[-pixels:, :, :] = bg_id
+    labels[:, :pixels, :] = bg_id
+    labels[:, -pixels:, :] = bg_id
+    labels[:, :, :pixels] = bg_id
+    labels[:, :, -pixels:] = bg_id
+
+    return labels
+
+
+def convert_seg_to_surfs(seg, new_spacing=[1., 1., 1.], target_node_num=2048, bound=False):
+    """
+    Convert segmentation to surfaces using marching cubes
+    Args:
+        seg: SimpleITK Image segmentation
+        new_spacing: target spacing for resampling
+        target_node_num: target number of nodes for decimation
+        bound: whether to bound the polydata by image
+    Returns:
+        poly: vtk PolyData with surfaces
+    """
+    import sys
+    import os
+    from os.path import dirname, join, abspath
+    
+    # Add modules directory to path
+    modules_path = join(dirname(dirname(abspath(__file__))), 'modules')
+    if modules_path not in sys.path:
+        sys.path.insert(0, modules_path)
+    
+    import vtk_functions as vf
+    from vtk.util.numpy_support import numpy_to_vtk
+    
+    py_seg = sitk.GetArrayFromImage(seg).astype(np.int32)
+    py_seg = eraseBoundary(py_seg, 1, 0)
+    labels = np.unique(py_seg)
+    for i, l in enumerate(labels):
+        py_seg[py_seg == l] = i
+    seg2 = sitk.GetImageFromArray(py_seg.astype(np.int32))
+    seg2.CopyInformation(seg)
+
+    seg_vtk, _ = vf.exportSitk2VTK(seg2)
+    seg_vtk = vf.vtkImageResample(seg_vtk, new_spacing, 'NN')
+    poly_l = []
+    for i, _ in enumerate(labels):
+        if i == 0:
+            continue
+        p = vf.vtk_discrete_marching_cube(seg_vtk, 0, i)
+        p = vf.smooth_polydata(p, iteration=50)
+        rate = max(0., 1. - float(target_node_num)/float(p.GetNumberOfPoints()))
+        p = vf.decimation(p, rate)
+        arr = np.ones(p.GetNumberOfPoints())*i
+        arr_vtk = numpy_to_vtk(arr)
+        arr_vtk.SetName('RegionId')
+        p.GetPointData().AddArray(arr_vtk)
+        poly_l.append(p)
+    poly = vf.appendPolyData(poly_l)
+    if bound:
+        poly = vf.bound_polydata_by_image(seg_vtk, poly, 1.5)
+    return poly

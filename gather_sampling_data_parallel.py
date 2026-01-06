@@ -14,7 +14,7 @@ from modules.sampling_functions import (
     create_vtk_dir, get_surf_caps, sort_centerline, choose_destination,
     get_tangent, rotate_volumes, calc_samples, extract_subvolumes,
     extract_surface, get_outlet_stats, write_2d_planes,
-    write_img, write_vtk, write_vtk_throwout, find_next_point,
+    write_subvolume_img, write_vtk, write_vtk_throwout, find_next_point,
     create_base_stats, add_tangent_stats, extract_centerline,
     discretize_centerline, write_surface, write_centerline, write_csv,
     write_csv_discrete_cent, write_csv_outlet_stats, write_pkl_outlet_stats,
@@ -272,13 +272,13 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                             template_size=global_config['RESAMPLE_SIZE'],
                                             order=1)[0]
                                         # BINARIZE: Normalize seg values to [0,1] and enforce binary constraint
-                                        write_img(new_img_re, removed_seg_re,
+                                        write_subvolume_img(new_img_re, removed_seg_re,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],
                                                   N, n_old, sub, global_config['BINARIZE'])
                                     else:
                                         # BINARIZE: Normalize seg values to [0,1] and enforce binary constraint
-                                        write_img(new_img, removed_seg,
+                                        write_subvolume_img(new_img, removed_seg,
                                                   image_out_dir, seg_out_dir,
                                                   case_dict['NAME'],
                                                   N, n_old, sub, global_config['BINARIZE'])

@@ -899,6 +899,309 @@ def vtk_marching_cube(vtkLabel, bg_id, seg_id):
     return mesh
 
 
+def vtk_marching_cube_multi(vtkLabel, bg_id, smooth=None, rotate=False, center=None):
+    """
+    Use the VTK marching cube to create isosurfaces for all classes excluding the background
+    Args:
+        vtkLabel: vtk image containing the label map
+        bg_id: id number of background class
+        smooth: smoothing iteration (unused, kept for compatibility)
+        rotate: whether to rotate mesh (unused, kept for compatibility)
+        center: center for rotation (unused, kept for compatibility)
+    Returns:
+        mesh: vtk PolyData of the surface mesh
+    """
+    ids = np.unique(v2n(vtkLabel.GetPointData().GetScalars()))
+    ids = np.delete(ids, np.where(ids == bg_id))
+
+    contour = vtk.vtkDiscreteMarchingCubes()
+    contour.SetInputData(vtkLabel)
+    for index, i in enumerate(ids):
+        contour.SetValue(index, i)
+    contour.Update()
+    mesh = contour.GetOutput()
+
+    return mesh
+
+
+def vtk_discrete_marching_cube(vtkLabel, bg_id, seg_id, smooth=None):
+    """
+    Use the VTK discrete marching cube to create isosurface for a single class
+    Args:
+        vtkLabel: vtk image containing the label map
+        bg_id: id number of background class
+        seg_id: id number of segmentation class to extract
+        smooth: smoothing iteration (unused, kept for compatibility)
+    Returns:
+        mesh: vtk PolyData of the surface mesh
+    """
+    contour = vtk.vtkDiscreteMarchingCubes()
+    contour.SetInputData(vtkLabel)
+    contour.SetValue(0, seg_id)
+    contour.Update()
+    mesh = contour.GetOutput()
+
+    return mesh
+
+
+def smooth_polydata(poly, iteration=25, boundary=False, feature=False, smoothingFactor=0.):
+    """
+    This function smooths a vtk polydata
+    Args:
+        poly: vtk polydata to smooth
+        iteration: number of smoothing iterations
+        boundary: boundary smooth bool
+        feature: feature edge smoothing bool
+        smoothingFactor: smoothing factor (affects pass band)
+    Returns:
+        smoothed: smoothed vtk polydata
+    """
+    smoother = vtk.vtkWindowedSincPolyDataFilter()
+    smoother.SetInputData(poly)
+    smoother.SetPassBand(pow(10., -4. * smoothingFactor))
+    smoother.SetBoundarySmoothing(boundary)
+    smoother.SetFeatureEdgeSmoothing(feature)
+    smoother.SetNumberOfIterations(iteration)
+    smoother.NonManifoldSmoothingOn()
+    smoother.NormalizeCoordinatesOn()
+    smoother.Update()
+
+    smoothed = smoother.GetOutput()
+
+    return smoothed
+
+
+def decimation(poly, rate):
+    """
+    Simplifies a VTK PolyData
+    Args:
+        poly: vtk PolyData
+        rate: target rate reduction
+    Returns:
+        output: decimated vtk PolyData
+    """
+    decimate = vtk.vtkQuadricDecimation()
+    decimate.SetInputData(poly)
+    decimate.AttributeErrorMetricOn()
+    decimate.ScalarsAttributeOn()
+    decimate.SetTargetReduction(rate)
+    decimate.VolumePreservationOff()
+    decimate.Update()
+    output = decimate.GetOutput()
+    return output
+
+
+def appendPolyData(poly_list):
+    """
+    Combine multiple VTK PolyData objects together
+    Args:
+        poly_list: list of polydata
+    Return:
+        poly: combined PolyData
+    """
+    appendFilter = vtk.vtkAppendPolyData()
+    for poly in poly_list:
+        appendFilter.AddInputData(poly)
+    appendFilter.Update()
+    out = appendFilter.GetOutput()
+    return out
+
+
+def convertPolyDataToImageData(poly, ref_im):
+    """
+    Convert the vtk polydata to imagedata
+    Args:
+        poly: vtkPolyData
+        ref_im: reference vtkImage to match the polydata with
+    Returns:
+        output: resulted vtkImageData
+    """
+    ref_im.GetPointData().SetScalars(n2v(np.zeros(
+           v2n(ref_im.GetPointData().GetScalars()).shape, dtype=np.int32)))
+    ply2im = vtk.vtkPolyDataToImageStencil()
+    ply2im.SetTolerance(0.05)
+    ply2im.SetInputData(poly)
+    ply2im.SetOutputSpacing(ref_im.GetSpacing())
+    ply2im.SetInformationInput(ref_im)
+    ply2im.Update()
+
+    stencil = vtk.vtkImageStencil()
+    stencil.SetInputData(ref_im)
+    stencil.ReverseStencilOn()
+    stencil.SetStencilData(ply2im.GetOutput())
+    stencil.Update()
+    output = stencil.GetOutput()
+
+    # Convert output to integer type
+    output_array = v2n(output.GetPointData().GetScalars()).astype(np.int32)
+    output.GetPointData().SetScalars(n2v(output_array))
+
+    return output
+
+
+def thresholdPolyData(poly, attr, threshold, mode):
+    """
+    Get the polydata after thresholding based on the input attribute
+    Args:
+        poly: vtk PolyData to apply threshold
+        attr: attribute of the cell/point array
+        threshold: (min, max)
+        mode: 'cell' or 'point'
+    Returns:
+        output: resulted vtk PolyData
+    """
+    surface_thresh = vtk.vtkThreshold()
+    surface_thresh.SetInputData(poly)
+    surface_thresh.ThresholdBetween(*threshold)
+    if mode == 'cell':
+        surface_thresh.SetInputArrayToProcess(0, 0, 0,
+                                              vtk.vtkDataObject
+                                              .FIELD_ASSOCIATION_CELLS, attr)
+    else:
+        surface_thresh.SetInputArrayToProcess(0, 0, 0,
+                                              vtk.vtkDataObject
+                                              .FIELD_ASSOCIATION_POINTS, attr)
+    surface_thresh.Update()
+    surf_filter = vtk.vtkDataSetSurfaceFilter()
+    surf_filter.SetInputData(surface_thresh.GetOutput())
+    surf_filter.Update()
+    return surf_filter.GetOutput()
+
+
+def vtkImageResample(image, spacing, opt):
+    """
+    Resamples the vtk image to the given spacing
+    Args:
+        image: vtk Image data
+        spacing: image new spacing
+        opt: interpolation option: linear, NN, cubic
+    Returns:
+        image: resampled vtk image data
+    """
+    reslicer = vtk.vtkImageReslice()
+    reslicer.SetInputData(image)
+    if opt == 'linear':
+        reslicer.SetInterpolationModeToLinear()
+    elif opt == 'NN':
+        reslicer.SetInterpolationModeToNearestNeighbor()
+    elif opt == 'cubic':
+        reslicer.SetInterpolationModeToCubic()
+    else:
+        raise ValueError("interpolation option not recognized")
+
+    reslicer.SetOutputSpacing(*spacing)
+    reslicer.Update()
+
+    return reslicer.GetOutput()
+
+
+def surface_to_image(mesh, image):
+    """
+    Find the corresponding pixel of the mesh vertices,
+    create a new image delineate the surface for testing
+
+    Args:
+        mesh: VTK PolyData
+        image: VTK ImageData or Sitk Image
+    Returns:
+        new_image: VTK ImageData or Sitk Image with surface marked
+    """
+    import SimpleITK as sitk
+    mesh_coords = v2n(mesh.GetPoints().GetData())
+    if type(image) == vtk.vtkImageData:
+        indices = ((mesh_coords - image.GetOrigin())/image.GetSpacing()).astype(int)
+
+        py_im = np.zeros(image.GetDimensions(), dtype=np.int32)
+        for i in indices:
+            py_im[i[0], i[1], i[2]] = 1
+
+        new_image = vtk.vtkImageData()
+        new_image.DeepCopy(image)
+        new_image.GetPointData().SetScalars(n2v(py_im.flatten('F')))
+    elif type(image) == sitk.Image:
+        matrix = build_transform_matrix(image)
+        mesh_coords = np.append(mesh_coords, np.ones((len(mesh_coords),1)),axis=1)
+        matrix = np.linalg.inv(matrix)
+        indices = np.matmul(matrix, mesh_coords.transpose()).transpose().astype(int)
+        py_im = sitk.GetArrayFromImage(image).transpose(2,1,0).astype(np.int32)
+        py_im.fill(0)  # Initialize with zeros
+        for i in indices:
+            py_im[i[0], i[1], i[2]] = 1
+        new_image = sitk.GetImageFromArray(py_im.transpose(2,1,0))
+        new_image.SetOrigin(image.GetOrigin())
+        new_image.SetSpacing(image.GetSpacing())
+        new_image.SetDirection(image.GetDirection())
+    return new_image
+
+
+def bound_polydata_by_image_extended(image, poly, threshold=10, name=""):
+    """
+    Function to cut polydata to be bounded by image volume (extended version with name parameter)
+    Args:
+        image: vtk ImageData
+        poly: vtk PolyData
+        threshold: threshold value or list of thresholds for bounding box
+        name: name of the case (used for case-specific thresholds)
+    Returns:
+        output: clipped vtk PolyData
+    """
+    bound = vtk.vtkBox()
+    image.ComputeBounds()
+    b_bound = image.GetBounds()
+
+    b_bound = define_bounding_box(b_bound, threshold, name)
+    bound.SetBounds(b_bound)
+    clipper = vtk.vtkClipPolyData()
+    clipper.SetClipFunction(bound)
+    clipper.SetInputData(poly)
+    clipper.InsideOutOn()
+    clipper.Update()
+    return clipper.GetOutput()
+
+
+def define_bounding_box(bounds, threshold, name):
+    """
+    Define bounding box for the image
+    Args:
+        bounds: image bounds
+        threshold: threshold value or list
+        name: name of the case
+    Returns:
+        b_bound: adjusted bounding box
+    """
+    threshold = get_threshold(name) if name else threshold
+    if isinstance(threshold, (int, float)):
+        b_bound = [b+threshold if (i % 2) == 0 else b-threshold
+                   for i, b in enumerate(bounds)]
+    else:
+        b_bound = [b+threshold[i] if (i % 2) == 0 else b-threshold[i]
+                   for i, b in enumerate(bounds)]
+    return b_bound
+
+
+def get_threshold(name):
+    """
+    Get the threshold for the bounding box based on case name
+    Args:
+        name: case name
+    Returns:
+        threshold: list, threshold for the bounding box [x0, x1, y0, y1, z0, z1]
+    """
+    if '0174_0000' in name:
+        threshold = [80, 30, 10, 10, 10, 5]
+    elif '0176_0000' in name:
+        threshold = [30, 30, 10, 10, 10, 10]
+    elif '0188_0001' in name:
+        threshold = [10, 10, 10, 10, 10, 10]
+    elif 'O150323_2009_aorta' in name:
+        threshold = [10, 10, 10, 10, 10, 5]
+    elif 'O344211000_2006_aorta' in name:
+        threshold = [10, 10, 10, 10, 10, 10]
+    else:
+        threshold = [10, 10, 10, 10, 10, 10]  # default
+    return threshold
+
+
 def vectors2polydata(vectors):
     """
     Function to convert list of vectors to polydata

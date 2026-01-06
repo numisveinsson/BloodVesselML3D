@@ -11,20 +11,22 @@ from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy
 import sys
 import os
 
-# Add global directory to path
-sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'global'))
-from create_seg_from_surf import (
-    eraseBoundary,
-    build_transform_matrix,
-    exportSitk2VTK,
-    vtkImageResample,
-    vtk_marching_cube,
-    exportPython2VTK,
-    smooth_polydata,
-    decimation,
-    appendPolyData,
-    convertPolyDataToImageData
-)
+# Import from modules
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'modules'))
+import vtk_functions as vf
+import sitk_functions as sf
+
+# Import functions from modules
+eraseBoundary = sf.eraseBoundary
+build_transform_matrix = vf.build_transform_matrix
+exportSitk2VTK = vf.exportSitk2VTK
+vtkImageResample = vf.vtkImageResample
+vtk_marching_cube = vf.vtk_discrete_marching_cube
+exportPython2VTK = vf.exportPython2VTK
+smooth_polydata = vf.smooth_polydata
+decimation = vf.decimation
+appendPolyData = vf.appendPolyData
+convertPolyDataToImageData = vf.convertPolyDataToImageData
 
 
 class TestEraseBoundary(unittest.TestCase):

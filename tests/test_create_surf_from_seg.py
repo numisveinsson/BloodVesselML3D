@@ -11,22 +11,27 @@ from vtk.util.numpy_support import numpy_to_vtk, vtk_to_numpy
 import sys
 import os
 
-# Add global directory to path
+# Import from modules
+sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'modules'))
+import vtk_functions as vf
+import sitk_functions as sf
+
+# Import functions from modules
+vtk_marching_cube_multi = vf.vtk_marching_cube_multi
+eraseBoundary = sf.eraseBoundary
+build_transform_matrix = vf.build_transform_matrix
+exportSitk2VTK = vf.exportSitk2VTK
+vtkImageResample = vf.vtkImageResample
+vtk_marching_cube = vf.vtk_discrete_marching_cube
+exportPython2VTK = vf.exportPython2VTK
+smooth_polydata = vf.smooth_polydata
+decimation = vf.decimation
+appendPolyData = vf.appendPolyData
+convert_seg_to_surfs = sf.convert_seg_to_surfs
+
+# Import rotate_mesh from global (it's specific to that script)
 sys.path.append(os.path.join(os.path.dirname(os.path.dirname(__file__)), 'global'))
-from create_surf_from_seg import (
-    vtk_marching_cube_multi,
-    rotate_mesh,
-    eraseBoundary,
-    build_transform_matrix,
-    exportSitk2VTK,
-    vtkImageResample,
-    vtk_marching_cube,
-    exportPython2VTK,
-    smooth_polydata,
-    decimation,
-    appendPolyData,
-    convert_seg_to_surfs
-)
+from create_surf_from_seg import rotate_mesh
 
 
 class TestEraseBoundary(unittest.TestCase):
