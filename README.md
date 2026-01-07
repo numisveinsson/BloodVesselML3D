@@ -60,19 +60,21 @@ vascular-segment-sampler/
 ## Configuration
 
 The main configuration file is `config/global.yaml`. This file contains settings for:
-- `DATA_DIR`: Directory where input data is stored
-- `OUT_DIR`: Directory where output will be written
 - `DATASET_NAME`: Name of the dataset
-- `MODALITY`: Imaging modality ('CT', 'MR', or both)
 - `IMG_EXT`: Image file extension
 - Various processing flags (see below)
 
+**Note:** The following parameters are now provided as command-line arguments instead of config file entries:
+- `DATA_DIR`: Use `--data_dir` argument (required)
+- `TESTING`: Use `--testing` flag (optional, defaults to config value or False)
+- `MODALITY`: Use `--modality` argument (optional, defaults to config value)
+- `VALIDATION_PROP`: Use `--validation_prop` argument (optional, defaults to config value)
+- `MAX_SAMPLES`: Use `--max_samples` argument (optional, defaults to config value)
+
 ### Key Configuration Parameters
 
-- `DATA_DIR`: Input data directory path
-- `TESTING`: Boolean flag for testing mode
-- `MODALITY`: Imaging modality ('CT', 'MR', or ['CT','MR'])
-- `IMG_EXT`: File extension for images (e.g., '.mha', '.vti')
+- `DATASET_NAME`: Name of the dataset ('vmr' or 'other')
+- `IMG_EXT`: File extension for images (e.g., '.mha', '.vti', '.nrrd')
 - `ANATOMY`: Type of anatomy ('ALL' or specific list)
 - `EXTRACT_VOLUMES`: Extract volumes from images
 - `ROTATE_VOLUMES`: Rotate volumes during processing
@@ -98,33 +100,50 @@ Main script for parallel processing of data sampling from multiple cases. Uses m
 ```bash
 python3 main.py \
     --config_name global \
+    --data_dir /path/to/data \
     --outdir ./extracted_data/ \
     --num_cores 4 \
     --perc_dataset 1.0
 ```
 
-**Arguments:**
-- `--config_name` / `-config_name`: Name of configuration file (required, without .yaml extension)
+**Required Arguments:**
+- `--config_name` / `-config_name`: Name of configuration file (without .yaml extension)
   - Example: `--config_name global` uses `config/global.yaml`
+- `--data_dir` / `-data_dir`: Directory where input data is stored
+
+**Optional Arguments:**
 - `--outdir` / `-outdir`: Output directory for extracted data (default: `./extracted_data/`)
 - `--perc_dataset` / `-perc_dataset`: Percentage of dataset to use, 0.0 to 1.0 (default: `1.0`)
 - `--num_cores` / `-num_cores`: Number of CPU cores to use for parallel processing (default: `1`)
 - `--start_from` / `-start_from`: Start processing from case number (default: `0`)
 - `--end_at` / `-end_at`: End processing at case number, -1 for all cases (default: `-1`)
+- `--testing` / `-testing`: Enable testing mode (uses TEST_CASES from config instead of training cases). If not provided, uses config value or defaults to False
+- `--validation_prop` / `-validation_prop`: Validation set proportion (0.0-1.0). If not provided, uses config value
+- `--max_samples` / `-max_samples`: Maximum number of samples to extract. Useful for quick testing. If not provided, uses config value
+- `--modality` / `-modality`: Imaging modality: `CT`, `MR`, or comma-separated list (e.g., `CT,MR`). If not provided, uses config value
 
 **Examples:**
 ```bash
 # Process all cases with 4 cores
-python3 main.py --config_name global --num_cores 4
+python3 main.py --config_name global --data_dir /path/to/data --num_cores 4
 
 # Process 50% of dataset with 8 cores
-python3 main.py --config_name global --perc_dataset 0.5 --num_cores 8
+python3 main.py --config_name global --data_dir /path/to/data --perc_dataset 0.5 --num_cores 8
 
 # Process cases 10 to 20
-python3 main.py --config_name global --start_from 10 --end_at 20
+python3 main.py --config_name global --data_dir /path/to/data --start_from 10 --end_at 20
 
 # Custom output directory
-python3 main.py --config_name global --outdir /path/to/output
+python3 main.py --config_name global --data_dir /path/to/data --outdir /path/to/output
+
+# Enable testing mode and limit samples for quick test
+python3 main.py --config_name global --data_dir /path/to/data --testing --max_samples 100
+
+# Process only CT modality with custom validation split
+python3 main.py --config_name global --data_dir /path/to/data --modality CT --validation_prop 0.15
+
+# Process both CT and MR modalities
+python3 main.py --config_name global --data_dir /path/to/data --modality CT,MR
 ```
 
 The script uses configuration from the specified YAML file in `config/` and processes cases in the dataset according to the provided arguments.

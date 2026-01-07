@@ -486,6 +486,21 @@ if __name__ == '__main__':
                         required=True,
                         type=str,
                         help='Directory where input data is stored')
+    parser.add_argument('-testing', '--testing',
+                        action='store_true',
+                        help='Enable testing mode (uses TEST_CASES instead of training cases)')
+    parser.add_argument('-validation_prop', '--validation_prop',
+                        type=float,
+                        default=None,
+                        help='Validation set proportion (0.0-1.0). If not provided, uses config value.')
+    parser.add_argument('-max_samples', '--max_samples',
+                        type=float,
+                        default=None,
+                        help='Maximum number of samples to extract. If not provided, uses config value.')
+    parser.add_argument('-modality', '--modality',
+                        type=str,
+                        default=None,
+                        help='Imaging modality: CT, MR, or comma-separated list (CT,MR). If not provided, uses config value.')
     args = parser.parse_args()
 
     print(args)
@@ -493,6 +508,30 @@ if __name__ == '__main__':
     global_config = io.load_yaml("./config/"+args.config_name+".yaml")
     # Set DATA_DIR from command-line argument instead of config
     global_config['DATA_DIR'] = args.data_dir
+    
+    # Override config values with command-line arguments if provided, or set defaults
+    if args.testing:
+        global_config['TESTING'] = True
+    elif 'TESTING' not in global_config:
+        global_config['TESTING'] = False
+        
+    if args.validation_prop is not None:
+        global_config['VALIDATION_PROP'] = args.validation_prop
+    elif 'VALIDATION_PROP' not in global_config:
+        global_config['VALIDATION_PROP'] = 0.0
+        
+    if args.max_samples is not None:
+        global_config['MAX_SAMPLES'] = args.max_samples
+    elif 'MAX_SAMPLES' not in global_config:
+        global_config['MAX_SAMPLES'] = 1e6
+        
+    if args.modality is not None:
+        # Parse comma-separated modalities into list
+        modalities_list = [m.strip().upper() for m in args.modality.split(',')]
+        global_config['MODALITY'] = modalities_list
+    elif 'MODALITY' not in global_config:
+        global_config['MODALITY'] = ['CT']
+    
     modalities = global_config['MODALITY']
 
     out_dir = args.outdir  # global_config['OUT_DIR']
