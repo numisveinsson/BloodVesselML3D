@@ -1,7 +1,7 @@
 
 # DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/' # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
 # DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data
-DATA_DIR: '/Users/numisveins/Documents/MICCAI_Challenge23_Aorta_Tree_Data/'
+# DATA_DIR: '/Users/numisveins/Documents/MICCAI_Challenge23_Aorta_Tree_Data/'
 
 DATASET_NAME: 'other' #'vmr' # or other 'other'
 

@@ -1,4 +1,4 @@
-DATA_DIR: '/Users/nsveinsson/Documents/datasets/vmr/' #, MICCAI_AVT_Data
+# DATA_DIR: '/Users/nsveinsson/Documents/datasets/vmr/' #, MICCAI_AVT_Data
 
 DATASET_NAME: 'vmr' #'vmr' # or other 'other'
 

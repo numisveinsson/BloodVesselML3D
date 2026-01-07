@@ -1,4 +1,4 @@
-DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/'
+# DATA_DIR: '/global/scratch/users/numi/vascular_data_3d/'
 
 DATASET_NAME: 'vmr' #'vmr' # or other 'other'
 

@@ -1,6 +1,4 @@
 
-DATA_DIR: '/Users/nsveinsson/Documents/datasets/ASOCA_dataset/'
-
 # '/global/scratch/users/numi/vascular_data_3d/'
 # '/Users/numisveins/Documents/ASOCA_dataset/', MICCAI_AVT_Data
 # DATA_DIR: '/Users/numisveins/Documents/vascular_data_3d/' #, MICCAI_AVT_Data

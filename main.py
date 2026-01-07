@@ -482,11 +482,17 @@ if __name__ == '__main__':
                         default=-1,
                         type=int,
                         help='End at case number')
+    parser.add_argument('-data_dir', '--data_dir',
+                        required=True,
+                        type=str,
+                        help='Directory where input data is stored')
     args = parser.parse_args()
 
     print(args)
 
     global_config = io.load_yaml("./config/"+args.config_name+".yaml")
+    # Set DATA_DIR from command-line argument instead of config
+    global_config['DATA_DIR'] = args.data_dir
     modalities = global_config['MODALITY']
 
     out_dir = args.outdir  # global_config['OUT_DIR']

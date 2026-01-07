@@ -1,5 +1,5 @@
 
-DATA_DIR: '/global/scratch/users/numi/PARSE_dataset/'
+# DATA_DIR: '/global/scratch/users/numi/PARSE_dataset/'
 # DATA_DIR: '/global/scratch/users/numi/CAS_dataset/CAS2023_trainingdataset/'
 # DATA_DIR: '/global/scratch/users/numi/ASOCA/'
 
