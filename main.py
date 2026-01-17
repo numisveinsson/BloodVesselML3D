@@ -181,7 +181,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                      voi_max) = sf.map_to_image(center, rads[count],
                                                 size_r, origin_im,
                                                 spacing_im, size_im,
-                                                global_config['CAPFREE_PROP'])
+                                                global_config['CAPFREE_PROP'],
+                                                min_dim=global_config.get('MIN_DIM', 5))
                     # if any dim is less than 5, skip
                     # if np.any(size_extract < 5):
                     #     print("Size extract too small, skipping")

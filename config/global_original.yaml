@@ -50,6 +50,7 @@ RADIUS_SCALE: 10 # how much to add to radius values (to correct bias)
 
 CAPFREE: False # whether to require a certain amount of cap-free volume
 CAPFREE_PROP: 0.0 # how much of volume must be cap free, per sidelength
+MIN_DIM: 5 # minimum number of voxels in each dimension for subvolume extraction
 MOVE_SLOWER_LARGE: 1  #0.5 how much slower for bigger vessels
 MU_SIZE: 5 # mean for subvolume-radius ratio
 SIGMA_SIZE: 0.8 # standard deviation for subvolume-radius ratio

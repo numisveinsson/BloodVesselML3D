@@ -25,6 +25,39 @@ def scale_polydata(input_file, output_file, scale_factor):
         x, y, z = points.GetPoint(i)
         points.SetPoint(i, x * scale_factor, y * scale_factor, z * scale_factor)
 
+    # Also scale any data arrays named 'MaximumInscribedSphereRadius' in point or cell data
+    try:
+        from modules.logger import get_logger
+        logger = get_logger(__name__)
+    except Exception:
+        logger = None
+
+    for data_name, data in (('point', polydata.GetPointData()), ('cell', polydata.GetCellData())):
+        if not data:
+            continue
+        arr = data.GetArray('MaximumInscribedSphereRadius')
+        if arr is None:
+            continue
+        nc = arr.GetNumberOfComponents()
+        n_tuples = arr.GetNumberOfTuples()
+        for tidx in range(n_tuples):
+            if nc == 1:
+                try:
+                    val = arr.GetTuple1(tidx)
+                    arr.SetTuple1(tidx, val * scale_factor)
+                except AttributeError:
+                    tup = arr.GetTuple(tidx)
+                    arr.SetTuple(tidx, (tup[0] * scale_factor,))
+            else:
+                tup = list(arr.GetTuple(tidx))
+                for c in range(nc):
+                    tup[c] = tup[c] * scale_factor
+                arr.SetTuple(tidx, tup)
+        if logger:
+            logger.info(f"Scaled 'MaximumInscribedSphereRadius' in {data_name} data by {scale_factor}")
+
+    polydata.Modified()
+
     # Determine file type and use appropriate writer
     if output_file.endswith('.vtp'):
         writer = vtk.vtkXMLPolyDataWriter()
@@ -39,7 +72,14 @@ def scale_polydata(input_file, output_file, scale_factor):
 
 
 def process_folder(input_folder, output_folder, scale_factor):
-    from modules.logger import get_logger
+    try:
+        from modules.logger import get_logger
+    except Exception:
+        import sys
+        repo_root = os.path.dirname(os.path.dirname(__file__))
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        from modules.logger import get_logger
     logger = get_logger(__name__)
     
     # Loop over all .vtp and .stl files in the folder
@@ -103,7 +143,14 @@ Examples:
         os.makedirs(output_folder, exist_ok=True)
     
     # Initialize logger
-    from modules.logger import get_logger
+    try:
+        from modules.logger import get_logger
+    except Exception:
+        import sys
+        repo_root = os.path.dirname(os.path.dirname(__file__))
+        if repo_root not in sys.path:
+            sys.path.insert(0, repo_root)
+        from modules.logger import get_logger
     logger = get_logger(__name__)
     logger.info(f"Scaling surfaces from {input_folder} to {output_folder} with factor {scale_factor}")
     

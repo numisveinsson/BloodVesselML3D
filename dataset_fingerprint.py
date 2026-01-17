@@ -14,6 +14,7 @@ from pathlib import Path
 from collections import defaultdict
 import json
 from datetime import datetime
+from tqdm import tqdm
 
 
 def get_base_names(folder, extensions=['.mha', '.nii.gz', '.nii', '.vti', '.vtp', '.stl']):
@@ -256,6 +257,130 @@ def analyze_surface(surf_path, image_bounds=None):
         return None, str(e)
 
 
+def detect_file_type(file_path):
+    """
+    Detect if a file is likely a mask/segmentation or an image.
+    
+    Returns:
+        'mask' if file appears to be a segmentation mask
+        'image' if file appears to be an image
+        None if detection fails
+    """
+    try:
+        img = sitk.ReadImage(file_path)
+        arr = sitk.GetArrayFromImage(img)
+        
+        # Get unique values
+        unique_values = np.unique(arr)
+        num_unique = len(unique_values)
+        
+        # Get pixel type
+        pixel_type = img.GetPixelIDTypeAsString()
+        
+        # Calculate statistics
+        intensity_range = float(np.max(arr) - np.min(arr))
+        intensity_std = float(np.std(arr))
+        total_voxels = arr.size
+        
+        # Masks typically have:
+        # - Few unique values (labels, usually < 20 for most segmentations)
+        # - Integer pixel types
+        # - Discrete values (low standard deviation relative to range)
+        # - Values that are typically small integers (0, 1, 2, etc.)
+        # - Most voxels concentrated in a few values (background + labels)
+        
+        # Images typically have:
+        # - Many unique values (continuous or semi-continuous)
+        # - Floating point or wider integer types
+        # - Higher standard deviation
+        # - More uniform distribution of values
+        
+        # Check if values are small integers (common for masks)
+        is_integer_type = 'Int' in pixel_type or 'UInt' in pixel_type
+        # Check first 20 unique values to see if they're small integers
+        sample_values = unique_values[:min(20, len(unique_values))]
+        values_are_small_integers = all(v >= 0 and v <= 255 and abs(v - int(v)) < 1e-6 for v in sample_values)
+        
+        # Check concentration: if most voxels are in top few values, likely a mask
+        # For masks, typically background (0) dominates, then a few label values
+        top_n = min(5, len(unique_values))
+        top_values = unique_values[:top_n]
+        top_values_count = sum(np.sum(arr == v) for v in top_values)
+        top_values_percentage = top_values_count / total_voxels if total_voxels > 0 else 0
+        
+        # Decision logic
+        has_few_labels = num_unique <= 20
+        
+        # Strong indicators of mask:
+        # 1. Very few unique values (<= 10) and they're integers
+        # 2. Few unique values (<= 20) and > 95% of voxels in top 5 values
+        if has_few_labels:
+            if num_unique <= 10 and (is_integer_type or values_are_small_integers):
+                return 'mask'
+            if top_values_percentage > 0.95 and (is_integer_type or values_are_small_integers):
+                return 'mask'
+        
+        # Strong indicators of image:
+        # 1. Many unique values (> 50)
+        # 2. Floating point type
+        # 3. Moderate unique values (> 20) with high standard deviation
+        if num_unique > 50:
+            return 'image'
+        if 'Float' in pixel_type:
+            return 'image'
+        if num_unique > 20 and intensity_std > 10:
+            return 'image'
+        
+        # Default: if uncertain, return None
+        return None
+        
+    except Exception as e:
+        return None
+
+
+def check_file_type_mismatches(base_folder):
+    """
+    Check for files that are in the wrong folder (masks in images, images in truths).
+    
+    Returns:
+        Dictionary with lists of mismatched files
+    """
+    mismatches = {
+        'masks_in_images': [],
+        'images_in_truths': []
+    }
+    
+    # Check images folder for masks
+    images_folder = os.path.join(base_folder, 'images')
+    if os.path.exists(images_folder):
+        image_files = glob.glob(os.path.join(images_folder, '*'))
+        # Filter to common image extensions
+        image_extensions = ['.mha', '.nii.gz', '.nii', '.vti', '.vtk']
+        image_files = [f for f in image_files if any(f.endswith(ext) for ext in image_extensions)]
+        
+        for img_file in tqdm(image_files, desc="Checking images folder for masks", leave=False):
+            file_type = detect_file_type(img_file)
+            if file_type == 'mask':
+                filename = os.path.basename(img_file)
+                mismatches['masks_in_images'].append(filename)
+    
+    # Check truths folder for images
+    truths_folder = os.path.join(base_folder, 'truths')
+    if os.path.exists(truths_folder):
+        truth_files = glob.glob(os.path.join(truths_folder, '*'))
+        # Filter to common image extensions
+        truth_extensions = ['.mha', '.nii.gz', '.nii', '.vti', '.vtk']
+        truth_files = [f for f in truth_files if any(f.endswith(ext) for ext in truth_extensions)]
+        
+        for truth_file in tqdm(truth_files, desc="Checking truths folder for images", leave=False):
+            file_type = detect_file_type(truth_file)
+            if file_type == 'image':
+                filename = os.path.basename(truth_file)
+                mismatches['images_in_truths'].append(filename)
+    
+    return mismatches
+
+
 def check_name_consistency(base_folder):
     """Check if filenames match across all subfolders."""
     subfolders = ['images', 'surfaces', 'centerlines', 'truths']
@@ -311,9 +436,34 @@ def fingerprint_dataset(base_folder, output_file=None, max_samples=None):
 
     print(f"Found folders: {existing_folders}")
     
+    # Check for file type mismatches (masks in images, images in truths)
+    print("\nChecking for file type mismatches...")
+    type_mismatches = check_file_type_mismatches(base_folder)
+    
+    if type_mismatches['masks_in_images']:
+        print(f"  WARNING: Found {len(type_mismatches['masks_in_images'])} files in 'images' folder that appear to be masks:")
+        for filename in type_mismatches['masks_in_images'][:10]:  # Show first 10
+            print(f"    - {filename}")
+        if len(type_mismatches['masks_in_images']) > 10:
+            print(f"    ... and {len(type_mismatches['masks_in_images']) - 10} more")
+    else:
+        print("  ✓ No masks detected in 'images' folder")
+    
+    if type_mismatches['images_in_truths']:
+        print(f"  WARNING: Found {len(type_mismatches['images_in_truths'])} files in 'truths' folder that appear to be images:")
+        for filename in type_mismatches['images_in_truths'][:10]:  # Show first 10
+            print(f"    - {filename}")
+        if len(type_mismatches['images_in_truths']) > 10:
+            print(f"    ... and {len(type_mismatches['images_in_truths']) - 10} more")
+    else:
+        print("  ✓ No images detected in 'truths' folder")
+    
     # Check name consistency
     print("\nChecking filename consistency...")
     consistency_report, name_sets = check_name_consistency(base_folder)
+    
+    # Add type mismatches to consistency report
+    consistency_report['file_type_mismatches'] = type_mismatches
 
     print(f"  Total unique names: {consistency_report['total_unique_names']}")
     for folder, count in consistency_report['names_per_folder'].items():
@@ -349,10 +499,8 @@ def fingerprint_dataset(base_folder, output_file=None, max_samples=None):
         'errors': defaultdict(list),
     }
     # Analyze each common case
-    for i, name in enumerate(common_names):
-        # Print every 10
-        if (i + 1) % 10 == 0 or i == 0 or (i + 1) == len(common_names):
-            print(f"Processed {i + 1}/{len(common_names)} files", end='\r')
+    print(f"\nAnalyzing {len(common_names)} cases...")
+    for name in tqdm(common_names, desc="Processing cases"):
         image_bounds = None
         if 'centerlines' in existing_folders or 'surfaces' in existing_folders:
             image_folder = os.path.join(base_folder, 'images')
@@ -400,8 +548,6 @@ def fingerprint_dataset(base_folder, output_file=None, max_samples=None):
                 else:
                     results['surfaces'][name] = stats
     
-    print(f"  Completed analysis of {len(common_names)} files")
-    
     # Generate summary statistics
     print("\nGenerating summary statistics...")
     results['summary'] = generate_summary(results)
@@ -442,6 +588,10 @@ def convert_to_serializable(obj):
 def generate_summary(results):
     """Generate summary statistics from detailed results."""
     summary = {}
+    
+    # Include file type mismatches in summary if present
+    if 'file_type_mismatches' in results.get('consistency', {}):
+        summary['file_type_mismatches'] = results['consistency']['file_type_mismatches']
     
     # Image statistics
     if results['images']:
@@ -559,6 +709,22 @@ def print_summary(summary):
     print("\n" + "=" * 80)
     print("DATASET SUMMARY")
     print("=" * 80)
+    
+    # Print file type mismatch warnings if present
+    if 'file_type_mismatches' in summary:
+        mismatches = summary['file_type_mismatches']
+        if mismatches.get('masks_in_images') or mismatches.get('images_in_truths'):
+            print("\n⚠️  FILE TYPE MISMATCHES DETECTED:")
+            if mismatches.get('masks_in_images'):
+                print(f"  Masks in 'images' folder: {len(mismatches['masks_in_images'])} files")
+                print(f"    Files: {mismatches['masks_in_images'][:5]}")
+                if len(mismatches['masks_in_images']) > 5:
+                    print(f"    ... and {len(mismatches['masks_in_images']) - 5} more")
+            if mismatches.get('images_in_truths'):
+                print(f"  Images in 'truths' folder: {len(mismatches['images_in_truths'])} files")
+                print(f"    Files: {mismatches['images_in_truths'][:5]}")
+                if len(mismatches['images_in_truths']) > 5:
+                    print(f"    ... and {len(mismatches['images_in_truths']) - 5} more")
     
     if 'images' in summary:
         print("\nIMAGES:")
