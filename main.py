@@ -227,7 +227,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                          new_img,
                                          global_surface,
                                          center,
-                                         size_r*rads[count])
+                                         size_r*rads[count]/2)
                                     num_out = len(stats_surf['OUTLETS'])
                                     # print(f"Outlets are: {num_out}")
                                     stats.update(stats_surf)
@@ -241,6 +241,30 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                           spacing_im,
                                                           index_extract,
                                                           center)
+                                num_out = 0
+                                # Initialize variables that might be used later
+                                new_img = None
+                                removed_seg = None
+                                new_surf_box = None
+                                new_surf_sphere = None
+
+                            # Extract surface even if EXTRACT_VOLUMES is False
+                            if (not global_config['EXTRACT_VOLUMES'] 
+                                and global_config['WRITE_SURFACE']):
+                                # Extract volume just for surface extraction
+                                # Convert to list of ints (required by SimpleITK)
+                                index_extract_list = index_extract.astype(int).tolist()
+                                size_extract_list = size_extract.astype(int).tolist()
+                                new_img = sf.extract_volume(reader_im, index_extract_list, size_extract_list)
+                                (stats_surf, new_surf_box, new_surf_sphere
+                                 ) = extract_surface(
+                                     new_img,
+                                     global_surface,
+                                     center,
+                                     size_r*rads[count]/2)
+                                num_out = len(stats_surf['OUTLETS'])
+                                # print(f"Outlets are: {num_out}")
+                                stats.update(stats_surf)
 
                             stats = add_tangent_stats(stats, vec0, save_bif)
 
@@ -256,13 +280,16 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                       case_dict['NAME'],
                                                       N, n_old, sub)
                                     if global_config['WRITE_CENTERLINE']:
-                                        _, new_cent = extract_centerline(
-                                            new_img, global_centerline)
-                                        write_centerline(new_cent,
-                                                         seg_out_dir,
-                                                         case_dict['NAME'],
-                                                         N, n_old, sub)
-                                if global_config['WRITE_IMG']:
+                                        if global_config['EXTRACT_VOLUMES']:
+                                            _, new_cent = extract_centerline(
+                                                new_img, global_centerline)
+                                            write_centerline(new_cent,
+                                                             seg_out_dir,
+                                                             case_dict['NAME'],
+                                                             N, n_old, sub)
+                                        else:
+                                            print("Warning: WRITE_CENTERLINE requires EXTRACT_VOLUMES to be True, skipping centerline extraction")
+                                if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_IMG']:
                                     if global_config['RESAMPLE_VOLUMES']:
                                         removed_seg_re = resample_spacing(
                                             removed_seg,
@@ -284,13 +311,13 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                   case_dict['NAME'],
                                                   N, n_old, sub, global_config['BINARIZE'])
 
-                                if global_config['WRITE_VTK']:
+                                if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_VTK']:
                                     write_vtk(new_img, removed_seg,
                                               out_dir, case_dict['NAME'],
                                               N, n_old, sub)
 
                             # Discretize centerline
-                            if global_config['WRITE_DISCRETE_CENTERLINE']:
+                            if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_DISCRETE_CENTERLINE']:
                                 _, new_cent = extract_centerline(
                                     new_img,
                                     global_centerline,
@@ -308,7 +335,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     csv_discrete_centerline.append(cent_stats)
 
                             # Outlet stats
-                            if global_config['WRITE_OUTLET_STATS']:
+                            if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_OUTLET_STATS']:
                                 (stats_out, planes, planes_seg, pos_example
                                  ) = get_outlet_stats(
                                      stats, new_img,
@@ -334,7 +361,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                             csv_list, csv_list_val = append_stats(stats, csv_list, csv_list_val, val_port)
 
                             # Cross sectional planes
-                            if global_config['WRITE_CROSS_SECTIONAL']:
+                            if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_CROSS_SECTIONAL']:
                                 (stats_out, planes_img, planes_seg
                                  ) = get_cross_sectional_planes(
                                      stats, new_img, removed_seg,
@@ -344,7 +371,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                                 image_out_dir, add='_cross_rot')
                                 write_2d_planes(planes_seg, stats_out,
                                                 seg_out_dir, add='_cross_rot')
-                            if global_config['WRITE_TRAJECTORIES']:
+                            if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_TRAJECTORIES']:
                                 (traj_list,
                                  num_trajs) = get_proj_traj(
                                     stats,
@@ -451,7 +478,7 @@ if __name__ == '__main__':
 
     Example:
 
-    python3 gather_sampling_data_parallel.py \
+    python3 main.py \
         -outdir ./extracted_data/ \
         -config_name config \
         -perc_dataset 1.0 \
