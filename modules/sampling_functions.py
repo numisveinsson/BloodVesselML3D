@@ -405,7 +405,7 @@ def get_point_ids_no_post_proc(centerline_poly):
 
 
 def choose_destination(trace_testing, val_prop, img_test, seg_test, img_val,
-                       seg_val, img_train, seg_train, ip=None):
+                       seg_val, img_train, seg_train, ip=None, case_name=None):
     # If tracing test, save to test
     if trace_testing:
         image_out_dir = img_test
@@ -413,7 +413,16 @@ def choose_destination(trace_testing, val_prop, img_test, seg_test, img_val,
         val_port = False
     # Else, have a probability to save to validation
     else:
-        rand = random.uniform(0, 1)
+        # Use deterministic hash-based split for reproducibility
+        # Combine case_name and ip to create a unique, reproducible hash
+        if case_name is not None and ip is not None:
+            # Create a deterministic value based on case name and centerline id
+            hash_value = hash(f"{case_name}_{ip}")
+            # Normalize to [0, 1) range
+            rand = (hash_value % 10000) / 10000.0
+        else:
+            # Fallback to random if case_name not provided (backwards compatibility)
+            rand = random.uniform(0, 1)
         # print(" random is " + str(rand))
         if rand < val_prop and ip != 0:
             image_out_dir = img_val

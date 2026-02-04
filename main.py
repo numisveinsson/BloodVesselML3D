@@ -131,7 +131,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                         image_out_dir_test, seg_out_dir_test,
                                         image_out_dir_val, seg_out_dir_val,
                                         image_out_dir_train, seg_out_dir_train,
-                                        ip)
+                                        ip, case_dict['NAME'])
         # Get ids on this centerline
         ids = cent_ids[ip]
         # skip if empty
