@@ -2,6 +2,7 @@ import SimpleITK as sitk
 import numpy as np
 import os
 import random
+import hashlib
 from .vtk_functions import (
     collect_arrays, calc_normal_vectors, get_location_cells, clean_boundaries,
     exportSitk2VTK, bound_polydata_by_image, bound_polydata_by_sphere,
@@ -416,10 +417,11 @@ def choose_destination(trace_testing, val_prop, img_test, seg_test, img_val,
         # Use deterministic hash-based split for reproducibility
         # Combine case_name and ip to create a unique, reproducible hash
         if case_name is not None and ip is not None:
-            # Create a deterministic value based on case name and centerline id
-            hash_value = hash(f"{case_name}_{ip}")
-            # Normalize to [0, 1) range
-            rand = (hash_value % 10000) / 10000.0
+            # Create a deterministic value based on case name and centerline id using MD5
+            hash_obj = hashlib.md5(f"{case_name}_{ip}".encode('utf-8'))
+            # Convert first 8 bytes to integer and normalize to [0, 1) range
+            hash_int = int.from_bytes(hash_obj.digest()[:8], byteorder='big')
+            rand = (hash_int % 10000) / 10000.0
         else:
             # Fallback to random if case_name not provided (backwards compatibility)
             rand = random.uniform(0, 1)
