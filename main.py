@@ -559,6 +559,9 @@ if __name__ == '__main__':
         global_config['MODALITY'] = modalities_list
     elif 'MODALITY' not in global_config:
         global_config['MODALITY'] = ['CT']
+
+    if 'MIN_DIM' not in global_config:
+        global_config['MIN_DIM'] = 5
     
     modalities = global_config['MODALITY']
 

@@ -52,6 +52,7 @@ MOVE_DIST: 1.5 # 1.5 how far to move along centerline between sampling, in terms
 SIZE_RADIUS: 5 # how big a volume to sample, x radius at each location
 RADIUS_ADD: 0.5 # how much to add to radius values (to correct bias)
 RADIUS_SCALE: 1 # how much to add to radius values (to correct bias)
+MIN_DIM: 5 # minimum number of voxels in each dimension for subvolume extraction
 
 CAPFREE: False # whether to require a certain amount of cap-free volume
 CAPFREE_PROP: 0.0 # how much of volume must be cap free, per sidelength
