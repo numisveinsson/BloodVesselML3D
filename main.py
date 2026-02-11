@@ -42,9 +42,12 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
     """ Sample a case and write out the results """
 
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
+
     # Check if case is in done.txt
-    if os.path.exists(out_dir+"done.txt"):
-        with open(out_dir+"done.txt", "r") as f:
+    done_file = out_dir + "done" + suffix + ".txt"
+    if os.path.exists(done_file):
+        with open(done_file, "r") as f:
             done = f.read().splitlines()
             f.close()
         if case_fn in done:
@@ -52,8 +55,9 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
             return (case_fn, [], [], [], [], [], [])
 
     if global_config['WRITE_TRAJECTORIES']:
-        if os.path.exists(out_dir+"trajectories.pkl"):
-            df = pd.read_pickle(out_dir+"trajectories.pkl")
+        traj_file = out_dir + "trajectories" + suffix + ".pkl"
+        if os.path.exists(traj_file):
+            df = pd.read_pickle(traj_file)
             num_trajs = df['metaId'].max() + 1
         else:
             num_trajs = 0
@@ -83,7 +87,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
 
     if global_config['WRITE_VTK']:
         try:
-            create_vtk_dir(out_dir, case_dict['NAME'], global_config['CAPFREE'])
+            create_vtk_dir(out_dir, case_dict['NAME'], global_config['CAPFREE'],
+                          suffix=suffix)
         except Exception as e:
             print(e)
 
@@ -314,7 +319,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                 if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_VTK']:
                                     write_vtk(new_img, removed_seg,
                                               out_dir, case_dict['NAME'],
-                                              N, n_old, sub)
+                                              N, n_old, sub, suffix=suffix)
 
                             # Discretize centerline
                             if global_config['EXTRACT_VOLUMES'] and global_config['WRITE_DISCRETE_CENTERLINE']:
@@ -328,7 +333,8 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     N-n_old,
                                     sub, name,
                                     out_dir,
-                                    global_config['DISCRETE_CENTERLINE_N_POINTS'])
+                                    global_config['DISCRETE_CENTERLINE_N_POINTS'],
+                                    suffix=suffix)
                                 if val_port:
                                     csv_discrete_centerline_val.append(cent_stats)
                                 else:
@@ -384,6 +390,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                     rot_point=locs[count],
                                     outdir=out_dir,
                                     visualize=True,
+                                    suffix=suffix,
                                     img_size=global_config['RESAMPLE_CROSS_IMG'],
                                     n_slices=global_config['N_SLICES'],)
 
@@ -402,7 +409,7 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
                                 write_vtk_throwout(reader_seg, index_extract,
                                                    size_extract, out_dir,
                                                    case_dict['NAME'], N,
-                                                   n_old, sub)
+                                                   n_old, sub, suffix=suffix)
                             M += 1
                         except Exception as e:
                             print(e)
@@ -451,20 +458,20 @@ def sample_case(case_fn, global_config, out_dir, image_out_dir_train,
         print(f"Number of trajectories for {case_dict['NAME']}: {num_trajs}")
         column_names = ['frame', 'trackId', 'x', 'y', 'sceneId', 'metaId']
         # check if files exist
-        if os.path.exists(out_dir+"trajectories.pkl"):
-            df = pd.read_pickle(out_dir+"trajectories.pkl")
+        if os.path.exists(traj_file):
+            df = pd.read_pickle(traj_file)
             df = df.append(pd.DataFrame(traj_list, columns=column_names))
-            df.to_pickle(out_dir+"trajectories.pkl")
+            df.to_pickle(traj_file)
         else:
             df = pd.DataFrame(traj_list, columns=column_names)
-            df.to_pickle(out_dir+"trajectories.pkl")
+            df.to_pickle(traj_file)
 
         # test read in
-        df = pd.read_pickle(out_dir+"trajectories.pkl")
+        df = pd.read_pickle(traj_file)
         print(df[df['metaId'] == 0])
 
     # write to done.txt the name of the case
-    with open(out_dir+"done.txt", "a") as f:
+    with open(done_file, "a") as f:
         f.write(case_dict['NAME']+'\n')
         f.close()
 
@@ -484,7 +491,8 @@ if __name__ == '__main__':
         -perc_dataset 1.0 \
         -num_cores 1 \
         -start_from 0 \
-        -end_at -1
+        -end_at -1 \
+        -output_suffix _first  # optional: append to output names (ct_test -> ct_test_first)
     """
     parser = argparse.ArgumentParser()
     parser.add_argument('-outdir', '--outdir',
@@ -529,6 +537,10 @@ if __name__ == '__main__':
                         type=str,
                         default=None,
                         help='Imaging modality: CT, MR, or comma-separated list (CT,MR). If not provided, uses config value.')
+    parser.add_argument('-output_suffix', '--output_suffix',
+                        type=str,
+                        default='',
+                        help='Suffix to append to all output names within outdir (e.g. _first makes ct_test -> ct_test_first).')
     args = parser.parse_args()
 
     print(args)
@@ -563,6 +575,9 @@ if __name__ == '__main__':
     if 'MIN_DIM' not in global_config:
         global_config['MIN_DIM'] = 5
     
+    output_suffix = args.output_suffix or ''
+    global_config['OUTPUT_SUFFIX'] = output_suffix
+
     modalities = global_config['MODALITY']
 
     out_dir = args.outdir  # global_config['OUT_DIR']
@@ -591,8 +606,9 @@ if __name__ == '__main__':
             cases = cases[args.start_from:]
 
         # skip ones in done.txt if it exists
-        if os.path.exists(out_dir+"done.txt"):
-            with open(out_dir+"done.txt", "r") as f:
+        done_file_path = out_dir + "done" + output_suffix + ".txt"
+        if os.path.exists(done_file_path):
+            with open(done_file_path, "r") as f:
                 done = f.read().splitlines()
                 f.close()
             for case in done:
@@ -600,17 +616,18 @@ if __name__ == '__main__':
             cases = [case for case in cases if case not in done]
 
         modality = modality.lower()
-        info_file_name = "info"+'_'+modality+dt_string+".txt"
+        suffix = output_suffix
+        info_file_name = "info"+'_'+modality+dt_string+suffix+".txt"
 
         create_directories(out_dir, modality, global_config)
 
-        image_out_dir_train = out_dir+modality+'_train/'
-        seg_out_dir_train = out_dir+modality+'_train_masks/'
-        image_out_dir_val = out_dir+modality+'_val/'
-        seg_out_dir_val = out_dir+modality+'_val_masks/'
+        image_out_dir_train = out_dir+modality+'_train'+suffix+'/'
+        seg_out_dir_train = out_dir+modality+'_train'+suffix+'_masks/'
+        image_out_dir_val = out_dir+modality+'_val'+suffix+'/'
+        seg_out_dir_val = out_dir+modality+'_val'+suffix+'_masks/'
 
-        image_out_dir_test = out_dir+modality+'_test/'
-        seg_out_dir_test = out_dir+modality+'_test_masks/'
+        image_out_dir_test = out_dir+modality+'_test'+suffix+'/'
+        seg_out_dir_test = out_dir+modality+'_test'+suffix+'_masks/'
 
         info = {}
         N, M, K, O = 0,0,0,0 # keep total of extractions, throwouts, errors, total of samples with multiple labels

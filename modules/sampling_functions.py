@@ -53,6 +53,8 @@ def create_directories(output_folder, modality, global_config):
     except Exception as e:
         print(e)
 
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
+
     if global_config['TESTING']:
         fns = ['_test']
     elif global_config['VALIDATION_PROP'] == 0:
@@ -63,21 +65,21 @@ def create_directories(output_folder, modality, global_config):
     if global_config['WRITE_IMG']:
         for fn in fns:
             try:
-                os.mkdir(output_folder+modality+fn)
+                os.mkdir(output_folder+modality+fn+suffix)
             except Exception as e: print(e)
             try:
-                os.mkdir(output_folder+modality+fn+'_masks')
+                os.mkdir(output_folder+modality+fn+suffix+'_masks')
             except Exception as e: print(e)
 
     if global_config['WRITE_VTK']:
         try:
-            os.mkdir(output_folder+'vtk_data')
+            os.mkdir(output_folder+'vtk_data'+suffix)
         except Exception as e: print(e)
 
     if global_config['WRITE_SURFACE']:
         for fn in fns:
             try:
-                os.mkdir(output_folder+modality+fn+'_masks_surfaces')
+                os.mkdir(output_folder+modality+fn+suffix+'_masks_surfaces')
             except Exception as e: print(e)
             # try:
             #     os.mkdir(output_folder+modality+fn+'_masks_surfaces_box')
@@ -85,22 +87,23 @@ def create_directories(output_folder, modality, global_config):
     if global_config['WRITE_CENTERLINE']:
         for fn in fns:
             try:
-                os.mkdir(output_folder+modality+fn+'_masks_centerlines')
+                os.mkdir(output_folder+modality+fn+suffix+'_masks_centerlines')
             except Exception as e: print(e)
     if global_config['WRITE_OUTLET_STATS']:
         for fn in fns:
             try:
-                os.mkdir(output_folder+modality+fn+'_img_outlet_detection')
-                os.mkdir(output_folder+modality+fn+'_masks_img_outlet_detection')
+                os.mkdir(output_folder+modality+fn+suffix+'_img_outlet_detection')
+                os.mkdir(output_folder+modality+fn+suffix+'_masks_img_outlet_detection')
             except Exception as e: print(e)
 
 
-def create_vtk_dir(output_folder, case_name, throwout=0.0):
+def create_vtk_dir(output_folder, case_name, throwout=0.0, suffix=''):
 
-    os.mkdir(output_folder+'vtk_data/vtk_' + case_name)
-    os.mkdir(output_folder+'vtk_data/vtk_mask_' + case_name)
+    vtk_base = output_folder + 'vtk_data' + suffix + '/'
+    os.mkdir(vtk_base + 'vtk_' + case_name)
+    os.mkdir(vtk_base + 'vtk_mask_' + case_name)
     if throwout:
-        os.mkdir(output_folder+'vtk_data/vtk_throwout_' + case_name)
+        os.mkdir(vtk_base + 'vtk_throwout_' + case_name)
 
 
 def get_cent_ids(num_points, cent_id, ip):
@@ -817,7 +820,7 @@ def transform_from_ref(locs, bounds):
     return locs
 
 
-def discretize_centerline(centerline, img, N = None, sub = None, name = None, outdir = None, num_discr_points=10):
+def discretize_centerline(centerline, img, N = None, sub = None, name = None, outdir = None, num_discr_points=10, suffix=''):
     """
     Function to discretize centerline mesh into points
     with labels
@@ -867,7 +870,8 @@ def discretize_centerline(centerline, img, N = None, sub = None, name = None, ou
         # create polydata from locs
         if outdir:
             locs_pd = points2polydata(locs)
-            write_geo(outdir+'/vtk_data/vtk_' + name[:9] +'/' +str(N)+'_'+str(sub)+'_'+str(ip)+ '.vtp', locs_pd)
+            vtk_base = outdir + '/vtk_data' + suffix + '/'
+            write_geo(vtk_base + 'vtk_' + name[:9] +'/' +str(N)+'_'+str(sub)+'_'+str(ip)+ '.vtp', locs_pd)
 
         steps = create_steps(steps, locs, rads, bifurc, ip)
     # print(steps[:,-2:])
@@ -1024,6 +1028,7 @@ def get_proj_traj(stats,
                   rot_point,
                   outdir=None,
                   visualize=False,
+                  suffix='',
                   write_rotated_centerline=False,
                   img_size=400,
                   n_slices=10,
@@ -1086,9 +1091,9 @@ def get_proj_traj(stats,
             upsample=img_size)
         # write cross sectional planes
         write_2d_planes(planes_img[:-1], stats_out,
-                        outdir, add='_cross_rot')
+                        outdir, add='_cross_rot'+suffix)
         write_2d_planes(planes_seg[:-1], stats_out,
-                        outdir, add='_cross_rot_seg')
+                        outdir, add='_cross_rot_seg'+suffix)
 
         planes_loop = ['z', 'y']  # , 'x']
 
@@ -1114,13 +1119,14 @@ def get_proj_traj(stats,
 
         # write the centerline to file
         if outdir and write_rotated_centerline:
+            vtk_base = outdir + '/vtk_data' + suffix + '/'
             # centerline points
             locs_pd = points2polydata(c_loc_aff)
-            write_geo(outdir+'/vtk_data/vtk_' + stats['NAME'] + '_'
+            write_geo(vtk_base + 'vtk_' + stats['NAME'] + '_'
                       + str(angle_number) + '_centerline.vtp', locs_pd)
             # images
-            sitk.WriteImage(img, outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_image.mha')
-            sitk.WriteImage(seg, outdir+'/vtk_data/vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_seg.mha')
+            sitk.WriteImage(img, vtk_base + 'vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_image.mha')
+            sitk.WriteImage(seg, vtk_base + 'vtk_' + stats['NAME'] + '_' + str(angle_number)+ '_seg.mha')
 
         # transform to reference frame
         c_loc = transform_to_ref(c_loc_aff, bounds)
@@ -1814,19 +1820,21 @@ def print_all_done(info, N, M, K, O, mul_l=None):
             print(i)
 
 
-def write_vtk(new_img, removed_seg, out_dir, case_name, N, n_old, sub):
+def write_vtk(new_img, removed_seg, out_dir, case_name, N, n_old, sub, suffix=''):
     # write vtk, if N is a multiple of 10
     # if N-n_old%10 == 0:
-    sitk.WriteImage(new_img, out_dir+'vtk_data/vtk_' + case_name + '/' + str(N-n_old)+'_'+str(sub)+ '.mha')
+    vtk_base = out_dir + 'vtk_data' + suffix + '/'
+    sitk.WriteImage(new_img, vtk_base + 'vtk_' + case_name + '/' + str(N-n_old)+'_'+str(sub)+ '.mha')
     if sitk.GetArrayFromImage(removed_seg).max() == 1:
         removed_seg *= 255
-    sitk.WriteImage(removed_seg, out_dir+'vtk_data/vtk_mask_' + case_name + '/' + str(N-n_old)+'_'+str(sub)+ '.mha')
+    sitk.WriteImage(removed_seg, vtk_base + 'vtk_mask_' + case_name + '/' + str(N-n_old)+'_'+str(sub)+ '.mha')
 
 
 def write_vtk_throwout(reader_seg, index_extract, size_extract, out_dir,
-                       case_name, N, n_old, sub):
+                       case_name, N, n_old, sub, suffix=''):
+    vtk_base = out_dir + 'vtk_data' + suffix + '/'
     new_seg = extract_volume(reader_seg, index_extract.astype(int).tolist(), size_extract.astype(int).tolist())
-    sitk.WriteImage(new_seg, out_dir+'vtk_data/vtk_throwout_' + case_name +'/'+str(N-n_old)+ '_'+str(sub)+'.mha')
+    sitk.WriteImage(new_seg, vtk_base + 'vtk_throwout_' + case_name +'/'+str(N-n_old)+ '_'+str(sub)+'.mha')
 
 
 def write_subvolume_img(new_img, removed_seg, image_out_dir, seg_out_dir, case_name, N,
@@ -1861,13 +1869,14 @@ def write_centerline(new_cent, seg_out_dir, case_name, N, n_old, sub):
 
 def write_csv(csv_list, csv_list_val, modality, global_config):
     import csv
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
     csv_file = "_Sample_stats.csv"
     if global_config['TESTING']:
-        csv_file = '_test'+csv_file
+        csv_file = '_test'+suffix+csv_file
     else:
-        csv_file = '_train'+csv_file
+        csv_file = '_train'+suffix+csv_file
 
-    csv_columns = ["No",            "NAME",         "SIZE",     "RESOLUTION",   "ORIGIN", 
+    csv_columns = ["No",            "NAME",         "SIZE",     "RESOLUTION",   "ORIGIN",
                    "SPACING",       "POINT_CENT",   "INDEX",    "SIZE_EXTRACT", "VOL_CENT", 
                    "DIFF_CENT",     "IM_MEAN",      "IM_STD",   "IM_MAX",       "IM_MIN",
                    "BLOOD_MEAN",    "BLOOD_STD",    "BLOOD_MAX", "BLOOD_MIN",    "GT_MEAN", 
@@ -1895,11 +1904,12 @@ def write_csv_discrete_cent(csv_discrete_centerline,
                             csv_discrete_centerline_val, modality,
                             global_config):
     import csv
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
     csv_file = "_Discrete_Centerline.csv"
     if global_config['TESTING']:
-        csv_file = '_test'+csv_file
+        csv_file = '_test'+suffix+csv_file
     else:
-        csv_file = '_train'+csv_file
+        csv_file = '_train'+suffix+csv_file
 
     csv_columns = ["No", "NAME", "NUM_CENT", "STEPS"]
     with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
@@ -1919,11 +1929,12 @@ def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality,
                            global_config):
 
     import csv
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
     csv_file = "_Outlet_Stats.csv"
     if global_config['TESTING']:
-        csv_file = '_test'+csv_file
+        csv_file = '_test'+suffix+csv_file
     else:
-        csv_file = '_train'+csv_file
+        csv_file = '_train'+suffix+csv_file
 
     csv_columns = ["NAME", "CENTER", "WIDTH", "SIZE"]
     with open(global_config['OUT_DIR']+modality+csv_file, 'a+') as csvfile:
@@ -1942,11 +1953,12 @@ def write_csv_outlet_stats(csv_outlet_stats, csv_outlet_stats_val, modality,
 def write_pkl_outlet_stats(pkl_outlet_stats, pkl_outlet_stats_val, modality,
                            global_config):
     import pickle
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
     pkl_file = "_Outlet_Stats.pkl"
     if global_config['TESTING']:
-        pkl_file = '_test'+pkl_file
+        pkl_file = '_test'+suffix+pkl_file
     else:
-        pkl_file = '_train'+pkl_file
+        pkl_file = '_train'+suffix+pkl_file
 
     with open(global_config['OUT_DIR']+modality+pkl_file, 'wb') as f:
         pickle.dump(pkl_outlet_stats, f)
@@ -1957,11 +1969,12 @@ def write_pkl_outlet_stats(pkl_outlet_stats, pkl_outlet_stats_val, modality,
 
 def print_csv_stats(out_dir, global_config, modality):
     import csv
+    suffix = global_config.get('OUTPUT_SUFFIX', '')
     csv_file = "_Sample_stats.csv"
     if global_config['TESTING']:
-        csv_file = modality + '_test'+csv_file
+        csv_file = modality + '_test'+suffix+csv_file
     else:
-        csv_file = modality + '_train'+csv_file
+        csv_file = modality + '_train'+suffix+csv_file
 
     print("Here come some AVG stats for the samples")
     # Calculate avg GT mean and std
