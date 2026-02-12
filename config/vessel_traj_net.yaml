@@ -119,16 +119,20 @@ TEST_CASES:
   - '17'
   - '18'
   - '19'
-  - 'Normal_14'
-  - 'Diseased_16'
-  - 'Diseased_3'
+
+  # asoca diseased
   - 'Diseased_1'
-  - 'Normal_11'
-  - 'Diseased_8'
+  - 'Diseased_3'
   - 'Diseased_4'
-  - 'Normal_16'
-  - 'Normal_9'
+  - 'Diseased_8'
   - 'Diseased_10'
+  - 'Diseased_16'
+
+  # asoca normals
+  - 'Normal_9'  
+  - 'Normal_11'
+  - 'Normal_14'
+  - 'Normal_16'
   
 # PARSE
   - 'PA000198'

@@ -9,6 +9,33 @@ sys.path.insert(0, '..')
 # from modules import io
 
 
+SUPPORTED_EXTENSIONS = ('.nii.gz', '.nrrd')
+
+
+def _get_extension(filename):
+    """Return the file extension (.nii.gz or .nrrd) or None if not supported."""
+    if filename.endswith('.nii.gz'):
+        return '.nii.gz'
+    if filename.endswith('.nrrd'):
+        return '.nrrd'
+    return None
+
+
+def _get_base_name(filename):
+    """Strip extension to get base name for matching image/label pairs."""
+    ext = _get_extension(filename)
+    if ext:
+        return filename[:-len(ext)]
+    return filename
+
+
+def _filter_by_extensions(filelist):
+    """Filter file list to supported extensions and return (filtered_list, detected_extension)."""
+    filtered = [f for f in filelist if _get_extension(f) is not None]
+    ext = _get_extension(filtered[0]) if filtered else '.nii.gz'
+    return filtered, ext
+
+
 def save_json(data, filename):
     """
     Save json file
@@ -28,13 +55,23 @@ if __name__ == "__main__":
     This script is used to create the nnUNet dataset names
     from a dataset that has the following structure:
 
-    Data
+    Format 1 (modality-based):
     ├── ct_train
     ├── ct_train_masks
     ├── ct_test
     ├── ct_test_masks
 
-    (or mr instead of ct)
+    Format 2 (images/labels):
+    ├── images
+    └── labels
+
+    Format 3 (images/truths):
+    ├── images
+    └── truths
+
+    (or mr instead of ct for Format 1)
+    Supports both .nii.gz and .nrrd file formats.
+
     Into a dataset that has the following structure:
 
     Dataset
@@ -113,26 +150,40 @@ if __name__ == "__main__":
 
     out_data_dir = os.path.join(directory_out, new_dir_dataset_name)
 
+    # create output directory if it doesn't exist
+    os.makedirs(directory_out, exist_ok=True)
+
     # create new dataset directory
     try:
         os.mkdir(os.path.join(directory_out, new_dir_dataset_name))
     except FileExistsError:
         print(f'Directory {new_dir_dataset_name} already exists')
 
-    fns_in = [modality+'_train',
-              modality+'_train_masks',
-              ]
+    # Detect input format: modality-based, images/labels, or images/truths
+    if os.path.exists(os.path.join(directory, modality+'_train')) and os.path.exists(os.path.join(directory, modality+'_train_masks')):
+        # Format 1: modality-based (ct_train, ct_train_masks)
+        fns_in = [modality+'_train', modality+'_train_masks']
+        if also_test:
+            fns_in.extend([modality+'_test', modality+'_test_masks'])
+        input_format = 'modality'
+    elif os.path.exists(os.path.join(directory, 'images')) and os.path.exists(os.path.join(directory, 'labels')):
+        # Format 2: images/labels
+        fns_in = ['images', 'labels']
+        input_format = 'images_labels'
+    elif os.path.exists(os.path.join(directory, 'images')) and os.path.exists(os.path.join(directory, 'truths')):
+        # Format 3: images/truths
+        fns_in = ['images', 'truths']
+        input_format = 'images_labels'
+    else:
+        raise FileNotFoundError(
+            f"Could not find expected directory structure in {directory}. "
+            f"Expected either: (1) {modality}_train and {modality}_train_masks, "
+            "(2) images and labels, or (3) images and truths."
+        )
 
-    if also_test:
-        fns_in.append(modality+'_test')
-        fns_in.append(modality+'_test_masks')
-
-    fns_out = ['imagesTr',
-               'labelsTr',
-               ]
-    if also_test:
-        fns_out.append('imagesTs')
-        fns_out.append('labelsTs')
+    fns_out = ['imagesTr', 'labelsTr']
+    if also_test and input_format == 'modality':
+        fns_out.extend(['imagesTs', 'labelsTs'])
 
     for fn in fns_out:
         try:
@@ -140,23 +191,56 @@ if __name__ == "__main__":
         except FileExistsError:
             print(f'Directory {fn} already exists')
 
-    for fn in fns_in:
-        # check if exists
-        if not os.path.exists(os.path.join(directory, fn)):
-            print(f'{fn} does not exist')
-            continue
-        imgs = os.listdir(os.path.join(directory, fn))
-        imgs = [img for img in imgs if img.endswith('.nii.gz')]
-        imgs.sort()
+    file_ending = '.nii.gz'  # default
 
-        for i, img in enumerate(imgs):
-            new_name = f'{append}_{(i+1+start_from):03d}_0000.nii.gz'
-            if fns_out[fns_in.index(fn)] == 'labelsTr' or fns_out[fns_in.index(fn)] == 'labelsTs':
-                new_name = new_name.replace('_0000', '')
-            print(f'Copying {img} to {new_name}')
-            if img != new_name:
-                # copy with new name
-                shutil.copy(os.path.join(directory, fn, img), os.path.join(out_data_dir, fns_out[fns_in.index(fn)], new_name))
+    if input_format == 'modality':
+        # Original logic: each folder has its own file list, copy with sequential naming
+        for fn in fns_in:
+            if not os.path.exists(os.path.join(directory, fn)):
+                print(f'{fn} does not exist')
+                continue
+            all_files = os.listdir(os.path.join(directory, fn))
+            imgs, file_ext = _filter_by_extensions(all_files)
+            imgs.sort()
+
+            for i, img in enumerate(imgs):
+                ext = _get_extension(img)
+                new_name = f'{append}_{(i+1+start_from):03d}_0000{ext}'
+                if fns_out[fns_in.index(fn)] == 'labelsTr' or fns_out[fns_in.index(fn)] == 'labelsTs':
+                    new_name = new_name.replace('_0000', '')
+                print(f'Copying {img} to {new_name}')
+                if img != new_name:
+                    shutil.copy(os.path.join(directory, fn, img), os.path.join(out_data_dir, fns_out[fns_in.index(fn)], new_name))
+            if fn == fns_in[0]:  # count from first (images) folder
+                num_training = len(imgs)
+                file_ending = file_ext
+    else:
+        # images/labels or images/truths: match by filename, copy with nnUNet naming
+        images_dir = os.path.join(directory, 'images')
+        labels_dir = os.path.join(directory, fns_in[1])  # 'labels' or 'truths'
+        all_files = os.listdir(images_dir)
+        imgs, file_ext = _filter_by_extensions(all_files)
+        imgs.sort()
+        file_ending = file_ext
+
+        copy_count = 0
+        for img in imgs:
+            ext = _get_extension(img)
+            base = _get_base_name(img)
+            label_name = base + ext
+            label_path = os.path.join(labels_dir, label_name)
+            if not os.path.exists(label_path):
+                print(f'Warning: no matching label for {img}, skipping')
+                continue
+            copy_count += 1
+            idx = copy_count + start_from
+            img_new = f'{append}_{idx:03d}_0000{ext}'
+            label_new = f'{append}_{idx:03d}{ext}'
+            print(f'Copying {img} to {img_new}')
+            shutil.copy(os.path.join(images_dir, img), os.path.join(out_data_dir, 'imagesTr', img_new))
+            print(f'Copying {label_name} to {label_new}')
+            shutil.copy(label_path, os.path.join(out_data_dir, 'labelsTr', label_new))
+        num_training = copy_count
 
     # Create a dataset.json file
     dataset_json = {
@@ -167,8 +251,8 @@ if __name__ == "__main__":
             "background": 0,
             "vessel": 1
         },
-        "numTraining": len(imgs),
-        "file_ending": ".nii.gz"
+        "numTraining": num_training,
+        "file_ending": file_ending
         }
     # Save dataset.json
     save_json(dataset_json, os.path.join(out_data_dir, 'dataset.json'))
